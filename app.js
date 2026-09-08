@@ -1,3 +1,4 @@
+const WHATSAPP='218944000974';
 const products=[
  {id:1,name:'شنطة Veronza الفاخرة',price:450,type:'bags',img:'https://images.unsplash.com/photo-1584917865442-de89df76afd3?auto=format&fit=crop&w=900&q=85',rating:'4.9',reviews:12},
  {id:2,name:'حذاء Veronza الأنيق',price:365,type:'shoes',img:'https://images.unsplash.com/photo-1543163521-1bf539c55dd2?auto=format&fit=crop&w=900&q=85',rating:'4.8',reviews:20},
@@ -22,6 +23,12 @@ function renderCart(){
 function openLayer(el){el.classList.add('open');$('.overlay').classList.add('show')}
 function closeLayers(){$$('.mobile-menu,.search-panel,.cart-drawer').forEach(x=>x.classList.remove('open'));$('.overlay').classList.remove('show')}
 function openCart(){closeLayers();openLayer($('[data-cart-drawer]'))}
+function whatsappMessage(extra=''){
+ const lines=cart.map(x=>`• ${x.name} × ${x.qty} — ${money(x.price*x.qty)}`);
+ const total=cart.reduce((s,x)=>s+x.price*x.qty,0);
+ return `السلام عليكم، نبي نطلب من Veronza Boutique\n${lines.join('\n')}\n\nالإجمالي: ${money(total)}${extra?`\n\n${extra}`:''}`;
+}
+function openWhatsApp(message){window.open(`https://wa.me/${WHATSAPP}?text=${encodeURIComponent(message)}`,'_blank','noopener,noreferrer')}
 $('[data-menu]').onclick=()=>openLayer($('[data-mobile-menu]'));
 $('[data-menu-close]').onclick=closeLayers;
 $('[data-overlay]').onclick=closeLayers;
@@ -30,7 +37,9 @@ $('[data-cart-close]').onclick=closeLayers;
 $('[data-search]').onclick=()=>{openLayer($('[data-search-panel]'));setTimeout(()=>$('#searchInput').focus(),250)};
 $('[data-search-close]').onclick=closeLayers;
 $('#searchInput').addEventListener('input',e=>{const q=e.target.value.trim();const results=$('#searchResults');if(!q){results.innerHTML='';return}const matches=products.filter(p=>p.name.includes(q));results.innerHTML=matches.length?matches.map(p=>`<div style="display:flex;gap:12px;align-items:center;padding:12px 0;border-bottom:1px solid #eee"><img src="${p.img}" style="width:55px;height:55px;object-fit:cover"><div><strong>${p.name}</strong><div>${money(p.price)}</div></div></div>`).join(''):'<p>لا توجد نتائج مطابقة.</p>'});
-$$('.tabs button').forEach(btn=>btn.onclick=()=>{ $$('.tabs button').forEach(x=>x.classList.remove('active'));btn.classList.add('active');const text=btn.textContent.trim();renderProducts(text==='الكل'?products:text==='الأحذية'?products.filter(p=>p.type==='shoes'):text==='الشنط'?products.filter(p=>p.type==='bags'):products.filter(p=>p.type==='set'));});
+$$('.tabs button').forEach(btn=>btn.onclick=()=>{$$('.tabs button').forEach(x=>x.classList.remove('active'));btn.classList.add('active');const text=btn.textContent.trim();renderProducts(text==='الكل'?products:text==='الأحذية'?products.filter(p=>p.type==='shoes'):text==='الشنط'?products.filter(p=>p.type==='bags'):products.filter(p=>p.type==='set'));});
 $('[data-newsletter]').onsubmit=e=>{e.preventDefault();e.currentTarget.innerHTML='<strong>تم الاشتراك بنجاح ✓</strong><p>سنرسل لك أحدث العروض أولاً.</p>'};
-$('[data-checkout]').onclick=()=>alert(cart.length?'سيتم تجهيز صفحة إتمام الطلب في المرحلة التالية.':'أضف منتجاً إلى السلة أولاً.');
+$('[data-checkout]').onclick=()=>{if(!cart.length){alert('أضف منتجاً إلى السلة أولاً.');return}openWhatsApp(whatsappMessage());};
+$('.whatsapp').onclick=()=>openWhatsApp('نبي نستفسر عن منتجات Veronza Boutique.');
+$$('.footer-links a').forEach(a=>{if(a.textContent.includes('اتصل بنا'))a.onclick=e=>{e.preventDefault();openWhatsApp('السلام عليكم، نبي نتواصل مع Veronza Boutique.')}});
 renderProducts();renderCart();
