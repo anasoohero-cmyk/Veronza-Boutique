@@ -1,17 +1,15 @@
 const products=[
- {id:1,name:'شنطة كتف فاخرة',price:450,type:'bags',img:'https://images.unsplash.com/photo-1584917865442-de89df76afd3?auto=format&fit=crop&w=700&q=82',rating:'4.9',reviews:12},
- {id:2,name:'حذاء بكعب عالي',price:365,type:'shoes',img:'https://images.unsplash.com/photo-1543163521-1bf539c55dd2?auto=format&fit=crop&w=700&q=82',rating:'4.8',reviews:20},
- {id:3,name:'حذاء كاجوال',price:320,type:'shoes',img:'https://images.unsplash.com/photo-1549298916-b41d501d3772?auto=format&fit=crop&w=700&q=82',rating:'4.9',reviews:27},
- {id:4,name:'شنطة كروس',price:390,type:'bags',img:'https://images.unsplash.com/photo-1594223274512-ad4803739b7c?auto=format&fit=crop&w=700&q=82',rating:'4.8',reviews:27},
- {id:5,name:'حذاء رياضي أنيق',price:345,type:'shoes',img:'https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=700&q=82',rating:'4.7',reviews:18},
- {id:6,name:'شنطة يد فاخرة',price:420,type:'bags',img:'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?auto=format&fit=crop&w=700&q=82',rating:'4.9',reviews:24}
+ {id:1,name:'شنطة Veronza الفاخرة',price:450,type:'bags',img:'https://images.unsplash.com/photo-1584917865442-de89df76afd3?auto=format&fit=crop&w=900&q=85',rating:'4.9',reviews:12},
+ {id:2,name:'حذاء Veronza الأنيق',price:365,type:'shoes',img:'https://images.unsplash.com/photo-1543163521-1bf539c55dd2?auto=format&fit=crop&w=900&q=85',rating:'4.8',reviews:20},
+ {id:3,name:'سيت كامل — شنطة + حذاء',price:699,type:'set',img:'https://images.unsplash.com/photo-1584917865442-de89df76afd3?auto=format&fit=crop&w=900&q=85',extraImg:'https://images.unsplash.com/photo-1543163521-1bf539c55dd2?auto=format&fit=crop&w=900&q=85',rating:'5.0',reviews:8}
 ];
 let cart=JSON.parse(localStorage.getItem('veronza-cart')||'[]');
 const $=s=>document.querySelector(s), $$=s=>document.querySelectorAll(s);
 function money(n){return `${n.toLocaleString('ar-LY')} د.ل`}
+function productVisual(p){return p.extraImg?`<div class="set-visual"><img src="${p.img}" alt="${p.name} — الشنطة" loading="lazy"><img src="${p.extraImg}" alt="${p.name} — الحذاء" loading="lazy"></div>`:`<img src="${p.img}" alt="${p.name}" loading="lazy">`}
 function renderProducts(list=products){
  const grid=$('#productGrid'); if(!grid)return;
- grid.innerHTML=list.map(p=>`<article class="product"><div class="product-img"><img src="${p.img}" alt="${p.name}" loading="lazy"><button class="heart" aria-label="إضافة للمفضلة">♡</button></div><div class="product-info"><div class="product-name">${p.name}</div><div class="price">${money(p.price)}</div><div class="stars">★★★★★ <span>(${p.reviews})</span></div><button class="add" data-add="${p.id}">أضف إلى السلة　♧</button></div></article>`).join('');
+ grid.innerHTML=list.map(p=>`<article class="product"><div class="product-img">${productVisual(p)}<button class="heart" aria-label="إضافة للمفضلة">♡</button>${p.type==='set'?'<span class="set-badge">سيت كامل</span>':''}</div><div class="product-info"><div class="product-name">${p.name}</div><div class="price">${money(p.price)}</div><div class="stars">★★★★★ <span>(${p.reviews})</span></div><button class="add" data-add="${p.id}">أضف إلى السلة　♧</button></div></article>`).join('');
  $$('[data-add]').forEach(b=>b.addEventListener('click',()=>addToCart(Number(b.dataset.add))));
 }
 function save(){localStorage.setItem('veronza-cart',JSON.stringify(cart));}
@@ -32,7 +30,7 @@ $('[data-cart-close]').onclick=closeLayers;
 $('[data-search]').onclick=()=>{openLayer($('[data-search-panel]'));setTimeout(()=>$('#searchInput').focus(),250)};
 $('[data-search-close]').onclick=closeLayers;
 $('#searchInput').addEventListener('input',e=>{const q=e.target.value.trim();const results=$('#searchResults');if(!q){results.innerHTML='';return}const matches=products.filter(p=>p.name.includes(q));results.innerHTML=matches.length?matches.map(p=>`<div style="display:flex;gap:12px;align-items:center;padding:12px 0;border-bottom:1px solid #eee"><img src="${p.img}" style="width:55px;height:55px;object-fit:cover"><div><strong>${p.name}</strong><div>${money(p.price)}</div></div></div>`).join(''):'<p>لا توجد نتائج مطابقة.</p>'});
-$$('.tabs button').forEach(btn=>btn.onclick=()=>{ $$('.tabs button').forEach(x=>x.classList.remove('active'));btn.classList.add('active');const text=btn.textContent.trim();renderProducts(text==='الكل'?products:products.filter(p=>text==='الأحذية'?p.type==='shoes':text==='الشنط'?p.type==='bags':p.price<400));});
+$$('.tabs button').forEach(btn=>btn.onclick=()=>{ $$('.tabs button').forEach(x=>x.classList.remove('active'));btn.classList.add('active');const text=btn.textContent.trim();renderProducts(text==='الكل'?products:text==='الأحذية'?products.filter(p=>p.type==='shoes'):text==='الشنط'?products.filter(p=>p.type==='bags'):products.filter(p=>p.type==='set'));});
 $('[data-newsletter]').onsubmit=e=>{e.preventDefault();e.currentTarget.innerHTML='<strong>تم الاشتراك بنجاح ✓</strong><p>سنرسل لك أحدث العروض أولاً.</p>'};
 $('[data-checkout]').onclick=()=>alert(cart.length?'سيتم تجهيز صفحة إتمام الطلب في المرحلة التالية.':'أضف منتجاً إلى السلة أولاً.');
 renderProducts();renderCart();
