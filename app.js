@@ -1,9 +1,58 @@
 const WHATSAPP='218944000974';
-const products=[
- {id:1,code:'VZ-BAG-001',name:'شنطة Veronza الفاخرة',price:450,type:'bags',img:'https://images.unsplash.com/photo-1584917865442-de89df76afd3?auto=format&fit=crop&w=900&q=85',rating:'4.9',reviews:12,colors:['أسود','بيج','بني'],sizes:['موحد']},
- {id:2,code:'VZ-SHOE-002',name:'حذاء Veronza الأنيق',price:365,type:'shoes',img:'https://images.unsplash.com/photo-1543163521-1bf539c55dd2?auto=format&fit=crop&w=900&q=85',rating:'4.8',reviews:20,colors:['أبيض','أسود','بيج'],sizes:['37','38','39','40','41']},
- {id:3,code:'VZ-SET-003',name:'سيت كامل — شنطة + حذاء',price:699,type:'set',img:'https://images.unsplash.com/photo-1584917865442-de89df76afd3?auto=format&fit=crop&w=900&q=85',extraImg:'https://images.unsplash.com/photo-1543163521-1bf539c55dd2?auto=format&fit=crop&w=900&q=85',rating:'5.0',reviews:8,colors:['أسود','بيج','بني'],sizes:['37','38','39','40','41']}
-];
+const SUPABASE_URL='https://kahbxvbirsjmednkybse.supabase.co';
+const SUPABASE_PUBLISHABLE_KEY='sb_publishable_L1TY-QEyFsWDeDRy_saOUQ_GP8TjADm';
+let products=[];
+window.products=products;
+let supabaseClientPromise;
+
+function loadSupabaseClient(){
+  if(supabaseClientPromise)return supabaseClientPromise;
+  supabaseClientPromise=new Promise((resolve,reject)=>{
+    const create=()=>window.supabase?.createClient?resolve(window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY)):reject(new Error('تعذر تهيئة Supabase'));
+    if(window.supabase?.createClient){create();return}
+    const existing=document.querySelector('script[data-supabase-js]');
+    if(existing){existing.addEventListener('load',create,{once:true});existing.addEventListener('error',()=>reject(new Error('تعذر تحميل Supabase')),{once:true});return}
+    const script=document.createElement('script');
+    script.src='https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
+    script.dataset.supabaseJs='true';
+    script.onload=create;
+    script.onerror=()=>reject(new Error('تعذر تحميل Supabase'));
+    document.head.appendChild(script);
+  });
+  return supabaseClientPromise;
+}
+
+async function loadProductsFromSupabase(){
+  const grid=document.querySelector('#productGrid');
+  if(grid)grid.innerHTML='<p style="grid-column:1/-1;text-align:center;color:#888">جاري تحميل المنتجات…</p>';
+  try{
+    const client=await loadSupabaseClient();
+    const {data,error}=await client.from('products').select('id,code,name,price,type,img,extra_img,rating,reviews,colors,sizes').eq('is_active',true).order('id',{ascending:true});
+    if(error)throw error;
+    const rows=Array.isArray(data)?data:[];
+    products.splice(0,products.length,...rows.map(row=>({
+      id:Number(row.id),
+      code:row.code,
+      name:row.name,
+      price:Number(row.price||0),
+      type:row.type,
+      img:row.img,
+      extraImg:row.extra_img||undefined,
+      rating:String(row.rating??0),
+      reviews:Number(row.reviews||0),
+      colors:Array.isArray(row.colors)?row.colors:[],
+      sizes:Array.isArray(row.sizes)?row.sizes:[]
+    })));
+    window.products=products;
+    renderProducts(products);
+    return products;
+  }catch(error){
+    console.error('Veronza products:',error);
+    if(grid)grid.innerHTML='<p style="grid-column:1/-1;text-align:center;color:#b42318">تعذر تحميل المنتجات من قاعدة البيانات. حاول تحديث الصفحة.</p>';
+    return [];
+  }
+}
+
 function readStorage(key,fallback){try{const value=JSON.parse(localStorage.getItem(key)||'null');return Array.isArray(value)?value:fallback}catch{return fallback}}
 let cart=readStorage('veronza-cart',[]);
 let wishlist=readStorage('veronza-wishlist',[]);
@@ -38,8 +87,9 @@ $('#searchInput').addEventListener('input',e=>{const q=e.target.value.trim().toL
 $$('.tabs button').forEach(btn=>btn.onclick=()=>{$$('.tabs button').forEach(x=>x.classList.remove('active'));btn.classList.add('active');const text=btn.textContent.trim();currentList=text==='الكل'?products:text==='الأحذية'?products.filter(p=>p.type==='shoes'):text==='الشنط'?products.filter(p=>p.type==='bags'):products.filter(p=>p.type==='set');renderProducts(currentList)});
 $('[data-newsletter]').onsubmit=e=>{e.preventDefault();const message=e.currentTarget.querySelector('input').value.trim();if(message)openWhatsApp(`السلام عليكم، نبي نتواصل مع Veronza Boutique.\nرسالتي: ${message}`);e.currentTarget.querySelector('input').value='';};
 $('[data-checkout]').onclick=openCheckout;$('[data-checkout-close]').onclick=closeCheckout;
-$('[data-checkout-form]').onsubmit=async e=>{e.preventDefault();const form=e.currentTarget;if(!cart.length){alert('السلة فارغة.');return}for(const item of cart){const p=products.find(x=>x.id===item.id);if(p&&isSizeRequired(p)&&!item.size){alert(`اختار المقاس للمنتج: ${p.name}`);return}}const customer={name:form.querySelector('[name="name"]').value.trim(),phone:form.querySelector('[name="phone"]').value.trim(),address:form.querySelector('[name="address"]').value.trim()};if(!customer.name||!customer.phone||!customer.address){alert('لازم تكتب الاسم ورقم الهاتف والعنوان.');return}const submit=form.querySelector('.checkout-submit');submit.disabled=true;submit.textContent='جاري إرسال الطلب…';try{const result=await sendOrderToCloudAPI(customer);closeCheckout();alert(`تم إرسال الطلب بنجاح إلى واتساب Veronza.\nرقم الطلب: ${result.orderNumber}`);cart=[];save();renderCart();}catch(error){closeCheckout();openWhatsApp(whatsappMessage(customer));alert('تعذر الإرسال التلقائي حالياً، ففتحنا واتساب برسالة الطلب الجاهزة.');}finally{submit.disabled=false;submit.textContent='تأكيد الطلب وفتح واتساب';}};
+$('[data-checkout-form]').onsubmit=async e=>{e.preventDefault();const form=e.currentTarget;if(!cart.length){alert('السلة فارغة.');return}for(const item of cart){const p=products.find(x=>x.id===item.id);if(p&&isSizeRequired(p)&&!item.size){alert(`اختار المقاس للمنتج: ${p.name}`);return}}const customer={name:form.querySelector('[name="name"]').value.trim(),phone:form.querySelector('[name="phone"]').value.trim(),address:form.querySelector('[name="address"]').value.trim()};if(!customer.name||!customer.phone||!customer.address){alert('لازم تكتب الاسم ورقم الهاتف والعنوان.');return}const submit=form.querySelector('.checkout-submit');submit.disabled=true;submit.textContent='جاري إرسال الطلب…';try{const result=await sendOrderToCloudAPI(customer);closeCheckout();alert(`تم إرسال الطلب بنجاح إلى واتساب Veronza.\nرقم الطلب: ${result.orderNumber}`);cart=[];save();renderCart();}catch(error){closeCheckout();openWhatsApp(whatsappMessage(customer));alert('تعذر الإرسال التلقائي حالياً، ففتحنا واتساب برسالة الطلب الجاهزة.');}finally{submit.disabled=false;submit.textContent='تأكيد الطلب';}};
 $('.whatsapp').onclick=()=>openWhatsApp('السلام عليكم، نبي نستفسر عن منتجات Veronza Boutique.');
 $$('[data-whatsapp-link]').forEach(a=>a.onclick=e=>{e.preventDefault();openWhatsApp('السلام عليكم، نبي نتواصل مع Veronza Boutique.');});
 $$('.footer-links a').forEach(a=>{if(a.textContent.includes('اتصل بنا'))a.onclick=e=>{e.preventDefault();openWhatsApp('السلام عليكم، نبي نتواصل مع Veronza Boutique.')}});
 renderProducts();renderCart();updateWishlistCount();
+loadProductsFromSupabase();
