@@ -1,4 +1,9 @@
 (() => {
+  const quantityBridge = document.createElement('script');
+  quantityBridge.src = 'product-quantity.js';
+  quantityBridge.defer = true;
+  document.head.appendChild(quantityBridge);
+
   const SUPABASE_URL = 'https://kahbxvbirsjmednkybse.supabase.co';
   const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_L1TY-QEyFsWDeDRy_saOUQ_GP8TjADm';
 
