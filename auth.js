@@ -101,6 +101,69 @@
     };
 
     client.auth.onAuthStateChange(async (_event, session) => { if(modal.classList.contains('open')) await showAccount(session); });
+
+    const whatsapp = document.querySelector('.whatsapp');
+    if (whatsapp) {
+      const key = 'veronza-whatsapp-position';
+      let moved = false;
+      let dragging = false;
+      let startX = 0;
+      let startY = 0;
+      let originLeft = 0;
+      let originTop = 0;
+      const restore = () => {
+        try {
+          const saved = JSON.parse(localStorage.getItem(key) || 'null');
+          if (saved && Number.isFinite(saved.left) && Number.isFinite(saved.top)) {
+            const maxLeft = Math.max(0, window.innerWidth - whatsapp.offsetWidth);
+            const maxTop = Math.max(0, window.innerHeight - whatsapp.offsetHeight);
+            whatsapp.style.left = `${Math.min(Math.max(saved.left, 0), maxLeft)}px`;
+            whatsapp.style.top = `${Math.min(Math.max(saved.top, 0), maxTop)}px`;
+            whatsapp.style.right = 'auto';
+            whatsapp.style.bottom = 'auto';
+          }
+        } catch (_) {}
+      };
+      const save = () => {
+        try {
+          localStorage.setItem(key, JSON.stringify({left:parseFloat(whatsapp.style.left), top:parseFloat(whatsapp.style.top)}));
+        } catch (_) {}
+      };
+      const move = (x, y) => {
+        const maxLeft = Math.max(0, window.innerWidth - whatsapp.offsetWidth);
+        const maxTop = Math.max(0, window.innerHeight - whatsapp.offsetHeight);
+        whatsapp.style.left = `${Math.min(Math.max(originLeft + x - startX, 0), maxLeft)}px`;
+        whatsapp.style.top = `${Math.min(Math.max(originTop + y - startY, 0), maxTop)}px`;
+        whatsapp.style.right = 'auto';
+        whatsapp.style.bottom = 'auto';
+      };
+      const down = e => {
+        const point = e.touches ? e.touches[0] : e;
+        const rect = whatsapp.getBoundingClientRect();
+        startX = point.clientX; startY = point.clientY; originLeft = rect.left; originTop = rect.top;
+        dragging = true; moved = false;
+      };
+      const moveEvent = e => {
+        if (!dragging) return;
+        const point = e.touches ? e.touches[0] : e;
+        if (Math.hypot(point.clientX - startX, point.clientY - startY) > 5) moved = true;
+        if (moved) {
+          if (e.cancelable) e.preventDefault();
+          move(point.clientX, point.clientY);
+        }
+      };
+      const up = () => { if (!dragging) return; dragging = false; if (moved) save(); };
+      whatsapp.style.touchAction = 'none';
+      whatsapp.addEventListener('mousedown', down);
+      window.addEventListener('mousemove', moveEvent);
+      window.addEventListener('mouseup', up);
+      whatsapp.addEventListener('touchstart', down, {passive:false});
+      window.addEventListener('touchmove', moveEvent, {passive:false});
+      window.addEventListener('touchend', up);
+      whatsapp.addEventListener('click', e => { if (moved) { e.preventDefault(); e.stopImmediatePropagation(); moved = false; } });
+      restore();
+      window.addEventListener('resize', restore);
+    }
   };
 
   start().catch(err => console.error('Veronza auth:', err));
