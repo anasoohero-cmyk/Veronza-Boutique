@@ -109,38 +109,38 @@
       let dragging = false;
       let startX = 0;
       let startY = 0;
-      let originLeft = 0;
       let originTop = 0;
+      const getSideLeft = x => x < window.innerWidth / 2 ? 0 : Math.max(0, window.innerWidth - whatsapp.offsetWidth);
+      const getTop = top => Math.min(Math.max(top, 0), Math.max(0, window.innerHeight - whatsapp.offsetHeight));
       const restore = () => {
         try {
           const saved = JSON.parse(localStorage.getItem(key) || 'null');
-          if (saved && Number.isFinite(saved.left) && Number.isFinite(saved.top)) {
-            const maxLeft = Math.max(0, window.innerWidth - whatsapp.offsetWidth);
-            const maxTop = Math.max(0, window.innerHeight - whatsapp.offsetHeight);
-            whatsapp.style.left = `${Math.min(Math.max(saved.left, 0), maxLeft)}px`;
-            whatsapp.style.top = `${Math.min(Math.max(saved.top, 0), maxTop)}px`;
-            whatsapp.style.right = 'auto';
+          if (saved && Number.isFinite(saved.top)) {
+            const side = saved.side === 'right' ? 'right' : 'left';
+            whatsapp.style.left = side === 'right' ? 'auto' : '0px';
+            whatsapp.style.right = side === 'right' ? '0px' : 'auto';
+            whatsapp.style.top = `${getTop(saved.top)}px`;
             whatsapp.style.bottom = 'auto';
           }
         } catch (_) {}
       };
       const save = () => {
         try {
-          localStorage.setItem(key, JSON.stringify({left:parseFloat(whatsapp.style.left), top:parseFloat(whatsapp.style.top)}));
+          const right = parseFloat(whatsapp.style.right);
+          localStorage.setItem(key, JSON.stringify({side:Number.isFinite(right) ? 'right' : 'left', top:parseFloat(whatsapp.style.top)}));
         } catch (_) {}
       };
       const move = (x, y) => {
-        const maxLeft = Math.max(0, window.innerWidth - whatsapp.offsetWidth);
-        const maxTop = Math.max(0, window.innerHeight - whatsapp.offsetHeight);
-        whatsapp.style.left = `${Math.min(Math.max(originLeft + x - startX, 0), maxLeft)}px`;
-        whatsapp.style.top = `${Math.min(Math.max(originTop + y - startY, 0), maxTop)}px`;
-        whatsapp.style.right = 'auto';
+        const side = getSideLeft(x);
+        whatsapp.style.left = side === 0 ? '0px' : 'auto';
+        whatsapp.style.right = side === 0 ? 'auto' : '0px';
+        whatsapp.style.top = `${getTop(originTop + y - startY)}px`;
         whatsapp.style.bottom = 'auto';
       };
       const down = e => {
         const point = e.touches ? e.touches[0] : e;
         const rect = whatsapp.getBoundingClientRect();
-        startX = point.clientX; startY = point.clientY; originLeft = rect.left; originTop = rect.top;
+        startX = point.clientX; startY = point.clientY; originTop = rect.top;
         dragging = true; moved = false;
       };
       const moveEvent = e => {
