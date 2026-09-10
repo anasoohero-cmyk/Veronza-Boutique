@@ -5,7 +5,7 @@
   document.head.appendChild(quantityBridge);
 
   const SUPABASE_URL = 'https://kahbxvbirsjmednkybse.supabase.co';
-  const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_L1TY-QEyFsWDeDRy_saOU8GTPj';
+  const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_L1TY-QEyFsWDeDRy_saOUQ_GP8TjADm';
 
   const loadClient = () => new Promise((resolve, reject) => {
     if (window.supabase?.createClient) return resolve(window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY));
