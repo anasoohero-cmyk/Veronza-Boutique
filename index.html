@@ -24,6 +24,7 @@
   <div class="checkout-modal" data-checkout-modal><div class="checkout-card"><div class="checkout-head"><h2>بيانات الطلب</h2><button class="checkout-close" type="button" data-checkout-close aria-label="إغلاق">×</button></div><form class="checkout-form" data-checkout-form><label>الاسم الكامل<input name="name" autocomplete="name" placeholder="اكتب اسمك الكامل" required></label><label>رقم الهاتف<input name="phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="مثال: 0912345678" required></label><label>عنوان التوصيل<textarea name="address" autocomplete="street-address" placeholder="المدينة، المنطقة، الشارع، وأي تفاصيل تساعد المندوب" required></textarea></label><p class="checkout-note">بعد التأكيد نحاول إرسال الطلب تلقائياً، وإذا تعذر الإرسال يفتح واتساب برسالة جاهزة تحتوي على تفاصيل المنتجات والكود واللون والمقاس والكمية والسعر وبياناتك.</p><button class="checkout-submit" type="submit">تأكيد الطلب</button></form></div></div>
   <div class="overlay" data-overlay></div><button class="whatsapp" aria-label="تواصل عبر واتساب">◔</button>
   <script src="app.js"></script>
+  <script src="product-quantity.js"></script>
   <script>
     (()=>{
       const section=document.querySelector('#new'),title=document.querySelector('[data-section-title]');
