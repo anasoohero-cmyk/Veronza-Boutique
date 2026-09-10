@@ -29,6 +29,30 @@ module.exports = async (req, res) => {
     return res.status(503).json({ ok: false, error: 'Supabase order integration is not configured' });
   }
 
+  // Resolve the customer from the Supabase access token, never from a client-supplied user_id.
+  // No token means a normal guest checkout and the order remains unlinked.
+  let authenticatedUserId = null;
+  const authorization = req.headers.authorization || req.headers.Authorization || '';
+  if (authorization.startsWith('Bearer ')) {
+    const accessToken = authorization.slice(7).trim();
+    if (accessToken) {
+      const userResponse = await fetch(`${supabaseUrl}/auth/v1/user`, {
+        headers: {
+          apikey: supabaseServiceRoleKey,
+          Authorization: `Bearer ${accessToken}`
+        }
+      });
+      if (!userResponse.ok) {
+        return res.status(401).json({ ok: false, error: 'جلسة تسجيل الدخول غير صالحة أو منتهية.' });
+      }
+      const userData = await userResponse.json().catch(() => null);
+      authenticatedUserId = userData?.id || null;
+      if (!authenticatedUserId) {
+        return res.status(401).json({ ok: false, error: 'تعذر التحقق من حساب الزبون.' });
+      }
+    }
+  }
+
   const token = process.env.META_ACCESS_TOKEN;
   const phoneNumberId = process.env.META_PHONE_NUMBER_ID;
   const templateName = process.env.META_TEMPLATE_NAME || 'veronza_order_received';
@@ -90,6 +114,7 @@ module.exports = async (req, res) => {
     },
     body: JSON.stringify({
       p_order_number: orderNumber,
+      p_user_id: authenticatedUserId,
       p_customer_name: String(customer.name).slice(0, 200),
       p_customer_phone: String(customer.phone).slice(0, 50),
       p_customer_address: String(customer.address).slice(0, 500),
@@ -158,6 +183,7 @@ module.exports = async (req, res) => {
     messageId: data?.messages?.[0]?.id || null,
     productUrl: firstItem.productUrl,
     imageUrl: firstItem.img,
-    orderId: orderData
+    orderId: orderData,
+    customerUserId: authenticatedUserId
   });
 };
