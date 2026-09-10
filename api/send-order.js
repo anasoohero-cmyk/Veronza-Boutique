@@ -6,6 +6,8 @@ module.exports = async (req, res) => {
   const supabaseUrl = process.env.SUPABASE_URL, serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY, metaToken = process.env.META_ACCESS_TOKEN, phoneNumberId = process.env.META_PHONE_NUMBER_ID, recipient = process.env.WHATSAPP_ORDER_RECIPIENT;
   if (!supabaseUrl || !serviceKey || !metaToken || !phoneNumberId || !recipient) return res.status(500).json({ ok: false, error: 'Server configuration incomplete' });
   const headers = { apikey: serviceKey, Authorization: `Bearer ${serviceKey}`, 'Content-Type': 'application/json' };
+  const idempotencyKey = String(req.headers['idempotency-key'] || '').trim() || null;
+  if (idempotencyKey && idempotencyKey.length > 200) return res.status(400).json({ ok: false, error: 'Invalid idempotency key' });
   let userId = null; const authHeader = req.headers.authorization || req.headers.Authorization;
   if (authHeader && /^Bearer\s+/i.test(authHeader)) { const token = authHeader.replace(/^Bearer\s+/i, '').trim(); try { const r = await fetch(`${supabaseUrl}/auth/v1/user`, { headers: { apikey: process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_PUBLISHABLE_KEY || serviceKey, Authorization: `Bearer ${token}` } }); if (r.ok) userId = (await r.json())?.id || null; } catch (_) {} }
   const normalizedItems = [];
@@ -23,15 +25,21 @@ module.exports = async (req, res) => {
   const serverTotal = normalizedItems.reduce((sum, item) => sum + item.unit_price * item.quantity, 0); if (Number(total) !== serverTotal) return res.status(400).json({ ok: false, error: 'Order total mismatch' });
   if (!normalizedItems.find(item => item.image_url)?.image_url) return res.status(400).json({ ok: false, error: 'Product image missing' });
   const orderNumber = `VZ-${Date.now()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
-  const rpcResp = await fetch(`${supabaseUrl}/rest/v1/rpc/place_order_atomic`, { method: 'POST', headers, body: JSON.stringify({ p_order_number: orderNumber, p_customer_name: name, p_customer_phone: phone, p_customer_address: address, p_total: serverTotal, p_items: normalizedItems, p_user_id: userId }) });
+  const rpcResp = await fetch(`${supabaseUrl}/rest/v1/rpc/place_order_atomic`, { method: 'POST', headers, body: JSON.stringify({ p_order_number: orderNumber, p_customer_name: name, p_customer_phone: phone, p_customer_address: address, p_total: serverTotal, p_items: normalizedItems, p_user_id: userId, p_idempotency_key: idempotencyKey }) });
   if (!rpcResp.ok) return res.status(409).json({ ok: false, error: 'Insufficient stock or order could not be reserved', detail: await rpcResp.text() });
   const orderId = await rpcResp.json();
-  const messageText = [`طلب جديد ${orderNumber}`, `الاسم: ${name}`, `الهاتف: ${phone}`, `العنوان: ${address}`, `الإجمالي: ${serverTotal}`, '', ...normalizedItems.map((item, index) => `${index + 1}) ${item.product_name} | ${item.product_code} | الكمية: ${item.quantity}${item.color ? ` | اللون: ${item.color}` : ''}${item.size ? ` | المقاس: ${item.size}` : ''}`)].join('\n');
+  const existingResp = await fetch(`${supabaseUrl}/rest/v1/orders?select=id,order_number,whatsapp_status,whatsapp_last_error,whatsapp_sent_at&id=eq.${encodeURIComponent(orderId)}&limit=1`, { headers });
+  if (!existingResp.ok) return res.status(502).json({ ok: false, error: 'Order lookup failed' });
+  const existingOrder = (await existingResp.json())[0];
+  if (!existingOrder) return res.status(502).json({ ok: false, error: 'Order not found after reservation' });
+  if (idempotencyKey && existingOrder.whatsapp_status === 'sent') return res.status(200).json({ ok: true, order_id: existingOrder.id, order_number: existingOrder.order_number, whatsapp_status: 'sent' });
+  const finalOrderNumber = existingOrder.order_number || orderNumber;
+  const messageText = [`طلب جديد ${finalOrderNumber}`, `الاسم: ${name}`, `الهاتف: ${phone}`, `العنوان: ${address}`, `الإجمالي: ${serverTotal}`, '', ...normalizedItems.map((item, index) => `${index + 1}) ${item.product_name} | ${item.product_code} | الكمية: ${item.quantity}${item.color ? ` | اللون: ${item.color}` : ''}${item.size ? ` | المقاس: ${item.size}` : ''}`)].join('\n');
   const patchOrder = async (payload) => { let lastError = null; for (let attempt = 1; attempt <= 3; attempt++) { try { const r = await fetch(`${supabaseUrl}/rest/v1/orders?id=eq.${encodeURIComponent(orderId)}`, { method: 'PATCH', headers: { ...headers, Prefer: 'return=minimal' }, body: JSON.stringify(payload) }); if (r.ok) return true; lastError = await r.text(); } catch (e) { lastError = String(e?.message || e); } if (attempt < 3) await new Promise(resolve => setTimeout(resolve, 250 * attempt)); } console.error('Failed to update order WhatsApp status', lastError); return false; };
   let whatsappError = null;
   try { const waResp = await fetch(`https://graph.facebook.com/v23.0/${encodeURIComponent(phoneNumberId)}/messages`, { method: 'POST', headers: { Authorization: `Bearer ${metaToken}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ messaging_product: 'whatsapp', to: recipient, type: 'text', text: { body: messageText } }) }); if (!waResp.ok) whatsappError = (await waResp.text()).slice(0, 2000); } catch (e) { whatsappError = String(e?.message || e).slice(0, 2000); }
-  if (whatsappError) { await patchOrder({ whatsapp_status: 'failed', whatsapp_last_error: whatsappError }); return res.status(502).json({ ok: false, error: 'Order was reserved, but WhatsApp delivery failed', order_id: orderId, order_number: orderNumber, whatsapp_status: 'failed' }); }
+  if (whatsappError) { await patchOrder({ whatsapp_status: 'failed', whatsapp_last_error: whatsappError }); return res.status(502).json({ ok: false, error: 'Order was reserved, but WhatsApp delivery failed', order_id: orderId, order_number: finalOrderNumber, whatsapp_status: 'failed' }); }
   const sent = await patchOrder({ whatsapp_status: 'sent', whatsapp_last_error: null, whatsapp_sent_at: new Date().toISOString() });
   if (!sent) console.error('WhatsApp was sent but status could not be persisted');
-  return res.status(200).json({ ok: true, order_id: orderId, order_number: orderNumber, whatsapp_status: 'sent' });
+  return res.status(200).json({ ok: true, order_id: orderId, order_number: finalOrderNumber, whatsapp_status: 'sent' });
 };
