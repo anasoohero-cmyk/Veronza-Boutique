@@ -8,6 +8,6 @@
   "theme_color": "#111111",
   "description": "VERONZA — أحذية وشنط",
   "icons": [
-    { "src": "/icons/veronza-icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+    { "src": "/icons/veronza-icon.svg?v=2", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
   ]
 }
