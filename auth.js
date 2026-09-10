@@ -81,8 +81,12 @@
         if(mode==='signup') {
           const {data,error} = await client.auth.signUp({email,password,options:{data:{full_name},emailRedirectTo:'https://veronza.vercel.app/'}});
           if(error) throw error;
-          setStatus(data.session ? 'تم إنشاء الحساب وتسجيل الدخول.' : 'تم إنشاء الحساب. راجع بريدك لتأكيد الحساب إذا طلب منك ذلك.');
-          if(data.session) await showAccount(data.session);
+          if(data.session) {
+            await showAccount(data.session);
+            setStatus('تم إنشاء الحساب وتسجيل الدخول مباشرة.');
+          } else {
+            setStatus('تم إنشاء الحساب. تقدر تسجل الدخول مباشرة من تبويب تسجيل الدخول.');
+          }
         } else {
           const {data,error} = await client.auth.signInWithPassword({email,password});
           if(error) throw error;
