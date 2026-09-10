@@ -1,0 +1,13 @@
+{
+  "name": "VERONZA",
+  "short_name": "VERONZA",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#111111",
+  "description": "VERONZA — أحذية وشنط",
+  "icons": [
+    { "src": "/icons/veronza-icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
