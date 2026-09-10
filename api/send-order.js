@@ -1,3 +1,5 @@
+const webpush = require('web-push');
+
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ ok: false, error: 'Method not allowed' });
   const { customer = {}, items = [], total = 0 } = req.body || {};
@@ -32,8 +34,32 @@ module.exports = async (req, res) => {
   if (!existingResp.ok) return res.status(502).json({ ok: false, error: 'Order lookup failed' });
   const existingOrder = (await existingResp.json())[0];
   if (!existingOrder) return res.status(502).json({ ok: false, error: 'Order not found after reservation' });
-  if (idempotencyKey && existingOrder.whatsapp_status === 'sent') return res.status(200).json({ ok: true, order_id: existingOrder.id, order_number: existingOrder.order_number, whatsapp_status: 'sent' });
   const finalOrderNumber = existingOrder.order_number || orderNumber;
+
+  // Create one persistent notification per admin/order. Failure here never changes checkout or WhatsApp behavior.
+  const adminResp = await fetch(`${supabaseUrl}/rest/v1/admin_users?select=user_id`, { headers });
+  if (adminResp.ok) {
+    const admins = await adminResp.json();
+    const notificationRows = admins.map(a => ({ admin_user_id: a.user_id, type: 'order', title: 'طلب جديد', body: `${finalOrderNumber} · ${name} · ${serverTotal.toLocaleString('ar-LY')} د.ل`, order_id: orderId }));
+    if (notificationRows.length) await fetch(`${supabaseUrl}/rest/v1/notifications`, { method: 'POST', headers: { ...headers, Prefer: 'resolution=ignore-duplicates,return=minimal' }, body: JSON.stringify(notificationRows) }).catch(()=>{});
+
+    // Push delivery is best-effort: it can never fail the order.
+    try {
+      const cfgResp = await fetch(`${supabaseUrl}/rest/v1/push_config?select=vapid_public_key,vapid_private_key&id=eq.true&limit=1`, { headers });
+      const cfg = cfgResp.ok ? (await cfgResp.json())[0] : null;
+      const subsResp = await fetch(`${supabaseUrl}/rest/v1/push_subscriptions?select=id,admin_user_id,endpoint,subscription`, { headers });
+      const subscriptions = subsResp.ok ? await subsResp.json() : [];
+      if (cfg && subscriptions.length) {
+        webpush.setVapidDetails('mailto:veronza@localhost', cfg.vapid_public_key, cfg.vapid_private_key);
+        await Promise.all(subscriptions.map(async sub => {
+          try { await webpush.sendNotification(sub.subscription, JSON.stringify({ title: 'طلب جديد في VERONZA', body: `${finalOrderNumber} · ${name} · ${serverTotal.toLocaleString('ar-LY')} د.ل`, url: '/' })); }
+          catch (e) { if (e?.statusCode === 404 || e?.statusCode === 410) await fetch(`${supabaseUrl}/rest/v1/push_subscriptions?id=eq.${encodeURIComponent(sub.id)}`, { method: 'DELETE', headers }).catch(()=>{}); }
+        }));
+      }
+    } catch (e) { console.error('Push notification failed:', e?.message || e); }
+  }
+
+  if (idempotencyKey && existingOrder.whatsapp_status === 'sent') return res.status(200).json({ ok: true, order_id: existingOrder.id, order_number: existingOrder.order_number, whatsapp_status: 'sent' });
   const messageText = [`طلب جديد ${finalOrderNumber}`, `الاسم: ${name}`, `الهاتف: ${phone}`, `العنوان: ${address}`, `الإجمالي: ${serverTotal}`, '', ...normalizedItems.map((item, index) => `${index + 1}) ${item.product_name} | ${item.product_code} | الكمية: ${item.quantity}${item.color ? ` | اللون: ${item.color}` : ''}${item.size ? ` | المقاس: ${item.size}` : ''}`)].join('\n');
   const patchOrder = async (payload) => { let lastError = null; for (let attempt = 1; attempt <= 3; attempt++) { try { const r = await fetch(`${supabaseUrl}/rest/v1/orders?id=eq.${encodeURIComponent(orderId)}`, { method: 'PATCH', headers: { ...headers, Prefer: 'return=minimal' }, body: JSON.stringify(payload) }); if (r.ok) return true; lastError = await r.text(); } catch (e) { lastError = String(e?.message || e); } if (attempt < 3) await new Promise(resolve => setTimeout(resolve, 250 * attempt)); } console.error('Failed to update order WhatsApp status', lastError); return false; };
   let whatsappError = null;
