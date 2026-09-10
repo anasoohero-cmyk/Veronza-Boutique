@@ -20,6 +20,21 @@
     const client = await loadClient();
     window.veronzaSupabase = client;
 
+    // Ensure authenticated checkout requests carry the current Supabase access token.
+    const nativeFetch = window.fetch.bind(window);
+    window.fetch = async (input, init = {}) => {
+      const requestUrl = typeof input === 'string' ? input : input?.url || '';
+      if (requestUrl.includes('/api/send-order')) {
+        const { data: { session } } = await client.auth.getSession();
+        if (session?.access_token) {
+          const headers = new Headers(init.headers || (typeof input !== 'string' ? input.headers : undefined));
+          headers.set('Authorization', `Bearer ${session.access_token}`);
+          init = { ...init, headers };
+        }
+      }
+      return nativeFetch(input, init);
+    };
+
     const style = document.createElement('style');
     style.textContent = `.account-btn{position:relative}.account-btn span{display:block;font-size:10px;line-height:1;margin-top:2px}.auth-modal{position:fixed;inset:0;background:rgba(0,0,0,.58);display:none;align-items:flex-end;justify-content:center;z-index:120}.auth-modal.open{display:flex}.auth-card{width:min(100%,560px);max-height:92vh;overflow:auto;background:#fff;border-radius:24px 24px 0 0;padding:24px;box-sizing:border-box}.auth-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}.auth-head h2{margin:0}.auth-close{border:0;background:#f4f1ec;width:40px;height:40px;border-radius:50%;font-size:24px}.auth-tabs{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px}.auth-tabs button{border:1px solid #ddd8d0;background:#fff;border-radius:11px;padding:11px;font:inherit;font-weight:700}.auth-tabs button.active{background:#111;color:#fff;border-color:#111}.auth-form{display:grid;gap:12px}.auth-form label{display:grid;gap:7px;font-size:13px;font-weight:700}.auth-form input{width:100%;box-sizing:border-box;border:1px solid #ddd8d0;border-radius:12px;padding:13px;font:inherit}.auth-submit{border:0;background:#111;color:#fff;padding:14px;border-radius:12px;font:inherit;font-weight:800}.auth-note{font-size:12px;line-height:1.7;color:#777;margin:0}.auth-status{font-size:13px;line-height:1.6;margin:0}.auth-account{display:grid;gap:12px}.auth-order{border:1px solid #e5e0d8;border-radius:12px;padding:12px}.auth-order strong{display:block}.auth-secondary{border:1px solid #ddd8d0;background:#fff;padding:12px;border-radius:12px;font:inherit;font-weight:700}.auth-hidden{display:none}@media(min-width:901px){.auth-modal{align-items:center}.auth-card{border-radius:24px}}`;
     document.head.appendChild(style);
