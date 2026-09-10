@@ -39,7 +39,7 @@
     document.head.appendChild(style);
 
     const cartFix = document.createElement('style');
-    cartFix.textContent = '@media(max-width:900px){.cart-drawer:not(.open){right:-100%!important;transform:none!important;visibility:hidden!important}.cart-drawer.open{right:18%;transform:none!important;visibility:visible!important}}';
+    cartFix.textContent = '@media(max-width:900px){.cart-drawer:not(.open){right:-100%!important;transform:none!important;visibility:hidden!important}.cart-drawer.open{right:0!important;transform:none!important;visibility:visible!important}}';
     document.head.appendChild(cartFix);
 
     const button = document.createElement('button');
@@ -72,7 +72,7 @@
       modal.querySelector('[data-auth-orders]').innerHTML = orders?.length ? `<strong>طلباتي السابقة</strong>${orders.map(o=>`<div class="auth-order"><strong>${o.order_number}</strong><span>${Number(o.total).toLocaleString('ar-LY')} د.ل · ${o.status}</span></div>`).join('')}` : '<p class="auth-note">ما عندكش طلبات مسجلة في الحساب حتى الآن.</p>';
     };
 
-    tabs.forEach(tab => tab.onclick = () => { mode = tab.dataset.authTab; tabs.forEach(x=>x.classList.toggle('active', x===tab)); nameField.classList.toggle('auth-hidden', mode!=='signup'); submit.textContent = mode==='signup' ? 'إنشاء الحساب' : 'دخول'; form.querySelector('input[name="password"]').autocomplete = mode==='signup' ? 'new-password' : 'current-password'; setStatus(''); });
+    tabs.forEach(tab => tab.onclick = () => { mode = tab.dataset.authTab; tabs.forEach(x => x.classList.toggle('active', x===tab)); nameField.classList.toggle('auth-hidden', mode!=='signup'); submit.textContent = mode==='signup' ? 'إنشاء الحساب' : 'دخول'; form.querySelector('input[name="password"]').autocomplete = mode==='signup' ? 'new-password' : 'current-password'; setStatus(''); });
     button.onclick = async () => { modal.classList.add('open'); const {data:{session}} = await client.auth.getSession(); await showAccount(session); };
     modal.querySelector('.auth-close').onclick = () => modal.classList.remove('open');
     modal.onclick = e => { if(e.target===modal) modal.classList.remove('open'); };
