@@ -5,32 +5,22 @@ module.exports = async (req, res) => {
 
   const {
     customer = {},
-    items = [],
-    total = 0
+    items = []
   } = req.body || {};
 
   if (!customer.name || !customer.phone || !customer.address || !items.length) {
     return res.status(400).json({ ok: false, error: 'Missing order data' });
   }
 
-  const normalizedItems = items.map((item) => {
-    const code = String(item.code || '').trim();
-    const img = String(item.img || '').trim();
-    const productUrl = String(item.productUrl || (code ? `https://veronza-boutique.vercel.app/product/${encodeURIComponent(code)}/` : '')).trim();
-    return {
-      ...item,
-      code,
-      img,
-      productUrl
-    };
-  });
-
-  const invalidItem = normalizedItems.find((item) => !item.code || !item.img || !item.productUrl);
+  const requestedItems = items.map((item) => ({
+    code: String(item.code || '').trim(),
+    color: String(item.color || '').trim(),
+    size: String(item.size || '').trim(),
+    qty: Math.max(1, Number(item.qty) || 0)
+  }));
+  const invalidItem = requestedItems.find((item) => !item.code || !Number.isInteger(item.qty) || item.qty < 1);
   if (invalidItem) {
-    return res.status(400).json({
-      ok: false,
-      error: 'Every order item must include a product code, image URL, and product URL'
-    });
+    return res.status(400).json({ ok: false, error: 'Every order item must include a valid product code and quantity' });
   }
 
   const supabaseUrl = process.env.SUPABASE_URL || 'https://kahbxvbirsjmednkybse.supabase.co';
@@ -48,9 +38,48 @@ module.exports = async (req, res) => {
     return res.status(503).json({ ok: false, error: 'WhatsApp integration is not configured' });
   }
 
+  const productRows = [];
+  for (const requested of requestedItems) {
+    const productResponse = await fetch(`${supabaseUrl}/rest/v1/products?select=id,code,name,price,type,img,extra_img,colors,sizes,is_active&code=eq.${encodeURIComponent(requested.code)}&is_active=eq.true`, {
+      headers: {
+        apikey: supabaseServiceRoleKey,
+        Authorization: `Bearer ${supabaseServiceRoleKey}`
+      }
+    });
+    const rows = await productResponse.json().catch(() => []);
+    if (!productResponse.ok || !Array.isArray(rows) || rows.length !== 1) {
+      return res.status(409).json({ ok: false, error: `المنتج ${requested.code} غير متوفر أو لم يعد موجوداً.` });
+    }
+    const product = rows[0];
+    const colors = Array.isArray(product.colors) ? product.colors.map(String) : [];
+    const sizes = Array.isArray(product.sizes) ? product.sizes.map(String) : [];
+    if (requested.color && colors.length && !colors.includes(requested.color)) {
+      return res.status(409).json({ ok: false, error: `اللون المحدد للمنتج ${requested.code} غير متوفر.` });
+    }
+    if ((product.type === 'shoes' || product.type === 'set') && (!requested.size || (sizes.length && !sizes.includes(requested.size)))) {
+      return res.status(409).json({ ok: false, error: `المقاس المحدد للمنتج ${requested.code} غير متوفر.` });
+    }
+    productRows.push({ requested, product });
+  }
+
   const orderNumber = `VZ-${Date.now().toString().slice(-8)}`;
+  const normalizedItems = productRows.map(({ requested, product }) => ({
+    code: String(product.code),
+    name: String(product.name || '').slice(0, 200),
+    color: requested.color,
+    size: requested.size,
+    qty: requested.qty,
+    price: Number(product.price || 0),
+    img: String(product.img || '').trim(),
+    productUrl: `https://veronza-boutique.vercel.app/product/${encodeURIComponent(product.code)}/`,
+    type: product.type
+  }));
+  const total = normalizedItems.reduce((sum, item) => sum + item.price * item.qty, 0);
   const totalText = `${Number(total).toLocaleString('ar-LY')} د.ل`;
   const firstItem = normalizedItems[0];
+  if (!firstItem.img) {
+    return res.status(409).json({ ok: false, error: `صورة المنتج ${firstItem.code} غير متوفرة.` });
+  }
 
   const orderResponse = await fetch(`${supabaseUrl}/rest/v1/rpc/place_order_atomic`, {
     method: 'POST',
@@ -67,11 +96,11 @@ module.exports = async (req, res) => {
       p_total: Number(total),
       p_items: normalizedItems.map((item) => ({
         product_code: item.code,
-        product_name: String(item.name || '').slice(0, 200),
-        color: String(item.color || ''),
-        size: String(item.size || ''),
-        quantity: Math.max(1, Number(item.qty) || 0),
-        unit_price: Number(item.price) || 0,
+        product_name: item.name,
+        color: item.color,
+        size: item.size,
+        quantity: item.qty,
+        unit_price: item.price,
         image_url: item.img
       }))
     })
