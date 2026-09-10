@@ -20,7 +20,6 @@
     const client = await loadClient();
     window.veronzaSupabase = client;
 
-    // Ensure authenticated checkout requests carry the current Supabase access token.
     const nativeFetch = window.fetch.bind(window);
     window.fetch = async (input, init = {}) => {
       const requestUrl = typeof input === 'string' ? input : input?.url || '';
@@ -80,7 +79,7 @@
       const fd = new FormData(form), email = String(fd.get('email')||'').trim(), password = String(fd.get('password')||''), full_name = String(fd.get('full_name')||'').trim();
       try {
         if(mode==='signup') {
-          const {data,error} = await client.auth.signUp({email,password,options:{data:{full_name}}});
+          const {data,error} = await client.auth.signUp({email,password,options:{data:{full_name},emailRedirectTo:'https://veronza.vercel.app/'}});
           if(error) throw error;
           setStatus(data.session ? 'تم إنشاء الحساب وتسجيل الدخول.' : 'تم إنشاء الحساب. راجع بريدك لتأكيد الحساب إذا طلب منك ذلك.');
           if(data.session) await showAccount(data.session);
