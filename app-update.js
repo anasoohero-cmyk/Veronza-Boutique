@@ -1,12 +1,14 @@
 (() => {
   const CHECK_INTERVAL = 60000;
+  const VERSION_KEY = 'veronza:lastVersion';
   let currentVersion = null;
   let checking = false;
   let reloadQueued = false;
 
-  const reloadWhenSafe = () => {
+  const reloadWhenSafe = (version) => {
     if (reloadQueued) return;
     reloadQueued = true;
+    try { localStorage.setItem(VERSION_KEY, version); } catch (_) {}
     const reload = () => {
       if (document.visibilityState === 'visible') window.location.reload();
       else document.addEventListener('visibilitychange', reload, { once: true });
@@ -26,11 +28,14 @@
       const data = await response.json();
       const version = data?.version;
       if (!version) return;
-      if (currentVersion === null) {
-        currentVersion = version;
+      let savedVersion = null;
+      try { savedVersion = localStorage.getItem(VERSION_KEY); } catch (_) {}
+      if (currentVersion === null) currentVersion = version;
+      if (savedVersion === null) {
+        try { localStorage.setItem(VERSION_KEY, version); } catch (_) {}
         return;
       }
-      if (version !== currentVersion) reloadWhenSafe();
+      if (version !== savedVersion) reloadWhenSafe(version);
     } catch (_) {
       // A temporary network failure must never affect the storefront.
     } finally {
@@ -40,4 +45,8 @@
 
   check();
   setInterval(check, CHECK_INTERVAL);
+  window.addEventListener('pageshow', check);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') check();
+  });
 })();
