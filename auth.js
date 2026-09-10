@@ -39,7 +39,7 @@
     document.head.appendChild(style);
 
     const cartFix = document.createElement('style');
-    cartFix.textContent = '@media(max-width:900px){.cart-drawer:not(.open){display:none!important}.cart-drawer.open{display:block!important;right:18%;left:0;transform:none!important;visibility:visible!important}}';
+    cartFix.textContent = '@media(max-width:900px){.cart-drawer:not(.open){right:-100%!important;transform:none!important;visibility:hidden!important}.cart-drawer.open{right:18%;transform:none!important;visibility:visible!important}}';
     document.head.appendChild(cartFix);
 
     const button = document.createElement('button');
