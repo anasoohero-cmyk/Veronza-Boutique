@@ -86,7 +86,7 @@
         } else {
           const {data,error} = await client.auth.signInWithPassword({email,password});
           if(error) throw error;
-          await showAccount(data.session); setStatus('تم تسجيل الدخول.');
+          await showAccount(data.session); setStatus('تم تسجيل الدخول.'); modal.classList.remove('open');
         }
       } catch(err) { setStatus(err?.message || 'حدث خطأ، حاول مرة أخرى.'); }
       finally { submit.disabled = false; }
