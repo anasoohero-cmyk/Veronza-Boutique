@@ -16,7 +16,6 @@
     if(!b)return;
     const id=Number(b.dataset.add),stock=stockFor(id);
     if(stock===null)return;
-    const p=(window.products||[]).find(x=>Number(x.id)===id);
     const color=document.querySelector(`[data-color="${id}"]`)?.value||'';
     const size=document.querySelector(`[data-size="${id}"]`)?.value||'';
     const item={id,color,size};
@@ -55,7 +54,7 @@
     const color=modal.querySelector('[data-detail-color]')?.value||'';
     const size=modal.querySelector('[data-detail-size]')?.value||'';
     const current=cartQtyFor({id,color,size});
-    if(stock<=0||current+q>stock){e.preventDefault();e.stopImmediatePropagation();stockMessage(stock, q);return}
+    if(stock<=0||current+q>stock){e.preventDefault();e.stopImmediatePropagation();stockMessage(stock,q);return}
   }
   function guardCheckout(e){
     const form=e.target.closest('[data-checkout-form]');
@@ -74,12 +73,44 @@
   async function syncQuantity(){
     try{
       const client=await loadClient();
-      const {data,error}=await client.from('products').select('id,quantity').order('id',{ascending:true});
+      const {data,error}=await client.from('products').select('id,code,name,price,type,img,extra_img,rating,reviews,colors,sizes,quantity').eq('is_active',true).order('id',{ascending:true});
       if(error)throw error;
       const rows=Array.isArray(data)?data:[];
-      const byId=new Map(rows.map(r=>[Number(r.id),Number(r.quantity||0)]));
+      const byId=new Map(rows.map(r=>[Number(r.id),r]));
       if(!Array.isArray(window.products))return;
-      window.products.forEach(p=>{p.quantity=byId.get(Number(p.id))??0});
+      window.products.forEach(p=>{
+        const row=byId.get(Number(p.id));
+        if(!row)return;
+        p.code=row.code;
+        p.name=row.name;
+        p.price=Number(row.price||0);
+        p.type=row.type;
+        p.img=row.img;
+        p.extraImg=row.extra_img||undefined;
+        p.rating=String(row.rating??0);
+        p.reviews=Number(row.reviews||0);
+        p.colors=Array.isArray(row.colors)?row.colors:[];
+        p.sizes=Array.isArray(row.sizes)?row.sizes:[];
+        p.quantity=Math.max(0,Number(row.quantity)||0);
+      });
+      const freshById=new Map(rows.map(row=>[Number(row.id),{
+        id:Number(row.id),code:row.code,name:row.name,price:Number(row.price||0),type:row.type,img:row.img,extraImg:row.extra_img||undefined,rating:String(row.rating??0),reviews:Number(row.reviews||0),colors:Array.isArray(row.colors)?row.colors:[],sizes:Array.isArray(row.sizes)?row.sizes:[],quantity:Math.max(0,Number(row.quantity)||0)
+      }]));
+      const cart=getCart();
+      let changed=false;
+      const nextCart=[];
+      for(const item of cart){
+        const fresh=freshById.get(Number(item.id));
+        if(!fresh){changed=true;continue}
+        const qty=Math.max(1,Number(item.qty)||1);
+        const color=String(item.color??'');
+        const size=String(item.size??'');
+        const merged={...fresh,qty,color,size};
+        if(JSON.stringify({...item,qty,color,size})!==JSON.stringify(merged))changed=true;
+        nextCart.push(merged);
+      }
+      if(changed)localStorage.setItem('veronza-cart',JSON.stringify(nextCart));
+      if(changed&&typeof window.renderCart==='function')window.renderCart();
       if(typeof renderProducts==='function')renderProducts(window.products);
     }catch(error){console.error('Veronza product quantity:',error)}
   }
