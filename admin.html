@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#111111">
+  <title>VERONZA ADMIN — الطلبات</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&family=Playfair+Display:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="admin.css">
+</head>
+<body>
+  <div id="loginView" class="screen">
+    <div class="login-card">
+      <div class="logo">VERONZA<small>ADMIN · ORDERS</small></div>
+      <h1>دخول لوحة الطلبات</h1>
+      <p>هذه الصفحة مخصصة لحساب الأدمن المسجل في Veronza.</p>
+      <form id="loginForm">
+        <label>البريد الإلكتروني<input id="email" type="email" autocomplete="username" required></label>
+        <label>كلمة المرور<input id="password" type="password" autocomplete="current-password" required></label>
+        <button class="primary" type="submit">دخول</button>
+        <div id="loginError" class="error" role="alert"></div>
+      </form>
+    </div>
+  </div>
+
+  <div id="appView" class="app hidden">
+    <header class="topbar">
+      <div><span class="eyebrow">VERONZA BOUTIQUE</span><h1>الطلبات</h1></div>
+      <div class="top-actions"><span id="adminEmail"></span><button id="refreshBtn">تحديث</button><button id="logoutBtn" class="ghost">خروج</button></div>
+    </header>
+    <main>
+      <section class="stats" id="stats"></section>
+      <section class="filters">
+        <button class="active" data-status="all">جميع الطلبات</button>
+        <button data-status="pending">جديدة 🔴</button>
+        <button data-status="confirmed">تم التأكيد</button>
+        <button data-status="preparing">قيد التجهيز</button>
+        <button data-status="shipped">تم الشحن</button>
+        <button data-status="delivered">تم التسليم</button>
+        <button data-status="cancelled">ملغي</button>
+        <button data-status="returned">مرتجع</button>
+      </section>
+      <section class="orders-card">
+        <div class="table-head"><h2>قائمة الطلبات</h2><span id="lastUpdated"></span></div>
+        <div id="orders" class="orders"></div>
+      </section>
+    </main>
+  </div>
+
+  <div id="orderModal" class="modal hidden">
+    <div class="modal-card">
+      <button id="closeModal" class="close">×</button>
+      <div id="orderDetails"></div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast"></div>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="admin.js"></script>
+</body>
+</html>
