@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>VERONZA ADMIN — المنتجات</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&family=Playfair+Display:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="admin-products.css">
+</head>
+<body>
+<div id="loginView" class="screen"><div class="login-card"><div class="logo">VERONZA<small>ADMIN · PRODUCTS</small></div><h1>إدارة المنتجات</h1><p>هذه الصفحة مخصصة لحساب الأدمن المسجل في Veronza.</p><form id="loginForm"><label>البريد الإلكتروني<input id="email" type="email" autocomplete="username" required></label><label>كلمة المرور<input id="password" type="password" autocomplete="current-password" required></label><button class="primary">دخول</button><div id="loginError" class="error"></div></form></div></div>
+<div id="appView" class="app hidden"><header><div><span class="eyebrow">VERONZA BOUTIQUE</span><h1>المنتجات</h1><p>أي تعديل محفوظ هنا يظهر مباشرة في المتجر.</p></div><div class="top-actions"><span id="adminEmail"></span><a href="/admin.html">الطلبات</a><button id="refreshBtn">تحديث</button><button id="logoutBtn" class="ghost">خروج</button></div></header>
+<main><div class="toolbar"><button id="addBtn" class="primary">+ إضافة منتج</button><input id="search" type="search" placeholder="ابحث بالاسم أو الكود..."></div><section id="products" class="products"></section></main></div>
+<div id="modal" class="modal hidden"><div class="modal-card"><button id="closeModal" class="close">×</button><h2 id="modalTitle">إضافة منتج</h2><form id="productForm" class="form"><input type="hidden" id="productId"><div class="grid"><label>اسم المنتج<input id="name" required></label><label>كود المنتج<input id="code" required></label><label>السعر<input id="price" type="number" min="0" step="0.01" required></label><label>النوع<select id="type"><option value="shoes">حذاء</option><option value="bags">شنطة</option><option value="set">Set</option></select></label><label>الكمية<input id="quantity" type="number" min="0" step="1" required></label><label>حالة المنتج<select id="isActive"><option value="true">متوفر</option><option value="false">غير متوفر</option></select></label><label class="full">الصورة الرئيسية (رابط الصورة)<input id="img" type="url" required placeholder="https://..."></label><label class="full">صور إضافية (رابط لكل صورة في سطر)<textarea id="extraImgs" rows="3" placeholder="https://...\nhttps://..."></textarea></label><label>الألوان (افصل بينها بفاصلة)<input id="colors" placeholder="أسود, أبيض, بيج"></label><label>المقاسات (افصل بينها بفاصلة)<input id="sizes" placeholder="37, 38, 39, 40"></label></div><div class="preview" id="preview"></div><div class="form-actions"><button type="button" id="cancelBtn" class="ghost">إلغاء</button><button class="primary">حفظ المنتج</button></div><div id="formError" class="error"></div></form></div></div>
+<div id="toast" class="toast"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="admin-products.js"></script>
+</body></html>
