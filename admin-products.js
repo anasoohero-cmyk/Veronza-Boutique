@@ -343,6 +343,19 @@ document.addEventListener('change',e=>{
   }
 });
 
+$('#products').addEventListener('click',e=>{
+  const editBtn=e.target.closest('[data-edit]');
+  if(editBtn){
+    const p=products.find(x=>Number(x.id)===Number(editBtn.dataset.edit));
+    if(p)openModal(p);
+    return
+  }
+  const deleteBtn=e.target.closest('[data-delete]');
+  if(deleteBtn){
+    remove(deleteBtn.dataset.delete)
+  }
+});
+
 $('#productForm').addEventListener('submit',save);
 $('#imgButton').addEventListener('click',()=>$('#imgFile').click());
 $('#imgFile').addEventListener('change',handleImageFile);
