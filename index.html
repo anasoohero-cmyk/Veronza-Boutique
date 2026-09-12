@@ -29,56 +29,19 @@
     (()=>{
       const section=document.querySelector('#new'),title=document.querySelector('[data-section-title]'),grid=document.querySelector('#productGrid');
       const names={all:'كل المنتجات',shoes:'السبيدروات',bags:'الشنط',set:'السيتات'};
-      let activeType='all',directLoadPromise=null;
-      const SUPABASE_URL='https://kahbxvbirsjmednkybse.supabase.co',SUPABASE_KEY='sb_publishable_L1TY-QEyFsWDeDRy_saOUQ_GP8TjADm';
-      const transparent='data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=';
+      let activeType='all';
       function renderCategory(type){
         if(!section||typeof window.renderProducts!=='function')return;
         const data=Array.isArray(window.products)?window.products:[],list=type==='all'?data:data.filter(p=>p.type===type);
         window.renderProducts(list);
         document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('active',b.dataset.filter===type));
       }
-      function fetchJson(url){
-        const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),8000);
-        return fetch(url,{headers:{apikey:SUPABASE_KEY,Authorization:`Bearer ${SUPABASE_KEY}`},signal:controller.signal}).then(r=>{if(!r.ok)throw new Error(`Supabase HTTP ${r.status}`);return r.json()}).finally(()=>clearTimeout(timer));
-      }
-      async function loadCategoryProducts(){
-        if(Array.isArray(window.products)&&window.products.length)return window.products;
-        if(directLoadPromise)return directLoadPromise;
-        directLoadPromise=(async()=>{
-          try{
-            // Load lightweight product data first so the cards can render immediately.
-            const rows=await fetchJson(`${SUPABASE_URL}/rest/v1/products?select=id,code,name,price,type,rating,reviews,colors,sizes&is_active=eq.true&order=id.asc`);
-            if(!Array.isArray(rows))throw new Error('Invalid products response');
-            const mapped=rows.map(row=>({id:Number(row.id),code:row.code,name:row.name,price:Number(row.price||0),type:row.type,img:transparent,extraImg:undefined,rating:String(row.rating??0),reviews:Number(row.reviews||0),colors:Array.isArray(row.colors)?row.colors:[],sizes:Array.isArray(row.sizes)?row.sizes:[]}));
-            if(Array.isArray(window.products))window.products.splice(0,window.products.length,...mapped);else window.products=mapped;
-            renderCategory(activeType);
-            // Load images separately; an image failure must never hide the product card.
-            await Promise.all(mapped.map(async p=>{
-              try{
-                const rows=await fetchJson(`${SUPABASE_URL}/rest/v1/products?select=img,extra_img&id=eq.${encodeURIComponent(p.id)}`);
-                const row=Array.isArray(rows)&&rows[0];
-                if(row){p.img=row.img||transparent;p.extraImg=row.extra_img||undefined;}
-              }catch(error){console.warn('Veronza product image:',p.id,error)}
-            }));
-            renderCategory(activeType);
-            return window.products;
-          }catch(error){
-            console.error('Veronza category products:',error);
-            if(grid)grid.innerHTML='<div style="grid-column:1/-1;text-align:center;color:#b42318;padding:24px">تعذر تحميل المنتجات حاليًا. حاول تحديث الصفحة.</div>';
-            return [];
-          }finally{directLoadPromise=null}
-        })();
-        return directLoadPromise;
-      }
       function leaveCategory(){document.body.classList.remove('category-page-mode');section?.classList.add('is-hidden');activeType='all';window.scrollTo({top:0,behavior:'smooth'})}
-      async function choose(type){
+      function choose(type){
         if(!section)return;
         activeType=type||'all';document.body.classList.add('category-page-mode');section.classList.remove('is-hidden');if(title)title.textContent=names[activeType]||'المنتجات';
-        if(grid)grid.innerHTML='<p style="grid-column:1/-1;text-align:center;color:#888">جاري تحميل المنتجات…</p>';
-        await loadCategoryProducts();
-        if(!document.body.classList.contains('category-page-mode'))return;
-        renderCategory(activeType);requestAnimationFrame(()=>window.scrollTo({top:0,behavior:'smooth'}));
+        renderCategory(activeType);
+        requestAnimationFrame(()=>window.scrollTo({top:0,behavior:'smooth'}));
       }
       document.addEventListener('click',e=>{
         if(e.target.closest('[data-category-back]')){e.preventDefault();e.stopPropagation();leaveCategory();return}
