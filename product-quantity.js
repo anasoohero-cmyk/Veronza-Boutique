@@ -82,30 +82,14 @@
       window.products.forEach(p=>{
         const row=byId.get(Number(p.id));
         if(!row)return;
-        p.code=row.code;
-        p.name=row.name;
-        p.price=Number(row.price||0);
-        p.type=row.type;
-        p.img=row.img;
-        p.extraImg=row.extra_img||undefined;
-        p.rating=String(row.rating??0);
-        p.reviews=Number(row.reviews||0);
-        p.colors=Array.isArray(row.colors)?row.colors:[];
-        p.sizes=Array.isArray(row.sizes)?row.sizes:[];
-        p.quantity=Math.max(0,Number(row.quantity)||0);
+        p.code=row.code;p.name=row.name;p.price=Number(row.price||0);p.type=row.type;p.img=row.img;p.extraImg=row.extra_img||undefined;p.rating=String(row.rating??0);p.reviews=Number(row.reviews||0);p.colors=Array.isArray(row.colors)?row.colors:[];p.sizes=Array.isArray(row.sizes)?row.sizes:[];p.quantity=Math.max(0,Number(row.quantity)||0);
       });
-      const freshById=new Map(rows.map(row=>[Number(row.id),{
-        id:Number(row.id),code:row.code,name:row.name,price:Number(row.price||0),type:row.type,img:row.img,extraImg:row.extra_img||undefined,rating:String(row.rating??0),reviews:Number(row.reviews||0),colors:Array.isArray(row.colors)?row.colors:[],sizes:Array.isArray(row.sizes)?row.sizes:[],quantity:Math.max(0,Number(row.quantity)||0)
-      }]));
-      const cart=getCart();
-      let changed=false;
-      const nextCart=[];
+      const freshById=new Map(rows.map(row=>[Number(row.id),{id:Number(row.id),code:row.code,name:row.name,price:Number(row.price||0),type:row.type,img:row.img,extraImg:row.extra_img||undefined,rating:String(row.rating??0),reviews:Number(row.reviews||0),colors:Array.isArray(row.colors)?row.colors:[],sizes:Array.isArray(row.sizes)?row.sizes:[],quantity:Math.max(0,Number(row.quantity)||0)}]));
+      const cart=getCart();let changed=false;const nextCart=[];
       for(const item of cart){
         const fresh=freshById.get(Number(item.id));
         if(!fresh){changed=true;continue}
-        const qty=Math.max(1,Number(item.qty)||1);
-        const color=String(item.color??'');
-        const size=String(item.size??'');
+        const qty=Math.max(1,Number(item.qty)||1),color=String(item.color??''),size=String(item.size??'');
         const merged={...fresh,qty,color,size};
         if(JSON.stringify({...item,qty,color,size})!==JSON.stringify(merged))changed=true;
         nextCart.push(merged);
@@ -121,4 +105,15 @@
     if(tries++<80)setTimeout(wait,250);
   };
   wait();
+  setTimeout(async()=>{
+    if(Array.isArray(window.products)&&window.products.length)return;
+    try{
+      const response=await fetch(`${SUPABASE_URL}/rest/v1/products?select=id,code,name,price,type,img,extra_img,rating,reviews,colors,sizes&is_active=eq.true&order=id.asc`,{headers:{apikey:SUPABASE_PUBLISHABLE_KEY,Authorization:`Bearer ${SUPABASE_PUBLISHABLE_KEY}`}});
+      if(!response.ok)throw new Error(`Supabase HTTP ${response.status}`);
+      const rows=await response.json();
+      if(!Array.isArray(rows))return;
+      window.products.splice(0,window.products.length,...rows.map(row=>({id:Number(row.id),code:row.code,name:row.name,price:Number(row.price||0),type:row.type,img:row.img,extraImg:row.extra_img||undefined,rating:String(row.rating??0),reviews:Number(row.reviews||0),colors:Array.isArray(row.colors)?row.colors:[],sizes:Array.isArray(row.sizes)?row.sizes:[]})));
+      if(typeof renderProducts==='function')renderProducts(window.products);
+    }catch(error){console.error('Veronza direct product load:',error)}
+  },1500);
 })();
