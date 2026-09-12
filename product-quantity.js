@@ -114,6 +114,7 @@
       if(!Array.isArray(rows))return;
       window.products.splice(0,window.products.length,...rows.map(row=>({id:Number(row.id),code:row.code,name:row.name,price:Number(row.price||0),type:row.type,img:row.img,extraImg:row.extra_img||undefined,rating:String(row.rating??0),reviews:Number(row.reviews||0),colors:Array.isArray(row.colors)?row.colors:[],sizes:Array.isArray(row.sizes)?row.sizes:[]})));
       if(typeof renderProducts==='function'&&!document.body.classList.contains('category-page-mode'))renderProducts(window.products);
+      if(document.body.classList.contains('category-page-mode')){const title=document.querySelector('[data-section-title]')?.textContent.trim()||'';const type=title==='السبيدروات'?'shoes':title==='الشنط'?'bags':title==='السيتات'?'set':'all';renderProducts(type==='all'?window.products:window.products.filter(p=>p.type===type));}
     }catch(error){console.error('Veronza direct product load:',error)}
   },1500);
 })();
