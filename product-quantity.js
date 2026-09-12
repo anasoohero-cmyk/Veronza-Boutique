@@ -105,6 +105,25 @@
     if(tries++<80)setTimeout(wait,250);
   };
   wait();
+  async function loadCategoryDirect(type){
+    try{
+      const response=await fetch(`${SUPABASE_URL}/rest/v1/products?select=id,code,name,price,type,img,extra_img,rating,reviews,colors,sizes&is_active=eq.true&type=eq.${encodeURIComponent(type)}&order=id.asc`,{headers:{apikey:SUPABASE_PUBLISHABLE_KEY,Authorization:`Bearer ${SUPABASE_PUBLISHABLE_KEY}`}});
+      if(!response.ok)throw new Error(`Supabase HTTP ${response.status}`);
+      const rows=await response.json();
+      if(!Array.isArray(rows))return;
+      const list=rows.map(row=>({id:Number(row.id),code:row.code,name:row.name,price:Number(row.price||0),type:row.type,img:row.img,extraImg:row.extra_img||undefined,rating:String(row.rating??0),reviews:Number(row.reviews||0),colors:Array.isArray(row.colors)?row.colors:[],sizes:Array.isArray(row.sizes)?row.sizes:[]}));
+      if(!Array.isArray(window.products))window.products=[];
+      const existing=new Map(window.products.map(p=>[Number(p.id),p]));
+      rows.forEach(row=>{const p=existing.get(Number(row.id));if(p)Object.assign(p,{code:row.code,name:row.name,price:Number(row.price||0),type:row.type,img:row.img,extraImg:row.extra_img||undefined,rating:String(row.rating??0),reviews:Number(row.reviews||0),colors:Array.isArray(row.colors)?row.colors:[],sizes:Array.isArray(row.sizes)?row.sizes:[]});else window.products.push(list.find(x=>x.id===Number(row.id))) });
+      if(typeof window.renderProducts==='function')window.renderProducts(list);
+    }catch(error){console.error('Veronza category load:',error)}
+  }
+  document.addEventListener('click',e=>{
+    const category=e.target.closest('[data-category]');
+    if(!category)return;
+    const type=category.dataset.category;
+    if(type)loadCategoryDirect(type);
+  },true);
   setTimeout(async()=>{
     if(Array.isArray(window.products)&&window.products.length)return;
     try{
