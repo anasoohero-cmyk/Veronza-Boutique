@@ -30,21 +30,37 @@
       const section=document.querySelector('#new'),title=document.querySelector('[data-section-title]');
       const names={all:'كل المنتجات',shoes:'السبيدروات',bags:'الشنط',set:'السيتات'};
       function choose(type){
-        if(!window.products)return;
-        if(!products.length){section.classList.remove('is-hidden');if(title)title.textContent=names[type]||'المنتجات';setTimeout(()=>choose(type),200);return}
+        const listData=Array.isArray(window.products)?window.products:[];
+        if(!section)return;
+        if(!listData.length){
+          section.classList.remove('is-hidden');
+          if(title)title.textContent=names[type]||'المنتجات';
+          if(typeof window.loadProductsFromSupabase==='function'&&!section.dataset.loading){
+            section.dataset.loading='1';
+            window.loadProductsFromSupabase().finally(()=>{delete section.dataset.loading;choose(type)})
+          }
+          return
+        }
         section.classList.remove('is-hidden');
-        const list=type==='all'?products:products.filter(p=>p.type===type);
-        if(typeof renderProducts==='function')renderProducts(list);
+        const list=type==='all'?listData:listData.filter(p=>p.type===type);
+        if(typeof window.renderProducts==='function')window.renderProducts(list);
         document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('active',b.dataset.filter===type));
         if(title)title.textContent=names[type]||'المنتجات';
-        section.scrollIntoView({behavior:'smooth',block:'start'});
+        requestAnimationFrame(()=>section.scrollIntoView({behavior:'smooth',block:'start'}));
       }
-      document.querySelectorAll('[data-category]').forEach(el=>el.addEventListener('click',e=>{e.preventDefault();choose(el.dataset.category)}));
-      document.querySelectorAll('.tabs button').forEach(btn=>btn.addEventListener('click',()=>choose(btn.dataset.filter||'all')));
-      document.querySelectorAll('a[href="#shoes"],a[href="#bags"],a[href="#offers"]').forEach(el=>el.addEventListener('click',e=>{
-        const map={'#shoes':'shoes','#bags':'bags','#offers':'set'},type=map[el.getAttribute('href')];
-        if(type){e.preventDefault();choose(type)}
-      }));
+      document.addEventListener('click',e=>{
+        const category=e.target.closest('[data-category]');
+        if(category){e.preventDefault();e.stopPropagation();choose(category.dataset.category);return}
+        const nav=e.target.closest('.desktop-nav a[href="#shoes"],.desktop-nav a[href="#bags"],.desktop-nav a[href="#offers"],.mobile-menu a[href="#shoes"],.mobile-menu a[href="#bags"],.mobile-menu a[href="#offers"]');
+        if(nav){
+          e.preventDefault();e.stopPropagation();
+          const map={'#shoes':'shoes','#bags':'bags','#offers':'set'};
+          choose(map[nav.getAttribute('href')]);
+          return
+        }
+        const tab=e.target.closest('.tabs button[data-filter]');
+        if(tab){e.preventDefault();e.stopPropagation();choose(tab.dataset.filter||'all')}
+      },true);
     })();
   </script>
   <script src="pull-to-refresh.js"></script>
