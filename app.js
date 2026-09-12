@@ -1,56 +1,74 @@
 const WHATSAPP='218944000974';
 const SUPABASE_URL='https://kahbxvbirsjmednkybse.supabase.co';
 const SUPABASE_PUBLISHABLE_KEY='sb_publishable_L1TY-QEyFsWDeDRy_saOUQ_GP8TjADm';
+const SUPABASE_LOAD_TIMEOUT=10000;
 let products=[];
 window.products=products;
 let supabaseClientPromise;
+let productsLoadPromise;
 
 function loadSupabaseClient(){
   if(supabaseClientPromise)return supabaseClientPromise;
   supabaseClientPromise=new Promise((resolve,reject)=>{
-    const create=()=>window.supabase?.createClient?resolve(window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY)):reject(new Error('تعذر تهيئة Supabase'));
+    let settled=false;
+    let timer;
+    const finish=(fn,value)=>{if(settled)return;settled=true;clearTimeout(timer);fn(value)};
+    const create=()=>window.supabase?.createClient?finish(resolve,window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY)):finish(reject,new Error('تعذر تهيئة Supabase'));
+    timer=setTimeout(()=>finish(reject,new Error('انتهت مهلة تحميل Supabase')),SUPABASE_LOAD_TIMEOUT);
     if(window.supabase?.createClient){create();return}
     const existing=document.querySelector('script[data-supabase-js]');
-    if(existing){existing.addEventListener('load',create,{once:true});existing.addEventListener('error',()=>reject(new Error('تعذر تحميل Supabase')),{once:true});return}
+    if(existing){existing.addEventListener('load',create,{once:true});existing.addEventListener('error',()=>finish(reject,new Error('تعذر تحميل Supabase')),{once:true});return}
     const script=document.createElement('script');
     script.src='https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
     script.dataset.supabaseJs='true';
     script.onload=create;
-    script.onerror=()=>reject(new Error('تعذر تحميل Supabase'));
+    script.onerror=()=>finish(reject,new Error('تعذر تحميل Supabase'));
     document.head.appendChild(script);
-  });
+  }).catch(error=>{supabaseClientPromise=null;throw error});
   return supabaseClientPromise;
 }
 
-async function loadProductsFromSupabase(){
+function showProductsError(grid){
+  if(!grid)return;
+  grid.innerHTML='<div style="grid-column:1/-1;text-align:center;color:#b42318;padding:24px"><p style="margin:0 0 12px">تعذر تحميل المنتجات حاليًا. حاول تحديث الصفحة.</p><button type="button" data-products-retry style="border:0;background:#111;color:#fff;padding:10px 18px;border-radius:10px;cursor:pointer">إعادة المحاولة</button></div>';
+  grid.querySelector('[data-products-retry]')?.addEventListener('click',()=>loadProductsFromSupabase());
+}
+
+function loadProductsFromSupabase(){
+  if(productsLoadPromise)return productsLoadPromise;
   const grid=document.querySelector('#productGrid');
   if(grid)grid.innerHTML='<p style="grid-column:1/-1;text-align:center;color:#888">جاري تحميل المنتجات…</p>';
-  try{
-    const client=await loadSupabaseClient();
-    const {data,error}=await client.from('products').select('id,code,name,price,type,img,extra_img,rating,reviews,colors,sizes').eq('is_active',true).order('id',{ascending:true});
-    if(error)throw error;
-    const rows=Array.isArray(data)?data:[];
-    products.splice(0,products.length,...rows.map(row=>({
-      id:Number(row.id),
-      code:row.code,
-      name:row.name,
-      price:Number(row.price||0),
-      type:row.type,
-      img:row.img,
-      extraImg:row.extra_img||undefined,
-      rating:String(row.rating??0),
-      reviews:Number(row.reviews||0),
-      colors:Array.isArray(row.colors)?row.colors:[],
-      sizes:Array.isArray(row.sizes)?row.sizes:[]
-    })));
-    window.products=products;
-    renderProducts(products);
-    return products;
-  }catch(error){
-    console.error('Veronza products:',error);
-    if(grid)grid.innerHTML='<p style="grid-column:1/-1;text-align:center;color:#b42318">تعذر تحميل المنتجات من قاعدة البيانات. حاول تحديث الصفحة.</p>';
-    return [];
-  }
+  productsLoadPromise=(async()=>{
+    try{
+      const client=await loadSupabaseClient();
+      const {data,error}=await client.from('products').select('id,code,name,price,type,img,extra_img,rating,reviews,colors,sizes').eq('is_active',true).order('id',{ascending:true});
+      if(error)throw error;
+      const rows=Array.isArray(data)?data:[];
+      products.splice(0,products.length,...rows.map(row=>({
+        id:Number(row.id),
+        code:row.code,
+        name:row.name,
+        price:Number(row.price||0),
+        type:row.type,
+        img:row.img,
+        extraImg:row.extra_img||undefined,
+        rating:String(row.rating??0),
+        reviews:Number(row.reviews||0),
+        colors:Array.isArray(row.colors)?row.colors:[],
+        sizes:Array.isArray(row.sizes)?row.sizes:[]
+      })));
+      window.products=products;
+      renderProducts(products);
+      return products;
+    }catch(error){
+      console.error('Veronza products:',error);
+      showProductsError(grid);
+      return [];
+    }finally{
+      productsLoadPromise=null;
+    }
+  })();
+  return productsLoadPromise;
 }
 
 function readStorage(key,fallback){try{const value=JSON.parse(localStorage.getItem(key)||'null');return Array.isArray(value)?value:fallback}catch{return fallback}}
