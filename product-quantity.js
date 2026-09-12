@@ -1,12 +1,4 @@
 (()=>{
-  if(typeof window.loadProductsFromSupabase==='function')window.loadProductsFromSupabase();
-  const SUPABASE_URL='https://kahbxvbirsjmednkybse.supabase.co';
-  const SUPABASE_PUBLISHABLE_KEY='sb_publishable_L1TY-QEyFsWDeDRy_saOUQ_GP8TjADm';
-  const loadClient=()=>new Promise((resolve,reject)=>{
-    const make=()=>window.supabase?.createClient?resolve(window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY)):reject(new Error('تعذر تهيئة Supabase'));
-    if(window.supabase?.createClient){make();return}
-    const s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';s.onload=make;s.onerror=()=>reject(new Error('تعذر تحميل Supabase'));document.head.appendChild(s);
-  });
   const getCart=()=>{try{const v=JSON.parse(localStorage.getItem('veronza-cart')||'[]');return Array.isArray(v)?v:[]}catch{return[]}};
   const sameItem=(a,b)=>Number(a?.id)===Number(b?.id)&&String(a?.color??'')===String(b?.color??'')&&String(a?.size??'')===String(b?.size??'');
   const stockFor=id=>{const p=(window.products||[]).find(x=>Number(x.id)===Number(id));return p?Math.max(0,Number(p.quantity)||0):null};
@@ -73,7 +65,7 @@
   document.addEventListener('submit',guardCheckout,true);
   async function syncQuantity(){
     try{
-      const client=await loadClient();
+      const client=await loadSupabaseClient();
       const {data,error}=await client.from('products').select('id,code,name,price,type,img,extra_img,rating,reviews,colors,sizes,quantity').eq('is_active',true).order('id',{ascending:true});
       if(error)throw error;
       const rows=Array.isArray(data)?data:[];
@@ -105,16 +97,4 @@
     if(tries++<80)setTimeout(wait,250);
   };
   wait();
-  setTimeout(async()=>{
-    if(Array.isArray(window.products)&&window.products.length)return;
-    try{
-      const response=await fetch(`${SUPABASE_URL}/rest/v1/products?select=id,code,name,price,type,img,extra_img,rating,reviews,colors,sizes&is_active=eq.true&order=id.asc`,{headers:{apikey:SUPABASE_PUBLISHABLE_KEY,Authorization:`Bearer ${SUPABASE_PUBLISHABLE_KEY}`}});
-      if(!response.ok)throw new Error(`Supabase HTTP ${response.status}`);
-      const rows=await response.json();
-      if(!Array.isArray(rows))return;
-      window.products.splice(0,window.products.length,...rows.map(row=>({id:Number(row.id),code:row.code,name:row.name,price:Number(row.price||0),type:row.type,img:row.img,extraImg:row.extra_img||undefined,rating:String(row.rating??0),reviews:Number(row.reviews||0),colors:Array.isArray(row.colors)?row.colors:[],sizes:Array.isArray(row.sizes)?row.sizes:[]})));
-      if(typeof renderProducts==='function'&&!document.body.classList.contains('category-page-mode'))renderProducts(window.products);
-      if(document.body.classList.contains('category-page-mode')){const title=document.querySelector('[data-section-title]')?.textContent.trim()||'';const type=title==='السبيدروات'?'shoes':title==='الشنط'?'bags':title==='السيتات'?'set':'all';renderProducts(type==='all'?window.products:window.products.filter(p=>p.type===type));}
-    }catch(error){console.error('Veronza direct product load:',error)}
-  },1500);
 })();
