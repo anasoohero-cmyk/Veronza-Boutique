@@ -67,35 +67,6 @@
   document.addEventListener('click',guardDetailAdd,true);
   document.addEventListener('submit',guardCheckout,true);
 
-  function mapProduct(row){return{id:Number(row.id),code:row.code,name:row.name,price:Number(row.price||0),type:row.type,img:row.img,extraImg:row.extra_img||undefined,rating:String(row.rating??0),reviews:Number(row.reviews||0),colors:Array.isArray(row.colors)?row.colors:[],sizes:Array.isArray(row.sizes)?row.sizes:[]}}
-  function renderLoadedProducts(){
-    if(typeof renderProducts!=='function'||!Array.isArray(window.products))return;
-    if(document.body.classList.contains('category-page-mode')){
-      const title=document.querySelector('[data-section-title]')?.textContent.trim()||'';
-      const type=title==='السبيدروات'?'shoes':title==='الشنط'?'bags':title==='السيتات'?'set':'all';
-      renderProducts(type==='all'?window.products:window.products.filter(p=>p.type===type));
-    }else renderProducts(window.products);
-  }
-  async function loadProductsDirect(){
-    if(Array.isArray(window.products)&&window.products.length)return window.products;
-    const controller=new AbortController();
-    const timer=setTimeout(()=>controller.abort(),PRODUCT_LOAD_TIMEOUT);
-    try{
-      const response=await fetch(`${SUPABASE_URL}/rest/v1/products?select=id,code,name,price,type,img,extra_img,rating,reviews,colors,sizes&is_active=eq.true&order=id.asc`,{headers:{apikey:SUPABASE_PUBLISHABLE_KEY,Authorization:`Bearer ${SUPABASE_PUBLISHABLE_KEY}`},signal:controller.signal});
-      if(!response.ok)throw new Error(`Supabase HTTP ${response.status}`);
-      const rows=await response.json();
-      if(!Array.isArray(rows))throw new Error('Supabase returned invalid products data');
-      const list=rows.map(mapProduct);
-      if(Array.isArray(window.products))window.products.splice(0,window.products.length,...list);else window.products=list;
-      renderLoadedProducts();
-      return window.products;
-    }catch(error){
-      console.error('Veronza direct product load:',error);
-      return [];
-    }finally{clearTimeout(timer)}
-  }
-  loadProductsDirect();
-
   async function syncQuantity(){
     try{
       const client=await loadSupabaseClient();
