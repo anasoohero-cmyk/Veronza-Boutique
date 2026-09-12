@@ -1,4 +1,5 @@
 (()=>{
+  if(typeof window.loadProductsFromSupabase==='function')window.loadProductsFromSupabase();
   const SUPABASE_URL='https://kahbxvbirsjmednkybse.supabase.co';
   const SUPABASE_PUBLISHABLE_KEY='sb_publishable_L1TY-QEyFsWDeDRy_saOUQ_GP8TjADm';
   const loadClient=()=>new Promise((resolve,reject)=>{
