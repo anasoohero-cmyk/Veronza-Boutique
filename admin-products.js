@@ -129,6 +129,8 @@ async function handleImageFile(e){
   }
   try{
     selectedImageDataUrls=await Promise.all(files.map(f=>imageFileToDataUrl(f)));
+    $('#img').value=selectedImageDataUrls[0]||'';
+    $('#extraImgs').value=selectedImageDataUrls.slice(1).join('\n');
     preview()
   }catch(error){
     $('#formError').textContent=error.message||'تعذر معالجة الصور'
@@ -333,16 +335,6 @@ $('#sizes').addEventListener('input',()=>{
   syncTotalQuantity()
 });
 
-document.addEventListener('change',e=>{
-  if(e.target.classList.contains('size-option')){
-    syncSelectedSizes();
-    syncTotalQuantity()
-  }
-  if(e.target.classList.contains('size-quantity')){
-    syncTotalQuantity()
-  }
-});
-
 $('#products').addEventListener('click',e=>{
   const editBtn=e.target.closest('[data-edit]');
   if(editBtn){
@@ -353,6 +345,16 @@ $('#products').addEventListener('click',e=>{
   const deleteBtn=e.target.closest('[data-delete]');
   if(deleteBtn){
     remove(deleteBtn.dataset.delete)
+  }
+});
+
+document.addEventListener('change',e=>{
+  if(e.target.classList.contains('size-option')){
+    syncSelectedSizes();
+    syncTotalQuantity()
+  }
+  if(e.target.classList.contains('size-quantity')){
+    syncTotalQuantity()
   }
 });
 
