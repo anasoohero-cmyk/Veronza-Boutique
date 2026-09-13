@@ -37,7 +37,6 @@
       }
       if (version !== savedVersion) reloadWhenSafe(version);
     } catch (_) {
-      // A temporary network failure must never affect the storefront.
     } finally {
       checking = false;
     }
@@ -50,7 +49,6 @@
     if (document.visibilityState === 'visible') check();
   });
 
-  // Opt-in, read-only category diagnostic. It runs only when ?diag=1 is present.
   if (new URLSearchParams(location.search).get('diag') === '1') {
     const panel = document.createElement('pre');
     panel.id = 'veronzaDiag';
@@ -58,7 +56,6 @@
     panel.style.cssText = 'position:fixed;left:8px;right:8px;bottom:8px;z-index:2147483647;margin:0;padding:12px;background:#111;color:#fff;border-radius:12px;font:13px/1.7 -apple-system,BlinkMacSystemFont,sans-serif;white-space:pre-wrap;max-height:45vh;overflow:auto;box-shadow:0 4px 24px rgba(0,0,0,.35)';
     panel.textContent = 'تشخيص السبيدروات: اضغط «السبيدروات»…';
     document.body.appendChild(panel);
-
     const show = (lines) => { panel.textContent = lines.join('\n'); };
     const runDiagnostic = async () => {
       show(['تشخيص السبيدروات: جارٍ الفحص…']);
@@ -80,18 +77,17 @@
       const products = Array.isArray(window.products) ? window.products : [];
       lines.push(`window.products: ${products.length}`);
       lines.push(`window shoes: ${products.filter(p => p.type === 'shoes').length}`);
-      lines.push(`VISIBLE CARDS الآن: ${document.querySelectorAll('#productGrid .product-card').length}`);
+      lines.push(`VISIBLE CARDS الآن: ${document.querySelectorAll('#productGrid .product').length}`);
       show(lines);
       setTimeout(() => {
-        lines.push(`VISIBLE CARDS بعد 1s: ${document.querySelectorAll('#productGrid .product-card').length}`);
+        lines.push(`VISIBLE CARDS بعد 1s: ${document.querySelectorAll('#productGrid .product').length}`);
         show(lines);
       }, 1000);
       setTimeout(() => {
-        lines.push(`VISIBLE CARDS بعد 8s: ${document.querySelectorAll('#productGrid .product-card').length}`);
+        lines.push(`VISIBLE CARDS بعد 8s: ${document.querySelectorAll('#productGrid .product').length}`);
         show(lines);
       }, 8000);
     };
-
     document.addEventListener('click', (event) => {
       if (event.target.closest('[data-category="shoes"]')) {
         setTimeout(runDiagnostic, 150);

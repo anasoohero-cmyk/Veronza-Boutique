@@ -4,7 +4,7 @@ const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 let products=[];
 let selectedImageDataUrls=[];
 const $=s=>document.querySelector(s);
-const esc=v=>String(v??'').replace(/[&<>'\"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
+const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
 const typeNames={shoes:'حذاء',bags:'شنطة',set:'Set'};
 
 function toast(t){
@@ -12,6 +12,13 @@ function toast(t){
   x.textContent=t;
   x.classList.add('show');
   setTimeout(()=>x.classList.remove('show'),2500)
+}
+
+async function checkAdmin(token){
+  const r=await fetch('/api/admin-auth',{headers:{Authorization:`Bearer ${token}`}});
+  if(!r.ok)return false;
+  const data=await r.json();
+  return data.ok===true;
 }
 
 function showApp(session){
@@ -24,12 +31,6 @@ function showApp(session){
 function showLogin(){
   $('#appView').classList.add('hidden');
   $('#loginView').classList.remove('hidden')
-}
-
-async function requireAdmin(userId){
-  const {data,error}=await sb.from('admin_users').select('user_id').eq('user_id',userId).maybeSingle();
-  if(error)throw error;
-  return !!data
 }
 
 async function load(){
@@ -57,7 +58,7 @@ function resetForm(){
   $('#quantity').value='0';
   $('#type').value='shoes';
   $('#extraImgs').value='';
-  $('#isActive').checked=true;
+  $('#isActive').value='true';
   $('#sizeOptions').innerHTML='';
   $('#sizeQuantities').innerHTML='';
   $('#preview').innerHTML='';
@@ -80,7 +81,7 @@ function openModal(p){
     $('#img').value=p.img||'';
     $('#extraImgs').value=p.extra_img||'';
     $('#colors').value=(Array.isArray(p.colors)?p.colors:[]).join(', ');
-    $('#isActive').checked=p.is_active!==false;
+    $('#isActive').value=p.is_active!==false?'true':'false';
     const sizes=Array.isArray(p.sizes)?p.sizes:[];
     $('#sizes').value=sizes.join(', ');
     renderSizeOptions(sizes,p.size_quantities||{});
@@ -101,7 +102,7 @@ function csv(v){
 
 function preview(){
   const urls=selectedImageDataUrls.length?selectedImageDataUrls:[$('#img').value.trim(),...$('#extraImgs').value.split(/\n+/).map(x=>x.trim()).filter(Boolean)];
-  $('#preview').innerHTML=urls.map(url=>`<img src="${url}" alt="معاينة" style="max-width:100%;max-height:200px;border-radius:8px;margin:8px 0">`).join('')
+  $('#preview').innerHTML=urls.map(url=>`<img src="${esc(url)}" alt="معاينة" style="max-width:100%;max-height:200px;border-radius:8px;margin:8px 0">`).join('')
 }
 
 function imageFileToDataUrl(file){
@@ -110,11 +111,7 @@ function imageFileToDataUrl(file){
     reader.onerror=()=>reject(new Error('تعذر قراءة الصورة'));
     reader.onload=()=>{
       const result=reader.result;
-      if(typeof result==='string'){
-        resolve(result)
-      }else{
-        reject(new Error('نتيجة غير متوقعة'))
-      }
+      if(typeof result==='string'){resolve(result)}else{reject(new Error('نتيجة غير متوقعة'))}
     }
   })
 }
@@ -123,10 +120,7 @@ async function handleImageFile(e){
   const files=Array.from(e.target.files||[]);
   if(!files.length)return;
   const invalid=files.find(file=>!file.type.startsWith('image/'));
-  if(invalid){
-    $('#formError').textContent='جميع الملفات يجب أن تكون صور.';
-    return
-  }
+  if(invalid){$('#formError').textContent='جميع الملفات يجب أن تكون صور.';return}
   try{
     selectedImageDataUrls=await Promise.all(files.map(f=>imageFileToDataUrl(f)));
     $('#img').value=selectedImageDataUrls[0]||'';
@@ -141,10 +135,7 @@ function renderSizeOptions(selected=[],existing={}){
   const box=$('#sizeOptions');
   if(!box)return;
   const required=$('#type').value==='shoes'||$('#type').value==='set';
-  if(!required){
-    box.innerHTML='';
-    return
-  }
+  if(!required){box.innerHTML='';return}
   const commonSizes=['36','37','38','39','40','41','42','43','44','45','46','47'];
   box.innerHTML=commonSizes.map(size=>`<label><input type="checkbox" class="size-option" value="${size}" ${selected.includes(size)?'checked':''}>${size}<span class="size-quantity-wrap">الكمية: <input type="number" class="size-quantity" data-size="${size}" value="${existing[size]||0}" min="0"></span></label>`).join('')
 }
@@ -191,28 +182,19 @@ async function save(e){
   const sizes=csv($('#sizes').value);
   const isSized=$('#type').value==='shoes'||$('#type').value==='set';
 
-  if(isSized&&!sizes.length){
-    $('#formError').textContent='المقاسات مطلوبة للحذاء والـ Set.';
-    return
-  }
+  if(isSized&&!sizes.length){$('#formError').textContent='المقاسات مطلوبة للحذاء والـ Set.';return}
 
   if(isSized){
     const missing=[...document.querySelectorAll('.size-option:checked')].some(option=>{
       const input=option.closest('label')?.querySelector('.size-quantity');
       return !input||input.value===''
     });
-    if(missing){
-      $('#formError').textContent='حدد كمية لكل مقاس.';
-      return
-    }
+    if(missing){$('#formError').textContent='حدد كمية لكل مقاس.';return}
   }
 
   if(!id){
     const {data,error}=await sb.rpc('next_product_code');
-    if(error){
-      $('#formError').textContent='تعذر توليد كود المنتج: '+error.message;
-      return
-    }
+    if(error){$('#formError').textContent='تعذر توليد كود المنتج: '+error.message;return}
     $('#code').value=String(data);
     $('#code').required=true
   }
@@ -230,24 +212,17 @@ async function save(e){
     sizes,
     size_quantities:sizeQuantities,
     quantity:isSized?Object.values(sizeQuantities).reduce((a,b)=>a+b,0):Math.max(0,Math.floor(Number($('#quantity').value||0))),
-    is_active:$('#isActive').checked,
+    is_active:$('#isActive').value==='true',
     updated_at:new Date().toISOString()
   };
 
-  if(!payload.name||!payload.code||!payload.img){
-    $('#formError').textContent='الاسم والكود والصورة الرئيسية مطلوبة.';
-    return
-  }
+  if(!payload.name||!payload.code||!payload.img){$('#formError').textContent='الاسم والكود والصورة الرئيسية مطلوبة.';return}
 
   try{
     let result;
-    if(id)
-      result=await sb.from('products').update(payload).eq('id',id).select().single();
-    else
-      result=await sb.from('products').insert(payload).select().single();
-
+    if(id)result=await sb.from('products').update(payload).eq('id',id).select().single();
+    else result=await sb.from('products').insert(payload).select().single();
     if(result.error)throw result.error;
-
     closeModal();
     toast(id?'تم تعديل المنتج':'تمت إضافة المنتج');
     await load()
@@ -260,7 +235,6 @@ async function remove(id){
   const p=products.find(x=>Number(x.id)===Number(id));
   if(!p)return;
   if(!confirm(`حذف المنتج «${p.name}» نهائياً؟\nإذا كنت تبي توقف ظهوره فقط، عدّله وأطفل الحالة.`))return;
-
   try{
     const {error}=await sb.from('products').delete().eq('id',id);
     if(error)throw error;
@@ -274,88 +248,45 @@ async function remove(id){
 $('#loginForm').addEventListener('submit',async e=>{
   e.preventDefault();
   $('#loginError').textContent='';
-  const {data,error}=await sb.auth.signInWithPassword({
-    email:$('#email').value.trim(),
-    password:$('#password').value
-  });
-
-  if(error){
-    $('#loginError').textContent=error.message;
-    return
-  }
-
+  const {data,error}=await sb.auth.signInWithPassword({email:$('#email').value.trim(),password:$('#password').value});
+  if(error){$('#loginError').textContent=error.message;return}
   const {data:{session}}=await sb.auth.getSession();
   if(!session)return;
-
   try{
-    if(await requireAdmin(session.user.id))
-      showApp(session);
-    else{
-      await sb.auth.signOut();
-      $('#loginError').textContent='أنت لا تملك صلاحيات الإدارة.'
-    }
-  }catch{
-    await sb.auth.signOut();
-    $('#loginError').textContent='تعذر التحقق من الصلاحيات'
-  }
+    if(await checkAdmin(session.access_token))showApp(session);
+    else{await sb.auth.signOut();$('#loginError').textContent='أنت لا تملك صلاحيات الإدارة.'}
+  }catch{await sb.auth.signOut();$('#loginError').textContent='تعذر التحقق من الصلاحيات'}
 });
 
 (async()=>{
   const {data:{session}}=await sb.auth.getSession();
   if(!session)return;
   try{
-    if(await requireAdmin(session.user.id))
-      showApp(session);
-    else
-      await sb.auth.signOut()
-  }catch{
-    await sb.auth.signOut()
-  }
+    if(await checkAdmin(session.access_token))showApp(session);
+    else await sb.auth.signOut()
+  }catch{await sb.auth.signOut()}
 })();
 
-$('#logoutBtn').onclick=async()=>{
-  await sb.auth.signOut();
-  showLogin()
-};
-
+$('#logoutBtn').onclick=async()=>{await sb.auth.signOut();showLogin()};
 $('#refreshBtn').onclick=load;
 $('#addBtn').onclick=()=>openModal();
 $('#cancelBtn').onclick=closeModal;
 $('#closeModal').onclick=closeModal;
 $('#search').addEventListener('input',render);
 
-$('#type').addEventListener('change',()=>{
-  updateSizesRequired();
-  renderSizeQuantities()
-});
-
-$('#sizes').addEventListener('input',()=>{
-  syncSelectedSizes();
-  renderSizeQuantities();
-  syncTotalQuantity()
-});
+$('#type').addEventListener('change',()=>{updateSizesRequired();renderSizeQuantities()});
+$('#sizes').addEventListener('input',()=>{syncSelectedSizes();renderSizeQuantities();syncTotalQuantity()});
 
 $('#products').addEventListener('click',e=>{
   const editBtn=e.target.closest('[data-edit]');
-  if(editBtn){
-    const p=products.find(x=>Number(x.id)===Number(editBtn.dataset.edit));
-    if(p)openModal(p);
-    return
-  }
+  if(editBtn){const p=products.find(x=>Number(x.id)===Number(editBtn.dataset.edit));if(p)openModal(p);return}
   const deleteBtn=e.target.closest('[data-delete]');
-  if(deleteBtn){
-    remove(deleteBtn.dataset.delete)
-  }
+  if(deleteBtn){remove(deleteBtn.dataset.delete)}
 });
 
 document.addEventListener('change',e=>{
-  if(e.target.classList.contains('size-option')){
-    syncSelectedSizes();
-    syncTotalQuantity()
-  }
-  if(e.target.classList.contains('size-quantity')){
-    syncTotalQuantity()
-  }
+  if(e.target.classList.contains('size-option')){syncSelectedSizes();syncTotalQuantity()}
+  if(e.target.classList.contains('size-quantity')){syncTotalQuantity()}
 });
 
 $('#productForm').addEventListener('submit',save);

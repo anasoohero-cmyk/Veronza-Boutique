@@ -1,30 +1,28 @@
 (() => {
-  const PRODUCT_URLS = {
-    '1': '?product=VZ-BAG-001',
-    '2': '?product=VZ-SHOE-002',
-    '3': '?product=VZ-SET-003'
-  };
-
   function openFromUrl() {
     const code = new URLSearchParams(window.location.search).get('product');
     if (!code) return;
-    const id = Object.keys(PRODUCT_URLS).find(key => PRODUCT_URLS[key].includes(encodeURIComponent(code)) || PRODUCT_URLS[key].includes(code));
-    if (!id) return;
-    const trigger = document.querySelector(`[data-product-view="${id}"]`);
-    if (trigger) trigger.click();
+    const trigger = document.querySelector(`[data-product-view]`);
+    if (!trigger) return;
+    const products = Array.isArray(window.products) ? window.products : [];
+    const product = products.find(p => p.code === code);
+    if (!product) return;
+    const el = document.querySelector(`[data-product-view="${product.id}"]`);
+    if (el) el.click();
   }
 
   document.addEventListener('click', (event) => {
     const trigger = event.target.closest('[data-product-view]');
     if (!trigger) return;
     const id = trigger.getAttribute('data-product-view');
-    const path = PRODUCT_URLS[id];
-    if (!path) return;
+    const products = Array.isArray(window.products) ? window.products : [];
+    const product = products.find(p => String(p.id) === id);
+    if (!product) return;
+    const path = `?product=${encodeURIComponent(product.code)}`;
     history.pushState({ product: id }, '', path);
   });
 
   window.addEventListener('popstate', openFromUrl);
-  const observer = new MutationObserver(openFromUrl);
-  observer.observe(document.documentElement, { childList: true, subtree: true });
-  window.setTimeout(openFromUrl, 400);
+  window.addEventListener('productsLoaded', openFromUrl);
+  setTimeout(openFromUrl, 800);
 })();
