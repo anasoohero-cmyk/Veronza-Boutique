@@ -16,7 +16,9 @@ module.exports=async(req,res)=>{
     const user=await uResp.json();
     if(!user?.id)return json(res,401,{ok:false,error:'Invalid session'});
     const aResp=await fetch(`${SUPABASE_URL}/rest/v1/admin_users?select=user_id&user_id=eq.${encodeURIComponent(user.id)}&limit=1`,{headers});
-    if(!aResp.ok||!(await aResp.json()).length)return json(res,403,{ok:false,error:'Admin access required'});
+    const aText=await aResp.text();
+    let aData; try{aData=aText?JSON.parse(aText):null}catch{aData=aText}
+    if(!aResp.ok||!Array.isArray(aData)||!aData.length)return json(res,403,{ok:false,error:'Admin access required',debug_status:aResp.status,debug_body:aData});
     return json(res,200,{ok:true,user:{id:user.id,email:user.email||''}});
-  }catch(_){return json(res,401,{ok:false,error:'Invalid session'})}
+  }catch(e){return json(res,401,{ok:false,error:'Invalid session',debug_message:String(e && e.message || e)})}
 };
