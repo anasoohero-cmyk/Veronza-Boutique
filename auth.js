@@ -1,9 +1,4 @@
 (() => {
-  const quantityBridge = document.createElement('script');
-  quantityBridge.src = 'product-quantity.js';
-  quantityBridge.defer = true;
-  document.head.appendChild(quantityBridge);
-
   const SUPABASE_URL = 'https://kahbxvbirsjmednkybse.supabase.co';
   const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_L1TY-QEyFsWDeDRy_saOUQ_GP8TjADm';
 
@@ -83,7 +78,7 @@
       const fd = new FormData(form), email = String(fd.get('email')||'').trim(), password = String(fd.get('password')||''), full_name = String(fd.get('full_name')||'').trim();
       try {
         if(mode==='signup') {
-          const {data,error} = await client.auth.signUp({email,password,options:{data:{full_name},emailRedirectTo:'https://veronza.vercel.app/'}});
+          const {data,error} = await client.auth.signUp({email,password,options:{data:{full_name},emailRedirectTo:window.location.origin+'/'}});
           if(error) throw error;
           if(data.session) {
             await showAccount(data.session);
