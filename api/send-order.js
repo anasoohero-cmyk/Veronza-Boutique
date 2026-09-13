@@ -1,6 +1,13 @@
 const webpush = require('web-push');
 
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization, Idempotency-Key',
+};
+
 module.exports = async (req, res) => {
+  if (req.method === 'OPTIONS') { res.writeHead(204, corsHeaders); res.end(); return; }
   if (req.method !== 'POST') return res.status(405).json({ ok: false, error: 'Method not allowed' });
   const { customer = {}, items = [], total = 0 } = req.body || {};
   const name = String(customer.name || '').trim(); const phone = String(customer.phone || '').trim(); const address = String(customer.address || '').trim();
@@ -21,7 +28,7 @@ module.exports = async (req, res) => {
     const product = (await productResp.json())[0]; if (!product) return res.status(400).json({ ok: false, error: `Invalid product: ${code}` });
     const color = rawItem.color == null ? null : String(rawItem.color).trim() || null; const size = rawItem.size == null ? null : String(rawItem.size).trim() || null;
     if (color && Array.isArray(product.colors) && product.colors.length && !product.colors.includes(color)) return res.status(400).json({ ok: false, error: `Invalid color for ${code}` });
-    if (size && ['shoe', 'set'].includes(String(product.type).toLowerCase()) && Array.isArray(product.sizes) && product.sizes.length && !product.sizes.includes(size)) return res.status(400).json({ ok: false, error: `Invalid size for ${code}` });
+    if (size && ['shoes', 'set'].includes(String(product.type).toLowerCase()) && Array.isArray(product.sizes) && product.sizes.length && !product.sizes.includes(size)) return res.status(400).json({ ok: false, error: `Invalid size for ${code}` });
     normalizedItems.push({ product_code: product.code, product_name: product.name, color, size, quantity: qty, unit_price: Number(product.price) || 0, image_url: product.img || null, type: product.type || null });
   }
   const serverTotal = normalizedItems.reduce((sum, item) => sum + item.unit_price * item.quantity, 0); if (Number(total) !== serverTotal) return res.status(400).json({ ok: false, error: 'Order total mismatch' });
@@ -36,14 +43,12 @@ module.exports = async (req, res) => {
   if (!existingOrder) return res.status(502).json({ ok: false, error: 'Order not found after reservation' });
   const finalOrderNumber = existingOrder.order_number || orderNumber;
 
-  // Create one persistent notification per admin/order. Failure here never changes checkout or WhatsApp behavior.
   const adminResp = await fetch(`${supabaseUrl}/rest/v1/admin_users?select=user_id`, { headers });
   if (adminResp.ok) {
     const admins = await adminResp.json();
     const notificationRows = admins.map(a => ({ admin_user_id: a.user_id, type: 'order', title: 'طلب جديد', body: `${finalOrderNumber} · ${name} · ${serverTotal.toLocaleString('ar-LY')} د.ل`, order_id: orderId }));
     if (notificationRows.length) await fetch(`${supabaseUrl}/rest/v1/notifications`, { method: 'POST', headers: { ...headers, Prefer: 'resolution=ignore-duplicates,return=minimal' }, body: JSON.stringify(notificationRows) }).catch(()=>{});
 
-    // Push delivery is best-effort: it can never fail the order.
     try {
       const cfgResp = await fetch(`${supabaseUrl}/rest/v1/push_config?select=vapid_public_key,vapid_private_key&id=eq.true&limit=1`, { headers });
       const cfg = cfgResp.ok ? (await cfgResp.json())[0] : null;
