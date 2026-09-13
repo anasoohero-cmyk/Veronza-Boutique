@@ -39,6 +39,7 @@
 
   document.addEventListener('touchstart', e => {
     if (refreshing || document.scrollingElement.scrollTop !== 0) return;
+    if (e.target.closest('.whatsapp')) return;
     startY = e.touches[0].clientY;
     pulling = true;
   }, { passive: true });
