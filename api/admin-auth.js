@@ -11,7 +11,7 @@ module.exports=async(req,res)=>{
   const token=auth.replace(/^Bearer\s+/i,'').trim();
   const headers={apikey:SERVICE_KEY,Authorization:`Bearer ${SERVICE_KEY}`,'Content-Type':'application/json'};
   try{
-    const uResp=await fetch(`${SUPABASE_URL}/auth/v1/user`,{headers:{apikey:process.env.SUPABASE_ANON_KEY||process.env.SUPABASE_PUBLISHABLE_KEY||SERVICE_KEY,Authorization:`Bearer ${token}`}});
+    const uResp=await fetch(`${SUPABASE_URL}/auth/v1/user`,{headers:{apikey:SERVICE_KEY,Authorization:`Bearer ${token}`}});
     if(!uResp.ok)return json(res,401,{ok:false,error:'Invalid session'});
     const user=await uResp.json();
     if(!user?.id)return json(res,401,{ok:false,error:'Invalid session'});
