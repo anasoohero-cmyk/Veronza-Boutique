@@ -1,4 +1,6 @@
+const corsHeaders={'Access-Control-Allow-Origin':'*','Access-Control-Allow-Methods':'GET, OPTIONS','Access-Control-Allow-Headers':'Content-Type,Authorization'};
 module.exports=async(req,res)=>{
+  if(req.method==='OPTIONS'){res.writeHead(204,corsHeaders);res.end();return}
   if(req.method!=='GET')return res.status(405).json({ok:false,error:'Method not allowed'});
   const supabaseUrl=process.env.SUPABASE_URL, serviceKey=process.env.SUPABASE_SERVICE_ROLE_KEY;
   const auth=req.headers.authorization||''; if(!supabaseUrl||!serviceKey||!/^Bearer\s+/i.test(auth))return res.status(401).json({ok:false,error:'Authentication required'});
