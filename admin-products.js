@@ -113,6 +113,7 @@ function imageFileToDataUrl(file){
       const result=reader.result;
       if(typeof result==='string'){resolve(result)}else{reject(new Error('نتيجة غير متوقعة'))}
     }
+    reader.readAsDataURL(file);
   })
 }
 
@@ -292,3 +293,4 @@ document.addEventListener('change',e=>{
 $('#productForm').addEventListener('submit',save);
 $('#imgButton').addEventListener('click',()=>$('#imgFile').click());
 $('#imgFile').addEventListener('change',handleImageFile);
+
