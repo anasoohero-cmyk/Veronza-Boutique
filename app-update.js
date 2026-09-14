@@ -5,6 +5,19 @@
   let checking = false;
   let reloadQueued = false;
 
+  if('serviceWorker'in navigator){
+    navigator.serviceWorker.register('/service-worker.js').then(reg=>{
+      setInterval(()=>reg.update().catch(()=>{}),CHECK_INTERVAL);
+      document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')reg.update().catch(()=>{})});
+    }).catch(()=>{});
+    let controllerChanged=false;
+    navigator.serviceWorker.addEventListener('controllerchange',()=>{
+      if(controllerChanged)return;controllerChanged=true;
+      if(document.visibilityState==='visible')window.location.reload();
+      else document.addEventListener('visibilitychange',()=>window.location.reload(),{once:true});
+    });
+  }
+
   const reloadWhenSafe = (version) => {
     if (reloadQueued) return;
     reloadQueued = true;
