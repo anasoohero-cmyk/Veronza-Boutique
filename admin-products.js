@@ -261,11 +261,11 @@ $('#loginForm').addEventListener('submit',async e=>{
 
 (async()=>{
   const {data:{session}}=await sb.auth.getSession();
-  if(!session)return;
+  if(!session){$('#loginView').classList.remove('hidden');return}
   try{
     if(await checkAdmin(session.access_token))showApp(session);
-    else await sb.auth.signOut()
-  }catch{await sb.auth.signOut()}
+    else{await sb.auth.signOut();$('#loginView').classList.remove('hidden')}
+  }catch{await sb.auth.signOut();$('#loginView').classList.remove('hidden')}
 })();
 
 $('#logoutBtn').onclick=async()=>{await sb.auth.signOut();showLogin()};
@@ -293,4 +293,3 @@ document.addEventListener('change',e=>{
 $('#productForm').addEventListener('submit',save);
 $('#imgButton').addEventListener('click',()=>$('#imgFile').click());
 $('#imgFile').addEventListener('change',handleImageFile);
-
