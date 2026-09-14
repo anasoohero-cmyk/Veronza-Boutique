@@ -1,5 +1,5 @@
 const CACHE='veronza-v4';
-const CORE_ASSETS=['/','/index.html','/styles.css','/app.js','/auth.js','/product-quantity.js','/product-links.js','/pull-to-refresh.js','/app-update.js','/notifications.js','/manifest.webmanifest','/icons/veronza-icon.svg','/icons/veronza-icon-192.png','/icons/veronza-icon-512.png','/icons/apple-touch-icon.png','/admin.html','/admin.js','/admin.css','/admin-products.html','/admin-products.js','/admin-products.css','/manifest-admin.webmanifest'];
+const CORE_ASSETS=['/','/index.html','/styles.css','/app.js','/auth.js','/product-quantity.js','/product-links.js','/pull-to-refresh.js','/app-update.js','/notifications.js','/manifest.webmanifest','/icons/veronza-icon.svg','/icons/veronza-icon-192.png','/icons/veronza-icon-512.png','/icons/apple-touch-icon.png','/admin.html','/admin.js','/admin.css','/admin-products.html','/admin-products.js','/admin-products.css','/admin-pull-refresh.js','/manifest-admin.webmanifest'];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(CORE_ASSETS).catch(()=>{})));self.skipWaiting()});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()))});
 self.addEventListener('message',e=>{if(e.data==='skipWaiting')self.skipWaiting()});
