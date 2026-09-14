@@ -2,7 +2,7 @@ const SUPABASE_URL='https://kahbxvbirsjmednkybse.supabase.co';
 const SUPABASE_KEY='sb_publishable_L1TY-QEyFsWDeDRy_saOUQ_GP8TjADm';
 const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 let products=[];
-let selectedImageDataUrls=[];
+let currentImages=[];
 const $=s=>document.querySelector(s);
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
 const typeNames={shoes:'حذاء',bags:'شنطة',set:'Set'};
@@ -61,8 +61,8 @@ function resetForm(){
   $('#isActive').value='true';
   $('#sizeOptions').innerHTML='';
   $('#sizeQuantities').innerHTML='';
-  $('#preview').innerHTML='';
-  selectedImageDataUrls=[]
+  currentImages=[];
+  renderPreview()
 }
 
 function openModal(p){
@@ -80,6 +80,7 @@ function openModal(p){
     $('#type').value=p.type||'shoes';
     $('#img').value=p.img||'';
     $('#extraImgs').value=p.extra_img||'';
+    currentImages=[p.img,...String(p.extra_img||'').split(/\n+/)].map(x=>String(x||'').trim()).filter(Boolean);
     $('#colors').value=(Array.isArray(p.colors)?p.colors:[]).join(', ');
     $('#isActive').value=p.is_active!==false?'true':'false';
     const sizes=Array.isArray(p.sizes)?p.sizes:[];
@@ -87,7 +88,7 @@ function openModal(p){
     renderSizeOptions(sizes,p.size_quantities||{});
     renderSizeQuantities(p.size_quantities||{});
     $('#modalTitle').textContent='تعديل المنتج';
-    preview()
+    renderPreview()
   }
   $('#modal').classList.remove('hidden')
 }
@@ -100,9 +101,18 @@ function csv(v){
   return String(v||'').split(',').map(x=>x.trim()).filter(Boolean)
 }
 
-function preview(){
-  const urls=selectedImageDataUrls.length?selectedImageDataUrls:[$('#img').value.trim(),...$('#extraImgs').value.split(/\n+/).map(x=>x.trim()).filter(Boolean)];
-  $('#preview').innerHTML=urls.map(url=>`<img src="${esc(url)}" alt="معاينة" style="max-width:100%;max-height:200px;border-radius:8px;margin:8px 0">`).join('')
+function syncImageFields(){
+  $('#img').value=currentImages[0]||'';
+  $('#extraImgs').value=currentImages.slice(1).join('\n');
+}
+
+function renderPreview(){
+  syncImageFields();
+  $('#preview').innerHTML=currentImages.map((url,i)=>`<div class="preview-item"><img src="${esc(url)}" alt="معاينة"><button type="button" class="preview-remove" data-remove-img="${i}" aria-label="حذف الصورة">×</button>${i===0?'<span class="preview-main">رئيسية</span>':''}</div>`).join('');
+  $('#preview').querySelectorAll('[data-remove-img]').forEach(btn=>btn.onclick=()=>{
+    currentImages.splice(Number(btn.dataset.removeImg),1);
+    renderPreview()
+  })
 }
 
 function imageFileToDataUrl(file){
@@ -123,13 +133,13 @@ async function handleImageFile(e){
   const invalid=files.find(file=>!file.type.startsWith('image/'));
   if(invalid){$('#formError').textContent='جميع الملفات يجب أن تكون صور.';return}
   try{
-    selectedImageDataUrls=await Promise.all(files.map(f=>imageFileToDataUrl(f)));
-    $('#img').value=selectedImageDataUrls[0]||'';
-    $('#extraImgs').value=selectedImageDataUrls.slice(1).join('\n');
-    preview()
+    const newUrls=await Promise.all(files.map(f=>imageFileToDataUrl(f)));
+    currentImages=[...currentImages,...newUrls];
+    renderPreview()
   }catch(error){
     $('#formError').textContent=error.message||'تعذر معالجة الصور'
   }
+  e.target.value=''
 }
 
 function renderSizeOptions(selected=[],existing={}){
