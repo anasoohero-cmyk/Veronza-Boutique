@@ -10,11 +10,11 @@ module.exports = async (req, res) => {
   if (req.method === 'OPTIONS') { res.writeHead(204, corsHeaders); res.end(); return; }
   if (req.method !== 'POST') return res.status(405).json({ ok: false, error: 'Method not allowed' });
   const { customer = {}, items = [], total = 0 } = req.body || {};
-  const name = String(customer.name || '').trim(); const phone = String(customer.phone || '').trim(); const address = String(customer.address || '').trim(); const marketingOptIn = customer.marketingOptIn === true;
+  const name = String(customer.name || '').trim(); const phone = String(customer.phone || '').trim(); const address = String(customer.address || '').trim();
   if (!name || !phone || !address || !Array.isArray(items) || items.length === 0) return res.status(400).json({ ok: false, error: 'Missing order data' });
   const supabaseUrl = process.env.SUPABASE_URL, serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY, metaToken = process.env.META_ACCESS_TOKEN, phoneNumberId = process.env.META_PHONE_NUMBER_ID, recipient = process.env.WHATSAPP_ORDER_RECIPIENT;
-  if (!supabaseUrl || !serviceKey) return res.status(500).json({ ok: false, error: 'Server configuration incomplete' });
-  const metaConfigured = !!(metaToken && phoneNumberId && recipient);
+  console.log('DEBUG WhatsApp:', { phoneNumberId, recipient, tokenLength: metaToken?.length, tokenStart: metaToken?.slice(0,15) });
+  if (!supabaseUrl || !serviceKey || !metaToken || !phoneNumberId || !recipient) return res.status(500).json({ ok: false, error: 'Server configuration incomplete' });
   const headers = { apikey: serviceKey, Authorization: `Bearer ${serviceKey}`, 'Content-Type': 'application/json' };
   const idempotencyKey = String(req.headers['idempotency-key'] || '').trim() || null;
   if (idempotencyKey && idempotencyKey.length > 200) return res.status(400).json({ ok: false, error: 'Invalid idempotency key' });
@@ -43,7 +43,6 @@ module.exports = async (req, res) => {
   const existingOrder = (await existingResp.json())[0];
   if (!existingOrder) return res.status(502).json({ ok: false, error: 'Order not found after reservation' });
   const finalOrderNumber = existingOrder.order_number || orderNumber;
-  fetch(`${supabaseUrl}/rest/v1/orders?id=eq.${encodeURIComponent(orderId)}`, { method: 'PATCH', headers: { ...headers, Prefer: 'return=minimal' }, body: JSON.stringify({ marketing_opt_in: marketingOptIn }) }).catch(() => {});
 
   const adminResp = await fetch(`${supabaseUrl}/rest/v1/admin_users?select=user_id`, { headers });
   if (adminResp.ok) {
@@ -69,14 +68,6 @@ module.exports = async (req, res) => {
   if (idempotencyKey && existingOrder.whatsapp_status === 'sent') return res.status(200).json({ ok: true, order_id: existingOrder.id, order_number: existingOrder.order_number, whatsapp_status: 'sent' });
   const messageText = [`طلب جديد ${finalOrderNumber}`, `الاسم: ${name}`, `الهاتف: ${phone}`, `العنوان: ${address}`, `الإجمالي: ${serverTotal}`, '', ...normalizedItems.map((item, index) => `${index + 1}) ${item.product_name} | ${item.product_code} | الكمية: ${item.quantity}${item.color ? ` | اللون: ${item.color}` : ''}${item.size ? ` | المقاس: ${item.size}` : ''}`)].join('\n');
   const patchOrder = async (payload) => { let lastError = null; for (let attempt = 1; attempt <= 3; attempt++) { try { const r = await fetch(`${supabaseUrl}/rest/v1/orders?id=eq.${encodeURIComponent(orderId)}`, { method: 'PATCH', headers: { ...headers, Prefer: 'return=minimal' }, body: JSON.stringify(payload) }); if (r.ok) return true; lastError = await r.text(); } catch (e) { lastError = String(e?.message || e); } if (attempt < 3) await new Promise(resolve => setTimeout(resolve, 250 * attempt)); } console.error('Failed to update order WhatsApp status', lastError); return false; };
-  if (!metaConfigured) {
-    await patchOrder({ whatsapp_status: 'skipped', whatsapp_last_error: 'META_NOT_CONFIGURED' });
-    return res.status(200).json({ ok: false, error: 'Order saved, automatic WhatsApp delivery not configured yet', order_id: orderId, order_number: finalOrderNumber, whatsapp_status: 'skipped', stock_reserved: true });
-  }
   let whatsappError = null;
   try { const waResp = await fetch(`https://graph.facebook.com/v23.0/${encodeURIComponent(phoneNumberId)}/messages`, { method: 'POST', headers: { Authorization: `Bearer ${metaToken}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ messaging_product: 'whatsapp', to: recipient, type: 'text', text: { body: messageText } }) }); if (!waResp.ok) whatsappError = (await waResp.text()).slice(0, 2000); } catch (e) { whatsappError = String(e?.message || e).slice(0, 2000); }
   if (whatsappError) { await patchOrder({ whatsapp_status: 'failed', whatsapp_last_error: whatsappError }); return res.status(502).json({ ok: false, error: 'Order was reserved, but WhatsApp delivery failed', order_id: orderId, order_number: finalOrderNumber, whatsapp_status: 'failed' }); }
-  const sent = await patchOrder({ whatsapp_status: 'sent', whatsapp_last_error: null, whatsapp_sent_at: new Date().toISOString() });
-  if (!sent) console.error('WhatsApp was sent but status could not be persisted');
-  return res.status(200).json({ ok: true, order_id: orderId, order_number: finalOrderNumber, whatsapp_status: 'sent' });
-};
