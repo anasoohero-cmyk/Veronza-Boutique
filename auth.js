@@ -46,10 +46,12 @@
 
     const modal = document.createElement('div');
     modal.className = 'auth-modal';
-    modal.innerHTML = `<div class="auth-card"><div class="auth-head"><h2>حساب Veronza</h2><button class="auth-close" type="button" aria-label="إغلاق">×</button></div><div class="auth-tabs"><button type="button" class="active" data-auth-tab="login">تسجيل الدخول</button><button type="button" data-auth-tab="signup">إنشاء حساب</button></div><form class="auth-form" data-auth-form><label>الإيميل<input type="email" name="email" autocomplete="email" placeholder="example@email.com" required></label><label>كلمة المرور<input type="password" name="password" autocomplete="current-password" placeholder="6 أحرف أو أكثر" minlength="6" required></label><label data-auth-name class="auth-hidden">الاسم الكامل<input type="text" name="full_name" autocomplete="name" placeholder="اسمك الكامل"></label><button class="auth-submit" type="submit">دخول</button><p class="auth-status" data-auth-status></p><p class="auth-note">الحساب اختياري بالكامل. تقدر تكمل الشراء كزائر بدون تسجيل. تسجيل الهاتف عبر SMS نفعّله بعد تجهيز مزود الرسائل، بدون تعطيل الشراء كزائر.</p></form><div class="auth-account auth-hidden" data-auth-account><strong data-auth-welcome></strong><div data-auth-orders></div><button class="auth-secondary" type="button" data-auth-logout>تسجيل الخروج</button></div></div>`;
+    modal.innerHTML = `<div class="auth-card"><div class="auth-head"><h2>حساب Veronza</h2><button class="auth-close" type="button" aria-label="إغلاق">×</button></div><div class="auth-tabs" data-auth-tabs><button type="button" class="active" data-auth-tab="login">تسجيل الدخول</button><button type="button" data-auth-tab="signup">إنشاء حساب</button></div><form class="auth-form" data-auth-form><label>الإيميل<input type="email" name="email" autocomplete="email" placeholder="example@email.com" required></label><label>كلمة المرور<input type="password" name="password" autocomplete="current-password" placeholder="6 أحرف أو أكثر" minlength="6" required></label><label data-auth-name class="auth-hidden">الاسم الكامل<input type="text" name="full_name" autocomplete="name" placeholder="اسمك الكامل"></label><button class="auth-submit" type="submit">دخول</button><p class="auth-status" data-auth-status></p><p class="auth-note">الحساب اختياري بالكامل. تقدر تكمل الشراء كزائر بدون تسجيل. تسجيل الهاتف عبر SMS نفعّله بعد تجهيز مزود الرسائل، بدون تعطيل الشراء كزائر.</p></form><div class="auth-track"><strong>تتبع طلب سابق</strong><p class="auth-note">عندك طلب قديم وما سجلتش دخول؟ دخل رقم هاتفك ورقم الطلب.</p><label>رقم الهاتف<input type="tel" inputmode="tel" data-track-phone placeholder="مثال: 0912345678"></label><label>رقم الطلب<input type="text" data-track-number placeholder="مثال: VZ-172..."></label><button class="auth-secondary" type="button" data-track-submit>تتبع الطلب</button><div data-track-result></div></div><div class="auth-account auth-hidden" data-auth-account><strong data-auth-welcome></strong><div data-auth-orders></div><button class="auth-secondary" type="button" data-auth-logout>تسجيل الخروج</button></div></div>`;
     document.body.appendChild(modal);
 
     const tabs = [...modal.querySelectorAll('[data-auth-tab]')];
+    const tabsBar = modal.querySelector('[data-auth-tabs]');
+    const trackSection = modal.querySelector('.auth-track');
     const form = modal.querySelector('[data-auth-form]');
     const status = modal.querySelector('[data-auth-status]');
     const account = modal.querySelector('[data-auth-account]');
@@ -59,12 +61,31 @@
 
     const setStatus = (text='') => { status.textContent = text; };
     const showAccount = async (session) => {
-      if (!session) { form.classList.remove('auth-hidden'); account.classList.add('auth-hidden'); return; }
-      form.classList.add('auth-hidden'); account.classList.remove('auth-hidden');
+      if (!session) { form.classList.remove('auth-hidden'); tabsBar.classList.remove('auth-hidden'); trackSection.classList.remove('auth-hidden'); account.classList.add('auth-hidden'); return; }
+      form.classList.add('auth-hidden'); tabsBar.classList.add('auth-hidden'); trackSection.classList.add('auth-hidden'); account.classList.remove('auth-hidden');
       const { data: profile } = await client.from('customer_profiles').select('full_name,phone').eq('id', session.user.id).maybeSingle();
       modal.querySelector('[data-auth-welcome]').textContent = `أهلاً ${profile?.full_name || session.user.email || 'بك'} 👋`;
       const { data: orders } = await client.from('orders').select('order_number,total,status,created_at').eq('user_id', session.user.id).order('created_at', { ascending:false }).limit(10);
       modal.querySelector('[data-auth-orders]').innerHTML = orders?.length ? `<strong>طلباتي السابقة</strong>${orders.map(o=>`<div class="auth-order"><strong>${o.order_number}</strong><span>${Number(o.total).toLocaleString('ar-LY')} د.ل · ${o.status}</span></div>`).join('')}` : '<p class="auth-note">ما عندكش طلبات مسجلة في الحساب حتى الآن.</p>';
+    };
+
+    const trackBtn = modal.querySelector('[data-track-submit]');
+    const trackResult = modal.querySelector('[data-track-result]');
+    trackBtn.onclick = async () => {
+      const phone = modal.querySelector('[data-track-phone]').value.trim();
+      const orderNumber = modal.querySelector('[data-track-number]').value.trim();
+      if (!phone || !orderNumber) { trackResult.textContent = 'لازم تكتب رقم الهاتف ورقم الطلب.'; return; }
+      trackResult.textContent = 'جاري البحث…';
+      trackBtn.disabled = true;
+      try {
+        const r = await fetch(`/api/track-order?phone=${encodeURIComponent(phone)}&order_number=${encodeURIComponent(orderNumber)}`);
+        const data = await r.json();
+        if (!r.ok || !data.ok) { trackResult.textContent = data.error || 'تعذر العثور على الطلب.'; return; }
+        const o = data.order;
+        const itemsHtml = (o.items || []).map(it => `<div class="auth-order"><strong>${it.product_name}</strong><span>${it.product_code} · الكمية: ${it.quantity}</span></div>`).join('');
+        trackResult.innerHTML = `<div class="auth-order"><strong>${o.order_number}</strong><span>الحالة: ${o.status} · ${Number(o.total).toLocaleString('ar-LY')} د.ل</span></div>${itemsHtml}`;
+      } catch { trackResult.textContent = 'تعذر الاتصال بالسيرفر.'; }
+      finally { trackBtn.disabled = false; }
     };
 
     tabs.forEach(tab => tab.onclick = () => { mode = tab.dataset.authTab; tabs.forEach(x => x.classList.toggle('active', x===tab)); nameField.classList.toggle('auth-hidden', mode!=='signup'); submit.textContent = mode==='signup' ? 'إنشاء الحساب' : 'دخول'; form.querySelector('input[name="password"]').autocomplete = mode==='signup' ? 'new-password' : 'current-password'; setStatus(''); });
