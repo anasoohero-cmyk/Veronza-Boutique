@@ -70,4 +70,12 @@ module.exports = async (req, res) => {
   const patchOrder = async (payload) => { let lastError = null; for (let attempt = 1; attempt <= 3; attempt++) { try { const r = await fetch(`${supabaseUrl}/rest/v1/orders?id=eq.${encodeURIComponent(orderId)}`, { method: 'PATCH', headers: { ...headers, Prefer: 'return=minimal' }, body: JSON.stringify(payload) }); if (r.ok) return true; lastError = await r.text(); } catch (e) { lastError = String(e?.message || e); } if (attempt < 3) await new Promise(resolve => setTimeout(resolve, 250 * attempt)); } console.error('Failed to update order WhatsApp status', lastError); return false; };
   let whatsappError = null;
   try { const waResp = await fetch(`https://graph.facebook.com/v23.0/${encodeURIComponent(phoneNumberId)}/messages`, { method: 'POST', headers: { Authorization: `Bearer ${metaToken}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ messaging_product: 'whatsapp', to: recipient, type: 'text', text: { body: messageText } }) }); if (!waResp.ok) whatsappError = (await waResp.text()).slice(0, 2000); } catch (e) { whatsappError = String(e?.message || e).slice(0, 2000); }
-  if (whatsappError) { await patchOrder({ whatsapp_status: 'failed', whatsapp_last_error: whatsappError }); return res.status(502).json({ ok: false, error: 'Order was reserved, but WhatsApp delivery failed', order_id: orderId, order_number: finalOrderNumber, whatsapp_status: 'failed' }); }
+
+  if (whatsappError) {
+    await patchOrder({ whatsapp_status: 'failed', whatsapp_last_error: whatsappError });
+    return res.status(502).json({ ok: false, error: 'Order was reserved, but WhatsApp delivery failed', order_id: orderId, order_number: finalOrderNumber, whatsapp_status: 'failed' });
+  }
+
+  await patchOrder({ whatsapp_status: 'sent', whatsapp_sent_at: new Date().toISOString() });
+  return res.status(200).json({ ok: true, order_id: orderId, order_number: finalOrderNumber, whatsapp_status: 'sent' });
+};
