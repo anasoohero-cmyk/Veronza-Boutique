@@ -37,15 +37,17 @@
         window.renderProducts(list);
         document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('active',b.dataset.filter===type));
       }
-      function leaveCategory(){document.body.classList.remove('category-page-mode');section?.classList.add('is-hidden');activeType='all';window.scrollTo({top:0,behavior:'smooth'})}
+      function leaveCategory(){document.body.classList.remove('category-page-mode');section?.classList.add('is-hidden');activeType='all';const url=new URL(location.href);url.searchParams.delete('cat');history.replaceState({},'',url);window.scrollTo({top:0,behavior:'smooth'})}
       function choose(type){
         if(!section)return;
         activeType=type||'all';document.body.classList.add('category-page-mode');section.classList.remove('is-hidden');if(title)title.textContent=names[activeType]||'المنتجات';
         renderCategory(activeType);
+        const url=new URL(location.href);url.searchParams.set('cat',activeType);history.replaceState({},'',url);
         requestAnimationFrame(()=>window.scrollTo({top:0,behavior:'smooth'}));
       }
       function refreshCurrentView(){if(document.body.classList.contains('category-page-mode'))renderCategory(activeType)}
       window.veronzaRefreshView=refreshCurrentView;
+      window.addEventListener('productsLoaded',()=>{const saved=new URLSearchParams(location.search).get('cat');if(saved&&names[saved])choose(saved)},{once:true});
       document.addEventListener('click',e=>{
         if(e.target.closest('[data-category-back]')){e.preventDefault();e.stopPropagation();leaveCategory();return}
         const category=e.target.closest('[data-category]');

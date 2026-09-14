@@ -1,81 +1,46 @@
 (() => {
-  let startY = 0;
-  let pulling = false;
-  let refreshing = false;
-  const threshold = 68;
-  const maxPull = 100;
+  const threshold = 70;
+  const maxPull = 110;
+  let startY = 0, pulling = false, dragging = false, refreshing = false;
 
-  const indicator = document.createElement('div');
-  indicator.setAttribute('aria-hidden', 'true');
-  indicator.innerHTML = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 3v6h-6"/></svg>';
-  Object.assign(indicator.style, {
-    position: 'fixed',
-    top: 'calc(env(safe-area-inset-top, 0px) + 10px)',
-    left: '50%',
-    width: '36px',
-    height: '36px',
-    marginLeft: '-18px',
-    borderRadius: '50%',
-    background: '#111',
-    color: '#fff',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: '99999',
-    opacity: '0',
-    transform: 'translateY(-50px) rotate(0deg)',
-    boxShadow: '0 4px 14px rgba(0,0,0,.25)',
-    willChange: 'transform, opacity'
+  const bar = document.createElement('div');
+  bar.setAttribute('aria-hidden', 'true');
+  bar.innerHTML = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 3v6h-6"/></svg><span>تحديث</span>';
+  Object.assign(bar.style, {
+    position: 'fixed', top: '0', left: '0', right: '0', height: maxPull + 'px',
+    display: 'flex', alignItems: 'flex-end', justifyContent: 'center', gap: '8px',
+    paddingBottom: '18px', paddingTop: 'env(safe-area-inset-top, 0px)',
+    color: '#111', fontWeight: '700', fontSize: '13px', fontFamily: 'Cairo, Arial, sans-serif',
+    zIndex: '9998', opacity: '0', transform: 'translateY(-20px)', pointerEvents: 'none'
   });
-  document.body.appendChild(indicator);
+  document.body.appendChild(bar);
+
+  if (!document.getElementById('veronzaSpinKeyframes')) {
+    const style = document.createElement('style');
+    style.id = 'veronzaSpinKeyframes';
+    style.textContent = '@keyframes veronzaSpin{to{transform:rotate(360deg)}}';
+    document.head.appendChild(style);
+  }
+
+  const setBarState = (progress, spinning) => {
+    bar.style.opacity = String(Math.min(progress, 1));
+    bar.style.transform = `translateY(${-20 + Math.min(progress, 1) * 20}px)`;
+    const svg = bar.querySelector('svg');
+    if (svg) svg.style.animation = spinning ? 'veronzaSpin .7s linear infinite' : 'none';
+  };
 
   const isOverlayOpen = () => !!document.querySelector(
     '.cart-drawer.open,.search-panel.open,.mobile-menu.open,.product-details-modal.open,[data-checkout-modal].open,.veronza-lightbox.open'
   );
 
-  const setTransition = (on) => {
-    indicator.style.transition = on ? 'transform .25s ease, opacity .25s ease' : 'none';
-  };
-
-  const spinKeyframes = [{ transform: 'rotate(0deg)' }, { transform: 'rotate(360deg)' }];
-  let spinAnim = null;
-  const startSpin = () => {
-    setTransition(true);
-    indicator.style.transform = 'translateY(28px) rotate(0deg)';
-    indicator.style.opacity = '1';
-    spinAnim = indicator.animate(spinKeyframes, { duration: 700, iterations: Infinity });
-  };
-  const stopSpin = () => { spinAnim?.cancel(); spinAnim = null; };
-
-  const reset = () => {
-    setTransition(true);
-    indicator.style.transform = 'translateY(-50px) rotate(0deg)';
-    indicator.style.opacity = '0';
-  };
-
-  const follow = (distance) => {
-    const pulled = Math.min(distance * 0.5, maxPull);
-    const progress = Math.min(pulled / threshold, 1);
-    setTransition(false);
-    indicator.style.transform = `translateY(${pulled - 24}px) rotate(${progress * 360}deg)`;
-    indicator.style.opacity = String(progress);
-  };
-
-  const softRefresh = async () => {
+  const doRefresh = () => {
+    if (refreshing) return;
     refreshing = true;
-    startSpin();
-    try {
-      window.productsLoadPromise = null;
-      await window.loadProductsFromSupabase?.();
-      window.veronzaRefreshView?.();
-      window.veronzaToast?.('تم تحديث المنتجات ✓');
-    } catch (_) {
-    } finally {
-      stopSpin();
-      reset();
-      refreshing = false;
-    }
+    setBarState(1, true);
+    window.location.reload();
   };
+
+  bar.addEventListener('click', () => { if (parseFloat(bar.style.opacity) > 0.5) doRefresh(); });
 
   document.addEventListener('touchstart', e => {
     if (refreshing || document.scrollingElement.scrollTop !== 0) return;
@@ -83,26 +48,55 @@
     if (isOverlayOpen()) return;
     startY = e.touches[0].clientY;
     pulling = true;
+    dragging = false;
   }, { passive: true });
 
   document.addEventListener('touchmove', e => {
     if (!pulling || refreshing) return;
-    if (document.scrollingElement.scrollTop !== 0) { pulling = false; reset(); return }
+    if (document.scrollingElement.scrollTop !== 0) { pulling = false; return }
     const distance = e.touches[0].clientY - startY;
-    if (distance <= 0) { reset(); return }
+    if (distance <= 0) {
+      if (dragging) { document.body.style.transition = 'transform .2s ease'; document.body.style.transform = ''; setBarState(0, false); bar.style.pointerEvents = 'none'; document.querySelector('.whatsapp')?.style.setProperty('opacity','1'); dragging = false }
+      return;
+    }
     if (e.cancelable) e.preventDefault();
-    follow(distance);
+    dragging = true;
+    const pulled = Math.min(distance * 0.5, maxPull);
+    document.body.style.transition = 'none';
+    document.body.style.transform = `translateY(${pulled}px)`;
+    bar.style.pointerEvents = 'auto';
+    const wa = document.querySelector('.whatsapp');
+    if (wa) wa.style.opacity = '0';
+    setBarState(pulled / threshold, false);
   }, { passive: false });
 
   document.addEventListener('touchend', () => {
-    if (!pulling || refreshing) return;
+    if (!pulling) return;
     pulling = false;
-    const reached = parseFloat(indicator.style.opacity) >= 1;
-    if (!reached) { reset(); return }
-    softRefresh();
+    if (!dragging) return;
+    const match = /translateY\(([\d.]+)px\)/.exec(document.body.style.transform || '');
+    const pulled = match ? parseFloat(match[1]) : 0;
+    if (pulled >= threshold) {
+      document.body.style.transition = 'transform .2s ease';
+      document.body.style.transform = `translateY(${maxPull}px)`;
+      doRefresh();
+    } else {
+      document.body.style.transition = 'transform .25s ease';
+      document.body.style.transform = '';
+      setBarState(0, false);
+      bar.style.pointerEvents = 'none';
+      document.querySelector('.whatsapp')?.style.setProperty('opacity','1');
+    }
+    dragging = false;
   }, { passive: true });
 
   document.addEventListener('touchcancel', () => {
-    if (pulling && !refreshing) { pulling = false; reset() }
+    if (!dragging) return;
+    document.body.style.transition = 'transform .2s ease';
+    document.body.style.transform = '';
+    setBarState(0, false);
+    bar.style.pointerEvents = 'none';
+    document.querySelector('.whatsapp')?.style.setProperty('opacity','1');
+    pulling = false; dragging = false;
   }, { passive: true });
 })();
