@@ -44,6 +44,8 @@
         renderCategory(activeType);
         requestAnimationFrame(()=>window.scrollTo({top:0,behavior:'smooth'}));
       }
+      function refreshCurrentView(){if(document.body.classList.contains('category-page-mode'))renderCategory(activeType)}
+      window.veronzaRefreshView=refreshCurrentView;
       document.addEventListener('click',e=>{
         if(e.target.closest('[data-category-back]')){e.preventDefault();e.stopPropagation();leaveCategory();return}
         const category=e.target.closest('[data-category]');
