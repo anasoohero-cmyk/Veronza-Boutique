@@ -6,6 +6,7 @@
   let reloadQueued = false;
 
   if('serviceWorker'in navigator){
+    const hadControllerAtStart=!!navigator.serviceWorker.controller;
     navigator.serviceWorker.register('/service-worker.js').then(reg=>{
       setInterval(()=>reg.update().catch(()=>{}),CHECK_INTERVAL);
       document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')reg.update().catch(()=>{})});
@@ -13,6 +14,7 @@
     let controllerChanged=false;
     navigator.serviceWorker.addEventListener('controllerchange',()=>{
       if(controllerChanged)return;controllerChanged=true;
+      if(!hadControllerAtStart)return;
       if(document.visibilityState==='visible')window.location.reload();
       else document.addEventListener('visibilitychange',()=>window.location.reload(),{once:true});
     });
