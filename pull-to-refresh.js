@@ -32,7 +32,7 @@
   };
 
   const isOverlayOpen = () => !!document.querySelector(
-    '.cart-drawer.open,.search-panel.open,.mobile-menu.open,.product-details-modal.open,[data-checkout-modal].open,.veronza-lightbox.open'
+    '.cart-drawer.open,.search-panel.open,.mobile-menu.open,.product-details-modal.open,[data-checkout-modal].open,.veronza-lightbox.open,.auth-modal.open'
   );
 
   const doRefresh = () => {
@@ -43,6 +43,14 @@
   };
 
   bar.addEventListener('click', () => { if (parseFloat(bar.style.opacity) > 0.5) doRefresh(); });
+
+  const brand = document.querySelector('.brand');
+  if (brand) {
+    brand.style.cursor = 'pointer';
+    brand.setAttribute('role', 'button');
+    brand.setAttribute('aria-label', 'تحديث الصفحة');
+    brand.addEventListener('click', () => { if (!refreshing) doRefresh(); });
+  }
 
   document.addEventListener('touchstart', e => {
     if (refreshing || document.scrollingElement.scrollTop !== 0) return;
