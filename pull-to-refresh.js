@@ -48,8 +48,11 @@
   if (brand) {
     brand.style.cursor = 'pointer';
     brand.setAttribute('role', 'button');
-    brand.setAttribute('aria-label', 'تحديث الصفحة');
-    brand.addEventListener('click', () => { if (!refreshing) doRefresh(); });
+    brand.setAttribute('aria-label', 'الذهاب إلى الأقسام');
+    brand.addEventListener('click', () => {
+      const target = document.getElementById('sections');
+      if (target) target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
   }
 
   document.addEventListener('touchstart', e => {
