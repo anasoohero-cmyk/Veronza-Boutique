@@ -1,6 +1,7 @@
 const SUPABASE_URL='https://kahbxvbirsjmednkybse.supabase.co';
 const SUPABASE_KEY='sb_publishable_L1TY-QEyFsWDeDRy_saOUQ_GP8TjADm';
 const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+window.veronzaSupabase=sb;
 let orders=[],filter='all',selected=null;
 const $=s=>document.querySelector(s);
 const statusNames={pending:'قيد المراجعة',confirmed:'تم التأكيد',preparing:'قيد التجهيز',shipped:'تم الشحن',delivered:'تم التسليم',cancelled:'ملغي',returned:'مرتجع'};
