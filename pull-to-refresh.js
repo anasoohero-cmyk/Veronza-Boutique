@@ -1,6 +1,8 @@
 (() => {
-  const threshold = 70;
-  const maxPull = 110;
+  const threshold = 100;
+  const maxPull = 130;
+  const deadzone = 24;
+  let startTime = 0;
   let startY = 0, pulling = false, dragging = false, refreshing = false;
 
   const bar = document.createElement('div');
@@ -47,6 +49,7 @@
     if (e.target.closest('.whatsapp')) return;
     if (isOverlayOpen()) return;
     startY = e.touches[0].clientY;
+    startTime = Date.now();
     pulling = true;
     dragging = false;
   }, { passive: true });
@@ -60,8 +63,12 @@
       return;
     }
     if (e.cancelable) e.preventDefault();
+    if (distance < deadzone) {
+      if (dragging) { document.body.style.transition = 'transform .2s ease'; document.body.style.transform = ''; setBarState(0, false); bar.style.pointerEvents = 'none'; document.querySelector('.whatsapp')?.style.setProperty('opacity','1'); dragging = false }
+      return;
+    }
     dragging = true;
-    const pulled = Math.min(distance * 0.5, maxPull);
+    const pulled = Math.min((distance - deadzone) * 0.4, maxPull);
     document.body.style.transition = 'none';
     document.body.style.transform = `translateY(${pulled}px)`;
     bar.style.pointerEvents = 'auto';
@@ -76,7 +83,8 @@
     if (!dragging) return;
     const match = /translateY\(([\d.]+)px\)/.exec(document.body.style.transform || '');
     const pulled = match ? parseFloat(match[1]) : 0;
-    if (pulled >= threshold) {
+    const heldLongEnough = (Date.now() - startTime) >= 150;
+    if (pulled >= threshold && heldLongEnough) {
       document.body.style.transition = 'transform .2s ease';
       document.body.style.transform = `translateY(${maxPull}px)`;
       doRefresh();
