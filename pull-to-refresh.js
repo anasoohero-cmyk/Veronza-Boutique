@@ -1,7 +1,7 @@
 (() => {
   const threshold = 100;
   const maxPull = 130;
-  const deadzone = 24;
+  const deadzone = 6;
   let startTime = 0;
   let startY = 0, pulling = false, dragging = false, refreshing = false;
 
@@ -55,6 +55,15 @@
     });
   }
 
+  const resetVisual = (duration) => {
+    document.body.style.transition = `transform ${duration}s ease`;
+    document.body.style.transform = '';
+    document.body.style.willChange = '';
+    setBarState(0, false);
+    bar.style.pointerEvents = 'none';
+    document.querySelector('.whatsapp')?.style.setProperty('opacity', '1');
+  };
+
   document.addEventListener('touchstart', e => {
     if (refreshing || document.scrollingElement.scrollTop !== 0) return;
     if (e.target.closest('.whatsapp')) return;
@@ -70,16 +79,13 @@
     if (document.scrollingElement.scrollTop !== 0) { pulling = false; return }
     const distance = e.touches[0].clientY - startY;
     if (distance <= 0) {
-      if (dragging) { document.body.style.transition = 'transform .2s ease'; document.body.style.transform = ''; setBarState(0, false); bar.style.pointerEvents = 'none'; document.querySelector('.whatsapp')?.style.setProperty('opacity','1'); dragging = false }
+      if (dragging) { resetVisual(0.2); dragging = false }
       return;
     }
     if (e.cancelable) e.preventDefault();
-    if (distance < deadzone) {
-      if (dragging) { document.body.style.transition = 'transform .2s ease'; document.body.style.transform = ''; setBarState(0, false); bar.style.pointerEvents = 'none'; document.querySelector('.whatsapp')?.style.setProperty('opacity','1'); dragging = false }
-      return;
-    }
-    dragging = true;
-    const pulled = Math.min((distance - deadzone) * 0.4, maxPull);
+    if (distance < deadzone) return;
+    if (!dragging) { dragging = true; document.body.style.willChange = 'transform' }
+    const pulled = Math.min((distance - deadzone) * 0.55, maxPull);
     document.body.style.transition = 'none';
     document.body.style.transform = `translateY(${pulled}px)`;
     bar.style.pointerEvents = 'auto';
@@ -100,22 +106,14 @@
       document.body.style.transform = `translateY(${maxPull}px)`;
       doRefresh();
     } else {
-      document.body.style.transition = 'transform .25s ease';
-      document.body.style.transform = '';
-      setBarState(0, false);
-      bar.style.pointerEvents = 'none';
-      document.querySelector('.whatsapp')?.style.setProperty('opacity','1');
+      resetVisual(0.25);
     }
     dragging = false;
   }, { passive: true });
 
   document.addEventListener('touchcancel', () => {
     if (!dragging) return;
-    document.body.style.transition = 'transform .2s ease';
-    document.body.style.transform = '';
-    setBarState(0, false);
-    bar.style.pointerEvents = 'none';
-    document.querySelector('.whatsapp')?.style.setProperty('opacity','1');
+    resetVisual(0.2);
     pulling = false; dragging = false;
   }, { passive: true });
 })();
