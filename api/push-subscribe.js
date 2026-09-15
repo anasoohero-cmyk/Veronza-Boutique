@@ -16,6 +16,6 @@ module.exports = async (req,res)=>{
     return res.status(200).json({ok:true});
   }
   const sub=req.body; if(!sub?.endpoint||!sub?.keys?.p256dh||!sub?.keys?.auth)return res.status(400).json({ok:false,error:'Invalid subscription'});
-  const r=await fetch(`${supabaseUrl}/rest/v1/push_subscriptions`,{method:'POST',headers:{...headers,Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify({admin_user_id:user.id,endpoint:sub.endpoint,subscription:sub,updated_at:new Date().toISOString()})});
+  const r=await fetch(`${supabaseUrl}/rest/v1/push_subscriptions?on_conflict=endpoint`,{method:'POST',headers:{...headers,Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify({admin_user_id:user.id,endpoint:sub.endpoint,subscription:sub,updated_at:new Date().toISOString()})});
   if(!r.ok)return res.status(500).json({ok:false,error:'Could not save subscription'}); return res.status(200).json({ok:true});
 };
