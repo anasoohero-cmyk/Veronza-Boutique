@@ -29,7 +29,7 @@ module.exports = async (req, res) => {
     const color = rawItem.color == null ? null : String(rawItem.color).trim() || null; const size = rawItem.size == null ? null : String(rawItem.size).trim() || null;
     if (color && Array.isArray(product.colors) && product.colors.length && !product.colors.includes(color)) return res.status(400).json({ ok: false, error: `Invalid color for ${code}` });
     if (size && ['shoes', 'set'].includes(String(product.type).toLowerCase()) && Array.isArray(product.sizes) && product.sizes.length && !product.sizes.includes(size)) return res.status(400).json({ ok: false, error: `Invalid size for ${code}` });
-    normalizedItems.push({ product_code: product.code, product_name: product.name, color, size, quantity: qty, unit_price: Number(product.price) || 0, image_url: product.img || null, type: product.type || null });
+    normalizedItems.push({ product_id: product.id, product_code: product.code, product_name: product.name, color, size, quantity: qty, unit_price: Number(product.price) || 0, image_url: product.img || null, type: product.type || null });
   }
   const serverTotal = normalizedItems.reduce((sum, item) => sum + item.unit_price * item.quantity, 0); if (Number(total) !== serverTotal) return res.status(400).json({ ok: false, error: 'Order total mismatch' });
   if (!normalizedItems.find(item => item.image_url)?.image_url) return res.status(400).json({ ok: false, error: 'Product image missing' });
@@ -67,6 +67,34 @@ module.exports = async (req, res) => {
   if (idempotencyKey && existingOrder.whatsapp_status === 'sent') return res.status(200).json({ ok: true, order_id: existingOrder.id, order_number: existingOrder.order_number, whatsapp_status: 'sent' });
   const patchOrder = async (payload) => { let lastError = null; for (let attempt = 1; attempt <= 3; attempt++) { try { const r = await fetch(`${supabaseUrl}/rest/v1/orders?id=eq.${encodeURIComponent(orderId)}`, { method: 'PATCH', headers: { ...headers, Prefer: 'return=minimal' }, body: JSON.stringify(payload) }); if (r.ok) return true; lastError = await r.text(); } catch (e) { lastError = String(e?.message || e); } if (attempt < 3) await new Promise(resolve => setTimeout(resolve, 250 * attempt)); } console.error('Failed to update order WhatsApp status', lastError); return false; };
   const normalizeLibyanPhone = (raw) => { let p = String(raw || '').replace(/[^\d+]/g, ''); if (p.startsWith('+')) p = p.slice(1); if (p.startsWith('00')) p = p.slice(2); if (p.startsWith('0')) p = '218' + p.slice(1); if (!p.startsWith('218') && p.length === 9) p = '218' + p; return p; };
+  const siteUrl = process.env.SITE_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'https://veronza.vercel.app');
+  const sendWhatsAppMessage = async (payload) => { const r = await fetch(`https://graph.facebook.com/v23.0/${encodeURIComponent(phoneNumberId)}/messages`, { method: 'POST', headers: { Authorization: `Bearer ${metaToken}`, 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }); if (!r.ok) console.error('WhatsApp free-form message failed:', (await r.text()).slice(0, 500)); return r.ok; };
+  const sendAdminFullDetails = async () => {
+    try {
+      const summaryLines = [
+        `📦 طلب جديد: ${finalOrderNumber}`,
+        `👤 الزبون: ${name}`,
+        `📞 الهاتف: ${phone}`,
+        `📍 العنوان: ${address}`,
+        `💰 الإجمالي: ${serverTotal.toLocaleString('ar-LY')} د.ل`,
+      ].join('\n');
+      await sendWhatsAppMessage({ messaging_product: 'whatsapp', to: recipient, type: 'text', text: { body: summaryLines } });
+      for (const item of normalizedItems) {
+        const variant = [item.color, item.size].filter(Boolean).join(' / ') || 'موحد';
+        const productLink = item.product_id ? `${siteUrl}/?p=${item.product_id}` : '';
+        const caption = [
+          `🛍 ${item.product_name}`,
+          `الكود: ${item.product_code}`,
+          `اللون/المقاس: ${variant}`,
+          `الكمية: ${item.quantity}`,
+          `السعر: ${item.unit_price.toLocaleString('ar-LY')} د.ل`,
+          productLink ? `الرابط: ${productLink}` : null,
+        ].filter(Boolean).join('\n');
+        if (item.image_url) await sendWhatsAppMessage({ messaging_product: 'whatsapp', to: recipient, type: 'image', image: { link: item.image_url, caption } });
+        else await sendWhatsAppMessage({ messaging_product: 'whatsapp', to: recipient, type: 'text', text: { body: caption } });
+      }
+    } catch (e) { console.error('Admin full-details WhatsApp error:', e?.message || e); }
+  };
   const sendCustomerConfirmation = async () => {
     try {
       const to = normalizeLibyanPhone(phone);
@@ -110,6 +138,12 @@ module.exports = async (req, res) => {
               { type: 'text', text: String(serverTotal) },
             ],
           },
+          {
+            type: 'button',
+            sub_type: 'url',
+            index: '0',
+            parameters: [{ type: 'text', text: String(orderId) }],
+          },
         ],
       },
     };
@@ -119,6 +153,7 @@ module.exports = async (req, res) => {
   if (whatsappError) { await patchOrder({ whatsapp_status: 'failed', whatsapp_last_error: whatsappError }); return res.status(502).json({ ok: false, error: 'Order was reserved, but WhatsApp delivery failed', order_id: orderId, order_number: finalOrderNumber, whatsapp_status: 'failed' }); }
   const sent = await patchOrder({ whatsapp_status: 'sent', whatsapp_last_error: null, whatsapp_sent_at: new Date().toISOString() });
   if (!sent) console.error('WhatsApp was sent but status could not be persisted');
+  await sendAdminFullDetails();
   await sendCustomerConfirmation();
   return res.status(200).json({ ok: true, order_id: orderId, order_number: finalOrderNumber, whatsapp_status: 'sent' });
 };
