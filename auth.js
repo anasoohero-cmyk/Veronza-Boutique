@@ -1,6 +1,7 @@
 (() => {
   const SUPABASE_URL = 'https://kahbxvbirsjmednkybse.supabase.co';
   const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_L1TY-QEyFsWDeDRy_saOUQ_GP8TjADm';
+  const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[c]));
 
   const loadClient = () => new Promise((resolve, reject) => {
     if (window.supabase?.createClient) return resolve(window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY));
@@ -64,7 +65,7 @@
     const renderAddresses = async () => {
       const box = modal.querySelector('[data-address-list]');
       const { data: addresses } = await client.from('customer_addresses').select('id,label,address').eq('user_id', currentUserId).order('created_at', { ascending:false });
-      box.innerHTML = addresses?.length ? addresses.map(a => `<div class="auth-address"><div><strong>${a.label}</strong><span>${a.address}</span></div><button type="button" class="auth-address-remove" data-address-remove="${a.id}">حذف</button></div>`).join('') : '<p class="auth-note">ما عندكش عناوين محفوظة بعد.</p>';
+      box.innerHTML = addresses?.length ? addresses.map(a => `<div class="auth-address"><div><strong>${esc(a.label)}</strong><span>${esc(a.address)}</span></div><button type="button" class="auth-address-remove" data-address-remove="${a.id}">حذف</button></div>`).join('') : '<p class="auth-note">ما عندكش عناوين محفوظة بعد.</p>';
       box.querySelectorAll('[data-address-remove]').forEach(btn => btn.onclick = async () => {
         await client.from('customer_addresses').delete().eq('id', btn.dataset.addressRemove).eq('user_id', currentUserId);
         renderAddresses();

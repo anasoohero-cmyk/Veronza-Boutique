@@ -1,13 +1,19 @@
 const webpush = require('web-push');
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization, Idempotency-Key',
-};
+function allowedOrigin(req) { const o = req.headers.origin; if (!o) return ''; try { return new URL(o).host === req.headers.host ? o : ''; } catch { return ''; } }
+function corsHeaders(req) {
+  const h = {
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, Idempotency-Key',
+    Vary: 'Origin',
+  };
+  const origin = allowedOrigin(req);
+  if (origin) h['Access-Control-Allow-Origin'] = origin;
+  return h;
+}
 
 module.exports = async (req, res) => {
-  if (req.method === 'OPTIONS') { res.writeHead(204, corsHeaders); res.end(); return; }
+  if (req.method === 'OPTIONS') { res.writeHead(204, corsHeaders(req)); res.end(); return; }
   if (req.method !== 'POST') return res.status(405).json({ ok: false, error: 'Method not allowed' });
   const { customer = {}, items = [], total = 0 } = req.body || {};
   const name = String(customer.name || '').trim(); const phone = String(customer.phone || '').trim(); const address = String(customer.address || '').trim();
