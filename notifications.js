@@ -15,7 +15,8 @@
         sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:base64ToBytes(cfg.publicKey)});
       }
       const r=await fetch('/api/push-subscribe',{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${session.access_token}`},body:JSON.stringify(sub.toJSON())});
-      if(verbose&&r.ok)alert('تم تفعيل إشعارات الهاتف بنجاح ✓');
+      const alreadyConfirmed=localStorage.getItem('veronza-push-confirmed')==='1';
+      if(verbose&&r.ok&&!alreadyConfirmed){alert('تم تفعيل إشعارات الهاتف بنجاح ✓');localStorage.setItem('veronza-push-confirmed','1')}
       if(verbose&&!r.ok)alert('تعذر حفظ إعداد الإشعارات بالسيرفر.');
     }catch(e){console.warn('Veronza push setup:',e?.message||e);if(verbose)alert('صار خطأ غير متوقع أثناء تفعيل الإشعارات: '+(e?.message||e))}
   };
