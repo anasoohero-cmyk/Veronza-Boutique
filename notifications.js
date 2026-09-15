@@ -1,21 +1,23 @@
 (()=>{
   const wait=()=>window.veronzaSupabase?init(window.veronzaSupabase):setTimeout(wait,300);
   const base64ToBytes=b64=>{const pad='='.repeat((4-b64.length%4)%4),raw=atob((b64+pad).replace(/-/g,'+').replace(/_/g,'/'));return Uint8Array.from(raw,c=>c.charCodeAt(0))};
-  const ensurePush=async(client,session)=>{
+  const ensurePush=async(client,session,verbose)=>{
     try{
-      if(!('Notification'in window)||!('serviceWorker'in navigator)||!('PushManager'in window))return;
-      if(Notification.permission==='denied')return;
-      if(Notification.permission==='default'){const perm=await Notification.requestPermission();if(perm!=='granted')return}
+      if(!('Notification'in window)||!('serviceWorker'in navigator)||!('PushManager'in window)){if(verbose)alert('الإشعارات غير مدعومة على هذا المتصفح أو الجهاز.');return}
+      if(Notification.permission==='denied'){if(verbose)alert('الإشعارات مرفوضة من إعدادات جهازك.\n\nلتفعيلها يدويًا على آيفون: افتح إعدادات الجهاز ← دوّر على اسم التطبيق (Veronza) ← الإشعارات ← فعّل "السماح بالإشعارات".');return}
+      if(Notification.permission==='default'){const perm=await Notification.requestPermission();if(perm!=='granted'){if(verbose)alert('ما تم منح إذن الإشعارات.');return}}
       if(Notification.permission!=='granted')return;
       const reg=await navigator.serviceWorker.ready;
       let sub=await reg.pushManager.getSubscription();
       if(!sub){
         const cfg=await fetch('/api/push-config',{headers:{Authorization:`Bearer ${session.access_token}`}}).then(r=>r.json()).catch(()=>null);
-        if(!cfg?.publicKey)return;
+        if(!cfg?.publicKey){if(verbose)alert('تعذر تجهيز إعدادات الإشعارات من السيرفر.');return}
         sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:base64ToBytes(cfg.publicKey)});
       }
-      await fetch('/api/push-subscribe',{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${session.access_token}`},body:JSON.stringify(sub.toJSON())});
-    }catch(e){console.warn('Veronza push setup:',e?.message||e)}
+      const r=await fetch('/api/push-subscribe',{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${session.access_token}`},body:JSON.stringify(sub.toJSON())});
+      if(verbose&&r.ok)alert('تم تفعيل إشعارات الهاتف بنجاح ✓');
+      if(verbose&&!r.ok)alert('تعذر حفظ إعداد الإشعارات بالسيرفر.');
+    }catch(e){console.warn('Veronza push setup:',e?.message||e);if(verbose)alert('صار خطأ غير متوقع أثناء تفعيل الإشعارات: '+(e?.message||e))}
   };
   const init=async(client)=>{
     const {data:{session}}=await client.auth.getSession(); if(!session)return;
@@ -28,8 +30,8 @@
     const fmt=d=>new Date(d).toLocaleString('ar-LY',{dateStyle:'medium',timeStyle:'short'});
     const render=rows=>{badge.hidden=!rows.some(x=>!x.read_at);const unread=rows.filter(x=>!x.read_at).length;badge.textContent=unread>99?'99+':unread;list.innerHTML=rows.length?rows.map(x=>`<div class="vz-item ${x.read_at?'':'unread'}" data-id="${x.id}"><strong>${escapeHtml(x.title)}</strong><span>${escapeHtml(x.body)}</span><small>${fmt(x.created_at)}</small></div>`).join(''):'<div class="vz-empty">ما فيش إشعارات حتى الآن.</div>';list.querySelectorAll('[data-id]').forEach(el=>el.onclick=async()=>{await client.from('notifications').update({read_at:new Date().toISOString()}).eq('id',el.dataset.id).eq('admin_user_id',session.user.id);load()})};
     const escapeHtml=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
-    const load=async()=>{const {data}=await client.from('notifications').select('id,title,body,read_at,created_at,order_id').eq('admin_user_id',session.user.id).order('created_at',{ascending:false}).limit(100);render(data||[])}; const open=()=>{panel.classList.add('open');shade.classList.add('open');document.body.style.overflow='hidden';load();ensurePush(client,session)}; const close=()=>{panel.classList.remove('open');shade.classList.remove('open');document.body.style.overflow=''}; btn.onclick=open; shade.onclick=close;panel.querySelector('[data-nclose]').onclick=close;
-    window.veronzaEnsurePush=()=>ensurePush(client,session);
+    const load=async()=>{const {data}=await client.from('notifications').select('id,title,body,read_at,created_at,order_id').eq('admin_user_id',session.user.id).order('created_at',{ascending:false}).limit(100);render(data||[])}; const open=()=>{panel.classList.add('open');shade.classList.add('open');document.body.style.overflow='hidden';load();ensurePush(client,session,true)}; const close=()=>{panel.classList.remove('open');shade.classList.remove('open');document.body.style.overflow=''}; btn.onclick=open; shade.onclick=close;panel.querySelector('[data-nclose]').onclick=close;
+    window.veronzaEnsurePush=()=>ensurePush(client,session,true);
     client.channel('veronza-notifications').on('postgres_changes',{event:'INSERT',schema:'public',table:'notifications',filter:`admin_user_id=eq.${session.user.id}`},payload=>{load();try{new Audio('data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABAAZGF0YQAAAAA=').play()}catch(_){}}).subscribe();
     load();
     ensurePush(client,session);
