@@ -59,7 +59,7 @@
     const setStatus = (text='') => { status.textContent = text; };
     let currentUserId = null;
 
-    const statusLabel = s => ({pending:'قيد المراجعة',confirmed:'تم التأكيد',preparing:'قيد التجهيز',shipped:'تم الشحن',delivered:'تم التسليم',cancelled:'ملغي',returned:'مرتجع'}[s] || s || '—');
+    const statusLabel = s => ({pending:'قيد المراجعة',confirmed:'تم التأكيد',preparing:'قيد التجهيز',shipped:'جاري التوصيل',delivered:'تم التسليم',cancelled:'ملغي',returned:'مرتجع'}[s] || s || '—');
 
     const renderAddresses = async () => {
       const box = modal.querySelector('[data-address-list]');
