@@ -56,16 +56,15 @@
 
   <div id="orderModal" class="modal hidden">
     <div class="modal-card">
-      <button id="closeModal" class="close">×</button>
-      <div id="orderDetails"></div>
+      <div class="sheet-head"><span class="sheet-drag"></span><h2>تفاصيل الطلب</h2><button id="closeModal" class="close">×</button></div>
+      <div class="sheet-body"><div id="orderDetails"></div></div>
     </div>
   </div>
 
   <div id="statusModal" class="modal hidden">
     <div class="modal-card">
-      <button id="closeStatusModal" class="close">×</button>
-      <div class="detail-title"><span class="eyebrow">VERONZA ORDERS</span><h2 id="statusModalTitle"></h2></div>
-      <div id="statusOrders" class="orders"></div>
+      <div class="sheet-head"><span class="sheet-drag"></span><h2 id="statusModalTitle"></h2><button id="closeStatusModal" class="close">×</button></div>
+      <div class="sheet-body"><div id="statusOrders" class="orders"></div></div>
     </div>
   </div>
 
