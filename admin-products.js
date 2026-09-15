@@ -1,6 +1,7 @@
 const SUPABASE_URL='https://kahbxvbirsjmednkybse.supabase.co';
 const SUPABASE_KEY='sb_publishable_L1TY-QEyFsWDeDRy_saOUQ_GP8TjADm';
 const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+window.veronzaSupabase=sb;
 let products=[];
 let currentImages=[];
 const $=s=>document.querySelector(s);
