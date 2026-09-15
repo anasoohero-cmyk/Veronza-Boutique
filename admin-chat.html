@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#111111">
+  <title>VERONZA ADMIN — الشات</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&family=Playfair+Display:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="admin.css">
+  <link rel="stylesheet" href="admin-chat.css">
+</head>
+<body>
+  <div id="loginView" class="screen hidden">
+    <div class="login-card">
+      <div class="logo">VERONZA<small>ADMIN · CHAT</small></div>
+      <h1>دخول لوحة الشات</h1>
+      <p>هذه الصفحة مخصصة لحساب الأدمن المسجل في Veronza.</p>
+      <form id="loginForm">
+        <label>البريد الإلكتروني<input id="email" type="email" autocomplete="username" required></label>
+        <label>كلمة المرور<input id="password" type="password" autocomplete="current-password" required></label>
+        <button class="primary" type="submit">دخول</button>
+        <div id="loginError" class="error" role="alert"></div>
+      </form>
+    </div>
+  </div>
+
+  <div id="appView" class="app hidden">
+    <header class="topbar">
+      <div><span class="eyebrow">VERONZA BOUTIQUE</span><h1>الشات</h1></div>
+      <div class="top-actions"><span id="adminEmail"></span><a href="/admin.html">الطلبات</a><a href="/admin-products.html">المنتجات</a><button id="refreshBtn">تحديث</button><button id="logoutBtn" class="ghost">خروج</button></div>
+    </header>
+    <main class="chat-main">
+      <section class="chat-list-card">
+        <div class="table-head"><h2>المحادثات</h2><span id="lastUpdated"></span></div>
+        <div id="conversationList" class="conversation-list"></div>
+      </section>
+      <section class="chat-thread-card" id="threadCard">
+        <div class="chat-thread-empty" id="threadEmpty">اختار محادثة من القائمة لتشوف الرسائل.</div>
+        <div class="chat-thread" id="threadView" hidden>
+          <div class="chat-thread-head">
+            <button id="backToList" class="ghost chat-back">→ القائمة</button>
+            <div class="chat-thread-title"><strong id="threadName"></strong><small id="threadPhone"></small></div>
+            <button id="closeConversationBtn" class="ghost">إنهاء المحادثة</button>
+          </div>
+          <div class="chat-messages" id="chatMessages"></div>
+          <form id="replyForm" class="chat-reply">
+            <input id="replyInput" type="text" placeholder="اكتب ردك هنا..." autocomplete="off" required>
+            <button type="submit" class="primary">إرسال</button>
+          </form>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div id="toast" class="toast"></div>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="admin-chat.js"></script>
+  <script src="notifications.js"></script>
+</body>
+</html>
