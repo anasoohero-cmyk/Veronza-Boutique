@@ -66,6 +66,32 @@ module.exports = async (req, res) => {
 
   if (idempotencyKey && existingOrder.whatsapp_status === 'sent') return res.status(200).json({ ok: true, order_id: existingOrder.id, order_number: existingOrder.order_number, whatsapp_status: 'sent' });
   const patchOrder = async (payload) => { let lastError = null; for (let attempt = 1; attempt <= 3; attempt++) { try { const r = await fetch(`${supabaseUrl}/rest/v1/orders?id=eq.${encodeURIComponent(orderId)}`, { method: 'PATCH', headers: { ...headers, Prefer: 'return=minimal' }, body: JSON.stringify(payload) }); if (r.ok) return true; lastError = await r.text(); } catch (e) { lastError = String(e?.message || e); } if (attempt < 3) await new Promise(resolve => setTimeout(resolve, 250 * attempt)); } console.error('Failed to update order WhatsApp status', lastError); return false; };
+  const normalizeLibyanPhone = (raw) => { let p = String(raw || '').replace(/[^\d+]/g, ''); if (p.startsWith('+')) p = p.slice(1); if (p.startsWith('00')) p = p.slice(2); if (p.startsWith('0')) p = '218' + p.slice(1); if (!p.startsWith('218') && p.length === 9) p = '218' + p; return p; };
+  const sendCustomerConfirmation = async () => {
+    try {
+      const to = normalizeLibyanPhone(phone);
+      if (!to) return;
+      const heroItem = normalizedItems[0] || {};
+      const variant = [heroItem.color, heroItem.size].filter(Boolean).join(' / ') || 'موحد';
+      const heroImage = heroItem.image_url || normalizedItems.find(it => it.image_url)?.image_url;
+      const components = [];
+      if (heroImage) components.push({ type: 'header', parameters: [{ type: 'image', image: { link: heroImage } }] });
+      components.push({
+        type: 'body',
+        parameters: [
+          { type: 'text', text: name },
+          { type: 'text', text: finalOrderNumber },
+          { type: 'text', text: heroItem.product_name || 'منتجك' },
+          { type: 'text', text: variant },
+          { type: 'text', text: String(heroItem.unit_price ?? '') },
+          { type: 'text', text: String(serverTotal) },
+        ],
+      });
+      const payload = { messaging_product: 'whatsapp', to, type: 'template', template: { name: 'veronza_order_confirmed', language: { code: 'ar' }, components } };
+      const r = await fetch(`https://graph.facebook.com/v23.0/${encodeURIComponent(phoneNumberId)}/messages`, { method: 'POST', headers: { Authorization: `Bearer ${metaToken}`, 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+      if (!r.ok) console.error('Customer confirmation WhatsApp failed:', (await r.text()).slice(0, 500));
+    } catch (e) { console.error('Customer confirmation WhatsApp error:', e?.message || e); }
+  };
   let whatsappError = null;
   try {
     const templatePayload = {
@@ -93,5 +119,6 @@ module.exports = async (req, res) => {
   if (whatsappError) { await patchOrder({ whatsapp_status: 'failed', whatsapp_last_error: whatsappError }); return res.status(502).json({ ok: false, error: 'Order was reserved, but WhatsApp delivery failed', order_id: orderId, order_number: finalOrderNumber, whatsapp_status: 'failed' }); }
   const sent = await patchOrder({ whatsapp_status: 'sent', whatsapp_last_error: null, whatsapp_sent_at: new Date().toISOString() });
   if (!sent) console.error('WhatsApp was sent but status could not be persisted');
+  await sendCustomerConfirmation();
   return res.status(200).json({ ok: true, order_id: orderId, order_number: finalOrderNumber, whatsapp_status: 'sent' });
 };
