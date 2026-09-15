@@ -1,5 +1,5 @@
-const CACHE='veronza-v5';
-const CORE_ASSETS=['/','/index.html','/styles.css','/app.js','/auth.js','/product-quantity.js','/product-links.js','/pull-to-refresh.js','/app-update.js','/notifications.js','/manifest.webmanifest','/icons/veronza-icon.svg','/icons/veronza-icon-192.png','/icons/veronza-icon-512.png','/icons/apple-touch-icon.png','/admin.html','/admin.js','/admin.css','/admin-products.html','/admin-products.js','/admin-products.css','/admin-pull-refresh.js','/manifest-admin.webmanifest'];
+const CACHE='veronza-v7';
+const CORE_ASSETS=['/','/index.html','/styles.css','/app.js','/auth.js','/product-quantity.js','/product-links.js','/pull-to-refresh.js','/app-update.js','/notifications.js','/chat-widget.js','/manifest.webmanifest','/icons/veronza-icon.svg','/icons/veronza-icon-192.png','/icons/veronza-icon-512.png','/icons/apple-touch-icon.png','/admin.html','/admin.js','/admin.css','/admin-products.html','/admin-products.js','/admin-products.css','/admin-pull-refresh.js','/admin-chat.html','/admin-chat.js','/admin-chat.css','/manifest-admin.webmanifest'];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(CORE_ASSETS).catch(()=>{})));self.skipWaiting()});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()))});
 self.addEventListener('message',e=>{if(e.data==='skipWaiting')self.skipWaiting()});
@@ -11,10 +11,13 @@ self.addEventListener('fetch',e=>{
   const isAppShell=e.request.mode==='navigate'||CORE_ASSETS.includes(url.pathname);
   if(isAppShell){
     e.respondWith(
-      fetch(e.request,{cache:'no-store'}).then(response=>{
-        if(response&&response.status===200){const clone=response.clone();caches.open(CACHE).then(c=>c.put(e.request,clone)).catch(()=>{})}
-        return response;
-      }).catch(()=>caches.match(e.request).then(cached=>cached||caches.match('/index.html')))
+      caches.match(e.request).then(cached=>{
+        const network=fetch(e.request).then(response=>{
+          if(response&&response.status===200){const clone=response.clone();caches.open(CACHE).then(c=>c.put(e.request,clone)).catch(()=>{})}
+          return response;
+        }).catch(()=>cached||caches.match('/index.html'));
+        return cached||network;
+      })
     );
     return;
   }
