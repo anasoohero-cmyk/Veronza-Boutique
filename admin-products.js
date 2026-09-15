@@ -127,19 +127,88 @@ function imageFileToDataUrl(file){
   })
 }
 
+async function uploadImageFile(file){
+  const ext=(file.type.split('/')[1]||'jpg').replace('jpeg','jpg');
+  const path=`img-${Date.now()}-${Math.random().toString(36).slice(2,8)}.${ext}`;
+  const {error}=await sb.storage.from('product-images').upload(path,file,{upsert:true,contentType:file.type||'image/jpeg'});
+  if(error)throw new Error('تعذر رفع الصورة: '+error.message);
+  const {data}=sb.storage.from('product-images').getPublicUrl(path);
+  return data.publicUrl
+}
+
 async function handleImageFile(e){
   const files=Array.from(e.target.files||[]);
   if(!files.length)return;
   const invalid=files.find(file=>!file.type.startsWith('image/'));
   if(invalid){$('#formError').textContent='جميع الملفات يجب أن تكون صور.';return}
   try{
-    const newUrls=await Promise.all(files.map(f=>imageFileToDataUrl(f)));
+    const newUrls=await Promise.all(files.map(f=>uploadImageFile(f)));
     currentImages=[...currentImages,...newUrls];
     renderPreview()
   }catch(error){
     $('#formError').textContent=error.message||'تعذر معالجة الصور'
   }
   e.target.value=''
+}
+
+function base64ToBlob(dataUrl){
+  const match=/^data:([^;]+);base64,(.+)$/.exec(dataUrl);
+  if(!match)return null;
+  const mime=match[1];
+  const binary=atob(match[2]);
+  const bytes=new Uint8Array(binary.length);
+  for(let i=0;i<binary.length;i++)bytes[i]=binary.charCodeAt(i);
+  return {blob:new Blob([bytes],{type:mime}),mime}
+}
+
+async function uploadBase64Image(dataUrl,label){
+  const parsed=base64ToBlob(dataUrl);
+  if(!parsed)return dataUrl;
+  const ext=(parsed.mime.split('/')[1]||'jpg').replace('jpeg','jpg');
+  const path=`migrated-${label}-${Date.now()}-${Math.random().toString(36).slice(2,6)}.${ext}`;
+  const {error}=await sb.storage.from('product-images').upload(path,parsed.blob,{upsert:true,contentType:parsed.mime});
+  if(error)throw new Error(error.message);
+  const {data}=sb.storage.from('product-images').getPublicUrl(path);
+  return data.publicUrl
+}
+
+async function migrateOldImages(){
+  const button=$('#migrateImagesBtn');
+  const targets=products.filter(p=>(p.img&&p.img.startsWith('data:'))||(p.extra_img&&p.extra_img.includes('data:')));
+  if(!targets.length){toast('كل الصور محدثة، ما فيه شي يحتاج ترحيل ✓');return}
+  if(!confirm(`فيه ${targets.length} منتج يحتوي صور قديمة. تحويلها لصور حقيقية يحسّن سرعة الموقع بشكل كبير. نبدأ؟`))return;
+  button.disabled=true;
+  let done=0,failed=0;
+  for(const p of targets){
+    try{
+      const update={};
+      if(p.img&&p.img.startsWith('data:')){
+        update.img=await uploadBase64Image(p.img,`${p.id}-main`)
+      }
+      if(p.extra_img){
+        const lines=String(p.extra_img).split(/\n+/).map(x=>x.trim()).filter(Boolean);
+        const newLines=[];
+        for(let i=0;i<lines.length;i++){
+          if(lines[i].startsWith('data:'))newLines.push(await uploadBase64Image(lines[i],`${p.id}-extra-${i}`));
+          else newLines.push(lines[i])
+        }
+        update.extra_img=newLines.join('\n')
+      }
+      if(Object.keys(update).length){
+        const {error}=await sb.from('products').update(update).eq('id',p.id);
+        if(error)throw error;
+      }
+      done++;
+      button.textContent=`جاري الترحيل... (${done}/${targets.length})`
+    }catch(error){
+      failed++;
+      console.error('Migrate image failed for product',p.id,error)
+    }
+  }
+  button.disabled=false;
+  button.textContent='ترحيل الصور القديمة';
+  toast(failed?`تم ترحيل ${done}، وفشل ${failed} — راجع الكونسول`:`تم ترحيل ${done} منتج بنجاح ✓`);
+  await load()
 }
 
 function renderSizeOptions(selected=[],existing={}){
@@ -284,6 +353,7 @@ $('#addBtn').onclick=()=>openModal();
 $('#cancelBtn').onclick=closeModal;
 $('#closeModal').onclick=closeModal;
 $('#search').addEventListener('input',render);
+$('#migrateImagesBtn')?.addEventListener('click',migrateOldImages);
 
 $('#type').addEventListener('change',()=>{updateSizesRequired();renderSizeQuantities()});
 $('#sizes').addEventListener('input',()=>{syncSelectedSizes();renderSizeQuantities();syncTotalQuantity()});
