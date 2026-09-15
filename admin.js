@@ -2,7 +2,7 @@ const SUPABASE_URL='https://kahbxvbirsjmednkybse.supabase.co';
 const SUPABASE_KEY='sb_publishable_L1TY-QEyFsWDeDRy_saOUQ_GP8TjADm';
 const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 window.veronzaSupabase=sb;
-let orders=[],filter='all',selected=null;
+let orders=[],filter='all',selected=null,urlOrderHandled=false;
 const $=s=>document.querySelector(s);
 const statusNames={pending:'قيد المراجعة',confirmed:'تم التأكيد',preparing:'قيد التجهيز',shipped:'جاري التوصيل',delivered:'تم التسليم',cancelled:'ملغي',returned:'مرتجع'};
 function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]))}
@@ -19,7 +19,8 @@ async function checkAdmin(token){
   return {ok:true};
 }
 async function api(path,options={}){const {data:{session}}=await sb.auth.getSession();if(!session)throw new Error('انتهت جلسة الدخول');const r=await fetch(path,{...options,headers:{Authorization:`Bearer ${session.access_token}`,'Content-Type':'application/json',...(options.headers||{})}});let body={};try{body=await r.json()}catch{}if(!r.ok)throw new Error(body.error||'تعذر تنفيذ العملية');return body}
-async function load(){try{const body=await api('/api/admin-orders');orders=body.orders||[];render();$('#lastUpdated').textContent='آخر تحديث '+new Date().toLocaleTimeString('ar-LY',{hour:'2-digit',minute:'2-digit'})}catch(e){toast(e.message)}}
+async function load(){try{const body=await api('/api/admin-orders');orders=body.orders||[];render();$('#lastUpdated').textContent='آخر تحديث '+new Date().toLocaleTimeString('ar-LY',{hour:'2-digit',minute:'2-digit'});maybeOpenFromUrl()}catch(e){toast(e.message)}}
+function maybeOpenFromUrl(){if(urlOrderHandled)return;const id=new URLSearchParams(location.search).get('order');if(id&&orders.find(o=>o.id===id)){urlOrderHandled=true;openOrder(id)}}
 function renderStats(){const c=s=>orders.filter(o=>o.status===s).length;$('#stats').innerHTML=[['كل الطلبات',orders.length],['جديدة',c('pending')],['قيد التجهيز',c('preparing')],['جاري التوصيل',c('shipped')],['تم التسليم',c('delivered')]].map(x=>`<div class="stat"><b>${x[1]}</b><span>${x[0]}</span></div>`).join('')}
 function render(){renderStats();const list=filter==='all'?orders:orders.filter(o=>o.status===filter);const box=$('#orders');if(!list.length){box.innerHTML='<div class="empty">لا توجد طلبات في هذا القسم حالياً.</div>';return}box.innerHTML=list.map(o=>`<div class="order-row"><div class="order-number">${esc(o.order_number)}</div><div class="customer"><b>${esc(o.customer_name)}</b><small>${esc(o.customer_phone)}</small></div><div class="amount">${Number(o.total||0).toLocaleString('ar-LY')} د.ل</div><div><span class="status ${esc(o.status)}">${statusNames[o.status]||esc(o.status)}</span></div><div class="date">${new Date(o.created_at).toLocaleString('ar-LY')}</div><button class="details-btn" data-open="${o.id}">التفاصيل</button></div>`).join('')}
 async function openOrder(id){selected=orders.find(o=>o.id===id);if(!selected)return;try{const body=await api('/api/admin-orders?order_id='+encodeURIComponent(id));selected={...selected,items:body.items||[]}}catch(e){toast(e.message);return}
