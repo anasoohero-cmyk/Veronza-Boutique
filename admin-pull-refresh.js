@@ -48,7 +48,7 @@
     document.head.appendChild(style);
   }
 
-  const isOverlayOpen = () => !!document.querySelector('.modal:not(.hidden)');
+  const isOverlayOpen = () => !!document.querySelector('.modal:not(.hidden)') || !!document.querySelector('.vz-panel.open');
 
   const doRefresh = () => {
     if (refreshing) return;
