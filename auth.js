@@ -183,7 +183,7 @@
         if (!r.ok || !data.ok) { trackResult.textContent = data.error || 'تعذر العثور على الطلب.'; return; }
         const o = data.order;
         const itemsHtml = (o.items || []).map(it => `<div class="auth-order"><strong>${it.product_name}</strong><span>${it.product_code} · الكمية: ${it.quantity}</span></div>`).join('');
-        trackResult.innerHTML = `<div class="auth-order"><strong>${o.order_number}</strong><span>الحالة: ${o.status} · ${Number(o.total).toLocaleString('ar-LY')} د.ل</span></div>${itemsHtml}`;
+        trackResult.innerHTML = `<div class="auth-order"><strong>${o.order_number}</strong><span>الحالة: ${statusLabel(o.status)} · ${Number(o.total).toLocaleString('ar-LY')} د.ل</span></div>${itemsHtml}`;
       } catch { trackResult.textContent = 'تعذر الاتصال بالسيرفر.'; }
       finally { trackBtn.disabled = false; }
     };
