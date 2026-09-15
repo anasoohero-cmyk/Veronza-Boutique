@@ -16,10 +16,14 @@ function toast(t){
 }
 
 async function checkAdmin(token){
-  const r=await fetch('/api/admin-auth',{headers:{Authorization:`Bearer ${token}`}});
-  if(!r.ok)return false;
-  const data=await r.json();
-  return data.ok===true;
+  try{
+    const r=await fetch('/api/admin-auth',{headers:{Authorization:`Bearer ${token}`}});
+    let data={};
+    try{data=await r.json()}catch(_){}
+    return {ok:r.ok&&data.ok===true,status:r.status};
+  }catch(e){
+    return {ok:false,status:0};
+  }
 }
 
 function showApp(session){
@@ -333,19 +337,18 @@ $('#loginForm').addEventListener('submit',async e=>{
   if(error){$('#loginError').textContent=error.message;return}
   const {data:{session}}=await sb.auth.getSession();
   if(!session)return;
-  try{
-    if(await checkAdmin(session.access_token))showApp(session);
-    else{await sb.auth.signOut();$('#loginError').textContent='أنت لا تملك صلاحيات الإدارة.'}
-  }catch{await sb.auth.signOut();$('#loginError').textContent='تعذر التحقق من الصلاحيات'}
+  const check=await checkAdmin(session.access_token);
+  if(check.ok)showApp(session);
+  else{await sb.auth.signOut();$('#loginError').textContent='أنت لا تملك صلاحيات الإدارة.'}
 });
 
 (async()=>{
   const {data:{session}}=await sb.auth.getSession();
   if(!session){$('#loginView').classList.remove('hidden');return}
-  try{
-    if(await checkAdmin(session.access_token))showApp(session);
-    else{await sb.auth.signOut();$('#loginView').classList.remove('hidden')}
-  }catch{await sb.auth.signOut();$('#loginView').classList.remove('hidden')}
+  const check=await checkAdmin(session.access_token);
+  if(check.ok)showApp(session);
+  else if(check.status===401||check.status===403){await sb.auth.signOut();$('#loginView').classList.remove('hidden')}
+  else showApp(session);
 })();
 
 $('#logoutBtn').onclick=async()=>{await sb.auth.signOut();showLogin()};
