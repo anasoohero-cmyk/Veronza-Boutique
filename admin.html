@@ -36,17 +36,17 @@
       <div class="top-actions"><span id="adminEmail"></span><a class="ghost" href="/admin-products.html">المنتجات</a><button id="refreshBtn">تحديث</button><button id="logoutBtn" class="ghost">خروج</button></div>
     </header>
     <main>
-      <section class="stats" id="stats"></section>
       <section class="filters">
         <button class="active" data-status="all">جميع الطلبات</button>
         <button data-status="pending">جديدة 🔴</button>
         <button data-status="confirmed">تم التأكيد</button>
         <button data-status="preparing">قيد التجهيز</button>
-        <button data-status="shipped">تم الشحن</button>
+        <button data-status="shipped">جاري التوصيل</button>
         <button data-status="delivered">تم التسليم</button>
         <button data-status="cancelled">ملغي</button>
         <button data-status="returned">مرتجع</button>
       </section>
+      <section class="stats" id="stats"></section>
       <section class="orders-card">
         <div class="table-head"><h2>قائمة الطلبات</h2><span id="lastUpdated"></span></div>
         <div id="orders" class="orders"></div>
