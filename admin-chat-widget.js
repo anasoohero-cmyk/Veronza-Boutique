@@ -137,7 +137,7 @@
     });
 
     panel.querySelector('[data-back]').onclick=backToList;
-    const open=()=>{panel.classList.add('open');shade.classList.add('open');loadConversations()};
+    const open=()=>{panel.classList.add('open');shade.classList.add('open');loadConversations();window.veronzaEnsurePush?.()};
     const close=()=>{panel.classList.remove('open');shade.classList.remove('open');backToList()};
     btn.onclick=open;shade.onclick=close;panel.querySelector('[data-close]').onclick=close;
 
