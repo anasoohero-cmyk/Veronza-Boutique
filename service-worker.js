@@ -1,4 +1,4 @@
-const CACHE='veronza-v4';
+const CACHE='veronza-v5';
 const CORE_ASSETS=['/','/index.html','/styles.css','/app.js','/auth.js','/product-quantity.js','/product-links.js','/pull-to-refresh.js','/app-update.js','/notifications.js','/manifest.webmanifest','/icons/veronza-icon.svg','/icons/veronza-icon-192.png','/icons/veronza-icon-512.png','/icons/apple-touch-icon.png','/admin.html','/admin.js','/admin.css','/admin-products.html','/admin-products.js','/admin-products.css','/admin-pull-refresh.js','/manifest-admin.webmanifest'];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(CORE_ASSETS).catch(()=>{})));self.skipWaiting()});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()))});
@@ -31,5 +31,5 @@ self.addEventListener('fetch',e=>{
     })
   );
 });
-self.addEventListener('push',e=>{let data={title:'طلب جديد في VERONZA',body:'وصل طلب جديد إلى المتجر.',url:'/'};try{data={...data,...(e.data?.json()||{})}}catch(_){}e.waitUntil(self.registration.showNotification(data.title,{body:data.body,icon:'/icons/veronza-icon.svg',badge:'/icons/veronza-icon.svg',data:{url:data.url||'/'},dir:'rtl'}))});
+self.addEventListener('push',e=>{let data={title:'طلب جديد في VERONZA',body:'وصل طلب جديد إلى المتجر.',url:'/'};try{data={...data,...(e.data?.json()||{})}}catch(_){}e.waitUntil(self.registration.showNotification(data.title,{body:data.body,icon:'/icons/veronza-icon.svg',badge:'/icons/veronza-icon.svg',data:{url:data.url||'/'},dir:'rtl',requireInteraction:true,vibrate:[200,100,200],tag:data.url||'veronza-order',renotify:true}))});
 self.addEventListener('notificationclick',e=>{e.notification.close();e.waitUntil(clients.matchAll({type:'window',includeUncontrolled:true}).then(list=>{for(const c of list){if('focus' in c)return c.focus()}return clients.openWindow(e.notification.data?.url||'/')}))});
