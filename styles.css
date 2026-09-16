@@ -300,37 +300,41 @@ a,
   background-size: cover;
   background-position: center;
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   border-radius: 16px;
 }
 .category:before {
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(
-    to top,
-    rgba(0, 0, 0, 0.78) 0%,
-    rgba(0, 0, 0, 0.4) 38%,
-    rgba(0, 0, 0, 0) 72%
-  );
+  background: none;
 }
 .category > div {
   position: relative;
-  padding: 20px 24px;
+  padding: 24px;
 }
 .category h2 {
   margin: 0;
   font-size: 24px;
   color: #fff;
+  width: fit-content;
+  background: rgba(0, 0, 0, 0.55);
+  padding: 3px 12px;
+  border-radius: 8px;
 }
 .category p {
-  margin: 3px 0 15px;
-  color: #f0ece4;
+  margin: 6px 0 15px;
+  color: #fff;
   font-size: 13px;
+  width: fit-content;
+  background: rgba(0, 0, 0, 0.55);
+  padding: 3px 12px;
+  border-radius: 8px;
 }
 .category strong {
   font-size: 12px;
   color: #fff;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.65);
 }
 .category-bags {
   background-image: url('/images/promo-bag.jpg');
@@ -347,13 +351,21 @@ a,
   font-weight: 400;
   font-family: Cairo, Arial, sans-serif;
   white-space: nowrap;
+  width: fit-content;
+  background: rgba(0, 0, 0, 0.55);
+  padding: 3px 12px;
+  border-radius: 8px;
 }
 .category-offers p {
   color: #fff;
   font-size: clamp(18px, 6vw, 34px);
   font-family: 'Playfair Display', serif;
-  margin: 4px 0 10px;
+  margin: 6px 0 10px;
   white-space: nowrap;
+  width: fit-content;
+  background: rgba(0, 0, 0, 0.55);
+  padding: 3px 14px;
+  border-radius: 10px;
 }
 .category-offers strong {
   display: inline-block;
