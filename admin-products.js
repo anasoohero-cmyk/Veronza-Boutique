@@ -120,6 +120,11 @@ function openModal(p) {
     $('#sizes').value = sizes.join(', ');
     renderSizeOptions(sizes, p.size_quantities || {});
     renderSizeQuantities(p.size_quantities || {});
+    if (p.type === 'shoes' || p.type === 'set') {
+      syncTotalQuantity();
+    } else {
+      $('#quantity').value = Number(p.quantity || 0);
+    }
     $('#modalTitle').textContent = 'تعديل المنتج';
     renderPreview();
   }
