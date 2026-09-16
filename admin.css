@@ -341,6 +341,75 @@ main {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.manual-order-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.manual-order-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #333;
+}
+.manual-order-form input,
+.manual-order-form select {
+  border: 1px solid #ddd8d0;
+  border-radius: 10px;
+  padding: 11px 13px;
+  font: inherit;
+  font-size: 14px;
+}
+.manual-order-form .ghost {
+  border: 1px solid #ddd8d0;
+  background: #fff;
+  color: #111;
+  border-radius: 10px;
+  padding: 9px 14px;
+  font: inherit;
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+}
+.manual-order-item {
+  border: 1px solid #eee;
+  border-radius: 12px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  position: relative;
+}
+.manual-order-item .item-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 70px;
+  gap: 8px;
+}
+@media (max-width: 560px) {
+  .manual-order-item .item-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+.manual-order-item .remove-item {
+  align-self: flex-end;
+  border: 0;
+  background: #fdecea;
+  color: #b21f2d;
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.manual-order-total {
+  font-weight: 800;
+  font-size: 15px;
+  text-align: end;
 }
 .table-head h2 {
   margin: 0;
