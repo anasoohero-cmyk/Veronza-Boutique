@@ -377,6 +377,7 @@
       } = await client.auth.getSession();
       await showAccount(session);
     };
+    window.veronzaOpenAccount = button.onclick;
     modal.querySelector('.auth-close').onclick = closeAuthModal;
     modal.onclick = (e) => {
       if (e.target === modal) closeAuthModal();

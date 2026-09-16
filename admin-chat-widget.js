@@ -270,6 +270,7 @@
       backToList();
     };
     btn.onclick = open;
+    window.veronzaOpenAdminChatWidget = open;
     shade.onclick = close;
     panel.querySelector('[data-close]').onclick = close;
 

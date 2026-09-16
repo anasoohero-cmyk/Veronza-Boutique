@@ -91,9 +91,39 @@ async function load() {
     $('#lastUpdated').textContent =
       'آخر تحديث ' + new Date().toLocaleTimeString('ar-LY', { hour: '2-digit', minute: '2-digit' });
     maybeOpenFromUrl();
+    restoreAfterUpdate();
   } catch (e) {
     toast(e.message);
   }
+}
+let restoredAfterUpdate = false;
+function restoreAfterUpdate() {
+  if (restoredAfterUpdate) return;
+  restoredAfterUpdate = true;
+  const state = window.veronzaConsumeRestoreState?.();
+  if (!state) return;
+  switch (state.window) {
+    case 'admin-order':
+      if (state.context?.orderId && orders.find((o) => o.id === state.context.orderId))
+        openOrder(state.context.orderId);
+      break;
+    case 'admin-status':
+      filter = state.context?.status || 'all';
+      render();
+      openStatusList(filter);
+      break;
+    case 'admin-manual-order':
+      openManualOrderModal();
+      break;
+    case 'admin-chat-widget':
+      waitAndRestoreChatWidget();
+      break;
+  }
+  if (typeof state.scrollY === 'number') window.scrollTo(0, state.scrollY);
+}
+function waitAndRestoreChatWidget(tries = 20) {
+  if (window.veronzaOpenAdminChatWidget) window.veronzaOpenAdminChatWidget();
+  else if (tries > 0) setTimeout(() => waitAndRestoreChatWidget(tries - 1), 200);
 }
 function maybeOpenFromUrl() {
   if (urlOrderHandled) return;
