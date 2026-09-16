@@ -11,7 +11,8 @@
     idleTimer = null,
     lastMessageAt = null,
     sending = false,
-    unreadCount = 0;
+    unreadCount = 0,
+    seenIds = new Set();
 
   function saveSession(s) {
     session = s;
@@ -86,6 +87,7 @@
 
   function renderMessages(messages) {
     if (!messages.length) return;
+    seenIds = new Set(messages.map((m) => m.id).filter((id) => id != null));
     bodyEl.innerHTML = messages
       .map(
         (m) =>
@@ -97,13 +99,17 @@
   }
 
   function appendMessage(m) {
+    if (m.id != null) {
+      if (seenIds.has(m.id)) return;
+      seenIds.add(m.id);
+    }
     if (bodyEl.querySelector('.vz-chat-welcome')) bodyEl.innerHTML = '';
     const div = document.createElement('div');
     div.className = `vz-chat-msg ${m.sender}`;
     div.innerHTML = `${esc(m.body)}<time>${fmtTime(m.created_at)}</time>`;
     bodyEl.appendChild(div);
     bodyEl.scrollTop = bodyEl.scrollHeight;
-    lastMessageAt = m.created_at;
+    if (m.created_at && (!lastMessageAt || m.created_at > lastMessageAt)) lastMessageAt = m.created_at;
   }
 
   async function ensureConversation() {
@@ -253,6 +259,15 @@
         }),
       });
       if (!r.ok) throw new Error('failed');
+      const result = await r.json();
+      if (result?.message) {
+        if (result.message.id != null) seenIds.add(result.message.id);
+        if (
+          result.message.created_at &&
+          (!lastMessageAt || result.message.created_at > lastMessageAt)
+        )
+          lastMessageAt = result.message.created_at;
+      }
     } catch (_) {
       const div = document.createElement('div');
       div.className = 'vz-chat-welcome';
