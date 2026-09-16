@@ -1,5 +1,5 @@
-const webpush = require('web-push');
 const crypto = require('crypto');
+const { notifyAdmins } = require('./_push');
 
 function allowedOrigin(req) {
   const o = req.headers.origin;
@@ -57,70 +57,6 @@ function isUuid(v) {
     typeof v === 'string' &&
     /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v)
   );
-}
-
-async function notifyAdmins(supabaseUrl, serviceKey, conversation, preview) {
-  try {
-    const headers = {
-      apikey: serviceKey,
-      Authorization: `Bearer ${serviceKey}`,
-      'Content-Type': 'application/json',
-    };
-    const adminResp = await fetch(`${supabaseUrl}/rest/v1/admin_users?select=user_id`, { headers });
-    if (!adminResp.ok) return;
-    const admins = await adminResp.json();
-    const title = 'رسالة جديدة في الشات';
-    const body = `${conversation.customer_name || 'زائر'}: ${preview}`.slice(0, 180);
-    const notificationRows = admins.map((a) => ({
-      admin_user_id: a.user_id,
-      type: 'chat',
-      title,
-      body,
-      order_id: null,
-    }));
-    if (notificationRows.length) {
-      await fetch(`${supabaseUrl}/rest/v1/notifications`, {
-        method: 'POST',
-        headers: { ...headers, Prefer: 'resolution=ignore-duplicates,return=minimal' },
-        body: JSON.stringify(notificationRows),
-      }).catch(() => {});
-    }
-    const cfgResp = await fetch(
-      `${supabaseUrl}/rest/v1/push_config?select=vapid_public_key,vapid_private_key&id=eq.true&limit=1`,
-      { headers },
-    );
-    const cfg = cfgResp.ok ? (await cfgResp.json())[0] : null;
-    const subsResp = await fetch(
-      `${supabaseUrl}/rest/v1/push_subscriptions?select=id,endpoint,subscription`,
-      { headers },
-    );
-    const subscriptions = subsResp.ok ? await subsResp.json() : [];
-    if (cfg && subscriptions.length) {
-      webpush.setVapidDetails(
-        'mailto:veronza@localhost',
-        cfg.vapid_public_key,
-        cfg.vapid_private_key,
-      );
-      await Promise.all(
-        subscriptions.map(async (sub) => {
-          try {
-            await webpush.sendNotification(
-              sub.subscription,
-              JSON.stringify({ title, body, url: '/admin-chat.html' }),
-            );
-          } catch (e) {
-            if (e?.statusCode === 404 || e?.statusCode === 410)
-              await fetch(
-                `${supabaseUrl}/rest/v1/push_subscriptions?id=eq.${encodeURIComponent(sub.id)}`,
-                { method: 'DELETE', headers },
-              ).catch(() => {});
-          }
-        }),
-      );
-    }
-  } catch (e) {
-    console.error('Chat admin notify failed:', e?.message || e);
-  }
 }
 
 module.exports = async (req, res) => {
@@ -266,12 +202,13 @@ module.exports = async (req, res) => {
       },
     );
 
-    await notifyAdmins(
-      supabaseUrl,
-      serviceKey,
-      { customer_name: updates.customer_name || conversation.customer_name },
-      text,
-    );
+    const customerName = updates.customer_name || conversation.customer_name || 'زائر';
+    await notifyAdmins(supabaseUrl, serviceKey, {
+      type: 'chat',
+      title: 'رسالة جديدة في الشات',
+      body: `${customerName}: ${text}`.slice(0, 180),
+      url: '/admin-chat.html',
+    });
 
     const message = Array.isArray(insertMsg.data) ? insertMsg.data[0] : insertMsg.data;
     return json(req, res, 200, { ok: true, message });
