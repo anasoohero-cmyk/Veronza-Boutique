@@ -243,26 +243,29 @@ a,
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   text-align: center;
-  color: #fff;
-  font-size: 13px;
+  color: #000;
+  font-size: 17px;
   font-weight: 800;
-  max-width: 104px;
-  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.65);
+  max-width: 124px;
+  text-shadow:
+    0 1px 0 #fff,
+    0 0 6px rgba(255, 255, 255, 0.85),
+    0 0 14px rgba(255, 255, 255, 0.6);
 }
 .hero-features svg {
   color: #f3cd82;
-  width: 26px;
-  height: 26px;
+  width: 34px;
+  height: 34px;
   filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.6));
 }
 .hero-features small {
   display: block;
-  font-weight: 500;
-  color: #f6e2b8;
+  font-weight: 600;
+  color: #000;
   margin-top: 2px;
-  font-size: 0.85em;
+  font-size: 0.82em;
 }
 .hero-dots {
   position: absolute;
@@ -857,12 +860,12 @@ a,
     margin-top: 26px;
   }
   .hero-features > div {
-    max-width: 88px;
-    font-size: 11.5px;
+    max-width: 108px;
+    font-size: 15px;
   }
   .hero-features svg {
-    width: 24px;
-    height: 24px;
+    width: 30px;
+    height: 30px;
   }
   .categories {
     width: 100%;
