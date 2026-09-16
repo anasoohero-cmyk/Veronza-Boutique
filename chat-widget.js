@@ -260,5 +260,8 @@
     }
   });
 
+  window.veronzaOpenChat = openPanel;
+  window.veronzaHasChatSession = () => !!session?.conversation_id;
+
   if (session?.conversation_id) startIdlePolling();
 })();

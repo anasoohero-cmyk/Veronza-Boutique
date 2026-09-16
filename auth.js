@@ -57,7 +57,7 @@
 
     const modal = document.createElement('div');
     modal.className = 'auth-modal';
-    modal.innerHTML = `<div class="auth-card"><div class="auth-head"><h2>حساب Veronza</h2><button class="auth-close" type="button" aria-label="إغلاق">×</button></div><div class="auth-tabs" data-auth-tabs><button type="button" class="active" data-auth-tab="login">تسجيل الدخول</button><button type="button" data-auth-tab="signup">إنشاء حساب</button></div><form class="auth-form" data-auth-form><label>الإيميل<input type="email" name="email" autocomplete="email" placeholder="example@email.com" required></label><label>كلمة المرور<input type="password" name="password" autocomplete="current-password" placeholder="6 أحرف أو أكثر" minlength="6" required></label><label data-auth-name class="auth-hidden">الاسم الكامل<input type="text" name="full_name" autocomplete="name" placeholder="اسمك الكامل"></label><button class="auth-submit" type="submit">دخول</button><button type="button" class="auth-link" data-forgot-password>نسيت كلمة المرور؟</button><p class="auth-status" data-auth-status></p><p class="auth-note">الحساب اختياري بالكامل. تقدر تكمل الشراء كزائر بدون تسجيل.</p></form><div class="auth-track"><strong>تتبع طلب سابق</strong><p class="auth-note">عندك طلب قديم وما سجلتش دخول؟ دخل رقم هاتفك ورقم الطلب.</p><label>رقم الهاتف<input type="tel" inputmode="tel" data-track-phone placeholder="مثال: 0912345678"></label><label>رقم الطلب<input type="text" data-track-number placeholder="مثال: VZ-172..."></label><button class="auth-secondary" type="button" data-track-submit>تتبع الطلب</button><div data-track-result></div></div><div class="auth-account auth-hidden" data-auth-account><strong data-auth-welcome></strong><div class="auth-section"><h3>بياناتي</h3><label>الاسم الكامل<input type="text" data-profile-name></label><label>رقم الهاتف<input type="tel" inputmode="tel" data-profile-phone></label><label>المقاس المفضل<input type="text" data-profile-size placeholder="مثال: 40"></label><label class="checkout-consent"><input type="checkbox" data-profile-marketing> أوافق على استلام آخر العروض والمنتجات الجديدة عبر واتساب</label><button class="auth-secondary" type="button" data-profile-save>حفظ البيانات</button><p class="auth-status" data-profile-status></p></div><div class="auth-section"><h3>عناويني</h3><div data-address-list></div><label>تسمية العنوان<input type="text" data-address-label placeholder="مثال: المنزل، العمل"></label><label>تفاصيل العنوان<textarea data-address-text rows="2" placeholder="المدينة، المنطقة، الشارع"></textarea></label><button class="auth-secondary" type="button" data-address-add>إضافة العنوان</button></div><div class="auth-section"><h3>طلباتي</h3><div data-auth-orders></div></div><button class="auth-secondary" type="button" data-auth-logout>تسجيل الخروج</button></div></div>`;
+    modal.innerHTML = `<div class="auth-card"><div class="auth-head"><h2>حساب Veronza</h2><button class="auth-close" type="button" aria-label="إغلاق">×</button></div><div class="auth-tabs" data-auth-tabs><button type="button" class="active" data-auth-tab="login">تسجيل الدخول</button><button type="button" data-auth-tab="signup">إنشاء حساب</button></div><form class="auth-form" data-auth-form><label>الإيميل<input type="email" name="email" autocomplete="email" placeholder="example@email.com" required></label><label>كلمة المرور<input type="password" name="password" autocomplete="current-password" placeholder="6 أحرف أو أكثر" minlength="6" required></label><label data-auth-name class="auth-hidden">الاسم الكامل<input type="text" name="full_name" autocomplete="name" placeholder="اسمك الكامل"></label><button class="auth-submit" type="submit">دخول</button><button type="button" class="auth-link" data-forgot-password>نسيت كلمة المرور؟</button><p class="auth-status" data-auth-status></p><p class="auth-note">الحساب اختياري بالكامل. تقدر تكمل الشراء كزائر بدون تسجيل.</p></form><div class="auth-track"><strong>تتبع طلب سابق</strong><p class="auth-note">عندك طلب قديم وما سجلتش دخول؟ دخل رقم هاتفك ورقم الطلب.</p><label>رقم الهاتف<input type="tel" inputmode="tel" data-track-phone placeholder="مثال: 0912345678"></label><label>رقم الطلب<input type="text" data-track-number placeholder="مثال: VZ-172..."></label><button class="auth-secondary" type="button" data-track-submit>تتبع الطلب</button><div data-track-result></div></div><div class="auth-account auth-hidden" data-auth-account><strong data-auth-welcome></strong><div class="auth-section"><h3>بياناتي</h3><label>الاسم الكامل<input type="text" data-profile-name></label><label>رقم الهاتف<input type="tel" inputmode="tel" data-profile-phone></label><label>المقاس المفضل<input type="text" data-profile-size placeholder="مثال: 40"></label><label class="checkout-consent"><input type="checkbox" data-profile-marketing> أوافق على استلام آخر العروض والمنتجات الجديدة عبر واتساب</label><button class="auth-secondary" type="button" data-profile-save>حفظ البيانات</button><p class="auth-status" data-profile-status></p></div><div class="auth-section"><h3>عناويني</h3><div data-address-list></div><label>تسمية العنوان<input type="text" data-address-label placeholder="مثال: المنزل، العمل"></label><label>تفاصيل العنوان<textarea data-address-text rows="2" placeholder="المدينة، المنطقة، الشارع"></textarea></label><button class="auth-secondary" type="button" data-address-add>إضافة العنوان</button></div><div class="auth-section"><h3>طلباتي</h3><div data-auth-orders></div></div><div class="auth-section"><h3>رسائلي</h3><div data-auth-messages></div><button class="auth-secondary" type="button" data-open-chat>فتح المحادثة</button></div><button class="auth-secondary" type="button" data-auth-logout>تسجيل الخروج</button></div></div>`;
     document.body.appendChild(modal);
 
     const tabs = [...modal.querySelectorAll('[data-auth-tab]')];
@@ -212,6 +212,33 @@
             .join('')
         : '<p class="auth-note">ما عندكش طلبات مسجلة في الحساب حتى الآن.</p>';
 
+      const messagesBox = modal.querySelector('[data-auth-messages]');
+      try {
+        const chatSession = JSON.parse(localStorage.getItem('veronza-chat-session') || 'null');
+        if (chatSession?.conversation_id && chatSession?.guest_token) {
+          const params = new URLSearchParams({
+            conversation_id: chatSession.conversation_id,
+            guest_token: chatSession.guest_token,
+          });
+          const r = await fetch('/api/chat?' + params.toString());
+          const data = r.ok ? await r.json() : null;
+          const msgs = (data?.messages || []).slice(-5);
+          messagesBox.innerHTML = msgs.length
+            ? msgs
+                .map(
+                  (m) =>
+                    `<div class="auth-order"><strong>${m.sender === 'admin' ? 'فيرونزا' : 'أنت'}</strong><span>${esc(m.body)}</span></div>`,
+                )
+                .join('')
+            : '<p class="auth-note">ما فيش رسائل حتى الآن.</p>';
+        } else {
+          messagesBox.innerHTML =
+            '<p class="auth-note">ما بدأتش محادثة بعد. اضغط "فتح المحادثة" للبدء.</p>';
+        }
+      } catch (_) {
+        messagesBox.innerHTML = '<p class="auth-note">تعذر تحميل الرسائل.</p>';
+      }
+
       const itemsCache = {};
       const loadItems = async (orderId) => {
         if (itemsCache[orderId]) return itemsCache[orderId];
@@ -353,6 +380,10 @@
       await showAccount(null);
       setStatus('تم تسجيل الخروج.');
       form.reset();
+    };
+    modal.querySelector('[data-open-chat]').onclick = () => {
+      modal.classList.remove('open');
+      window.veronzaOpenChat?.();
     };
 
     form.onsubmit = async (e) => {
