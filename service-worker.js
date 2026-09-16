@@ -1,4 +1,4 @@
-const CACHE = 'veronza-v11';
+const CACHE = 'veronza-v12';
 const CORE_ASSETS = [
   '/',
   '/index.html',
@@ -120,12 +120,21 @@ self.addEventListener('push', (e) => {
 });
 self.addEventListener('notificationclick', (e) => {
   e.notification.close();
+  const url = e.notification.data?.url || '/';
   e.waitUntil(
-    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => {
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(async (list) => {
+      const target = new URL(url, self.location.origin).href;
       for (const c of list) {
-        if ('focus' in c) return c.focus();
+        if ('focus' in c) {
+          if (c.url !== target && 'navigate' in c) {
+            try {
+              await c.navigate(target);
+            } catch (_) {}
+          }
+          return c.focus();
+        }
       }
-      return clients.openWindow(e.notification.data?.url || '/');
+      return clients.openWindow(url);
     }),
   );
 });

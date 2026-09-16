@@ -102,7 +102,14 @@
     activeCallUI = window.VeronzaCall.mountUI(activeCall, { calleeLabel: 'المتجر' });
     callConversationId = conversationId;
     callBtn.hidden = false;
-    callBtn.onclick = () => activeCall.startCall();
+    callBtn.onclick = () => {
+      activeCall.startCall();
+      fetch('/api/call-notify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ conversation_id: conversationId }),
+      }).catch(() => {});
+    };
   }
 
   function renderMessages(messages) {

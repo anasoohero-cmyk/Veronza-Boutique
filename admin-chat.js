@@ -192,7 +192,10 @@ $('#loginForm').addEventListener('submit', async (e) => {
   }
   showApp(data.session);
   applyChatPermissions(adminCheck);
-  if (currentPermissions.view) loadConversations();
+  if (currentPermissions.view) {
+    await loadConversations();
+    openDeepLinkedConversation();
+  }
 });
 $('#logoutBtn').onclick = async () => {
   await sb.auth.signOut();
@@ -259,6 +262,15 @@ sb.channel('veronza-admin-chat')
   )
   .subscribe();
 
+let deepLinkOpened = false;
+async function openDeepLinkedConversation() {
+  if (deepLinkOpened) return;
+  const id = new URLSearchParams(location.search).get('c');
+  if (!id) return;
+  deepLinkOpened = true;
+  await openConversation(id);
+}
+
 (async () => {
   const {
     data: { session },
@@ -268,7 +280,10 @@ sb.channel('veronza-admin-chat')
     if (adminCheck.ok) {
       showApp(session);
       applyChatPermissions(adminCheck);
-      if (currentPermissions.view) loadConversations();
+      if (currentPermissions.view) {
+        await loadConversations();
+        openDeepLinkedConversation();
+      }
     } else {
       await sb.auth.signOut();
       showLogin();

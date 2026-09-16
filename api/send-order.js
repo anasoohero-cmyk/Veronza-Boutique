@@ -157,7 +157,7 @@ module.exports = async (req, res) => {
     title: 'طلب جديد',
     body: `${finalOrderNumber} · ${name} · ${serverTotal.toLocaleString('ar-LY')} د.ل`,
     orderId,
-    url: '/',
+    url: '/admin.html',
   });
 
   if (idempotencyKey && existingOrder.whatsapp_status === 'sent')

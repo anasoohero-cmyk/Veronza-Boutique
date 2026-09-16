@@ -15,6 +15,7 @@
       this.state = 'idle'; // idle | calling | ringing | connected | ended
       this._pendingOfferSdp = null;
       this._callTimeout = null;
+      this._offerInterval = null;
       this.onStateChange = null;
       this.onIncomingCall = null;
       this.onRemoteStream = null;
@@ -54,6 +55,7 @@
       pc.onconnectionstatechange = () => {
         if (pc.connectionState === 'connected') {
           clearTimeout(this._callTimeout);
+          clearInterval(this._offerInterval);
           this._setState('connected');
         } else if (['failed', 'disconnected', 'closed'].includes(pc.connectionState)) {
           if (this.state !== 'idle' && this.state !== 'ended') this._handleRemoteEnd();
@@ -73,6 +75,13 @@
         const offer = await pc.createOffer();
         await pc.setLocalDescription(offer);
         this._send({ type: 'offer', sdp: offer });
+        // Re-send the same offer every few seconds while ringing — the other
+        // side may open/focus the app a little after the first broadcast (e.g.
+        // tapping a push notification), and broadcast messages aren't queued
+        // for a client that wasn't yet subscribed when the first one went out.
+        this._offerInterval = setInterval(() => {
+          if (this.state === 'calling') this._send({ type: 'offer', sdp: offer });
+        }, 3000);
         this._callTimeout = setTimeout(() => {
           if (this.state === 'calling') {
             this.endCall();
@@ -87,6 +96,12 @@
     }
 
     _handleOffer(payload) {
+      if (this.state === 'ringing') {
+        // The caller re-announcing the same call while we're still deciding —
+        // not a second, different call, so just refresh the pending offer.
+        this._pendingOfferSdp = payload.sdp;
+        return;
+      }
       if (this.state !== 'idle') {
         this._send({ type: 'busy' });
         return;
@@ -121,6 +136,7 @@
 
     async _handleAnswer(payload) {
       clearTimeout(this._callTimeout);
+      clearInterval(this._offerInterval);
       if (!this.pc) return;
       try {
         await this.pc.setRemoteDescription(payload.sdp);
@@ -158,6 +174,7 @@
 
     _teardown() {
       clearTimeout(this._callTimeout);
+      clearInterval(this._offerInterval);
       this._pendingOfferSdp = null;
       this.localStream?.getTracks().forEach((t) => t.stop());
       this.localStream = null;
