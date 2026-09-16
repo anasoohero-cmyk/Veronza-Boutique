@@ -1,4 +1,4 @@
-const CACHE = 'veronza-v10';
+const CACHE = 'veronza-v11';
 const CORE_ASSETS = [
   '/',
   '/index.html',
@@ -106,11 +106,14 @@ self.addEventListener('push', (e) => {
       renotify: true,
     }),
   ];
-  if (typeof data.badgeCount === 'number' && 'setAppBadge' in navigator) {
+  if (typeof data.badgeCount === 'number') {
     tasks.push(
-      data.badgeCount > 0
-        ? navigator.setAppBadge(data.badgeCount).catch(() => {})
-        : navigator.clearAppBadge().catch(() => {}),
+      (async () => {
+        try {
+          if (data.badgeCount > 0) await self.navigator.setAppBadge(data.badgeCount);
+          else await self.navigator.clearAppBadge();
+        } catch (_) {}
+      })(),
     );
   }
   e.waitUntil(Promise.all(tasks));
