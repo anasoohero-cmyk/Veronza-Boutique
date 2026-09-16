@@ -534,7 +534,7 @@ a,
 .promo-dark {
   background-image:
     linear-gradient(90deg, rgba(0, 0, 0, 0.82), rgba(0, 0, 0, 0.12)),
-    url('/images/promo-set-new.jpg');
+    url('/images/images%3Apromo-set.jpg');
 }
 .promo-shoe {
   background-image:
