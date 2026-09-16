@@ -48,7 +48,7 @@ async function load() {
   const { data, error } = await sb
     .from('products')
     .select(
-      'id,code,name,price,type,img,extra_img,rating,reviews,colors,sizes,size_quantities,is_active,quantity,created_at,updated_at',
+      'id,code,name,price,discount_price,type,img,extra_img,rating,reviews,colors,sizes,size_quantities,is_active,quantity,created_at,updated_at',
     )
     .order('id', { ascending: false });
   if (error) {
@@ -68,15 +68,18 @@ function render() {
   const box = $('#products');
   if (!box) return;
   box.innerHTML = list
-    .map(
-      (p) =>
-        `<div class="product-row"><img class="thumb" src="${esc(p.img)}" alt=""><div class="product-main"><h3>${esc(p.name)}</h3><div class="meta">الكود: ${esc(p.code)} · النوع: ${typeNames[p.type] || esc(p.type)} · الكمية: ${Number(p.quantity || 0)}<br>الألوان: ${esc((p.colors || []).join('، ') || '—')} · المقاسات: ${esc((p.sizes || []).join('، ') || '—')}</div></div><div class="price">${Number(p.price || 0).toLocaleString('ar-LY')} د.ل</div><span class="badge ${p.is_active ? 'on' : 'off'}">${p.is_active ? 'متوفر' : 'غير متوفر'}</span><div class="row-actions"><button data-edit="${p.id}">تعديل</button><button class="danger" data-delete="${p.id}">حذف</button></div></div>`,
-    )
+    .map((p) => {
+      const hasDiscount = p.discount_price != null && Number(p.discount_price) < Number(p.price);
+      const priceHtml = hasDiscount
+        ? `<div class="price"><s>${Number(p.price || 0).toLocaleString('ar-LY')} د.ل</s><br>${Number(p.discount_price).toLocaleString('ar-LY')} د.ل</div>`
+        : `<div class="price">${Number(p.price || 0).toLocaleString('ar-LY')} د.ل</div>`;
+      return `<div class="product-row"><img class="thumb" src="${esc(p.img)}" alt=""><div class="product-main"><h3>${esc(p.name)}${hasDiscount ? ' <span class="badge off" style="background:#c0392b;color:#fff">خصم</span>' : ''}</h3><div class="meta">الكود: ${esc(p.code)} · النوع: ${typeNames[p.type] || esc(p.type)} · الكمية: ${Number(p.quantity || 0)}<br>الألوان: ${esc((p.colors || []).join('، ') || '—')} · المقاسات: ${esc((p.sizes || []).join('، ') || '—')}</div></div>${priceHtml}<span class="badge ${p.is_active ? 'on' : 'off'}">${p.is_active ? 'متوفر' : 'غير متوفر'}</span><div class="row-actions"><button data-edit="${p.id}">تعديل</button><button class="danger" data-delete="${p.id}">حذف</button></div></div>`;
+    })
     .join('');
 }
 
 function resetForm() {
-  ['productId', 'name', 'code', 'price', 'img', 'colors', 'sizes'].forEach(
+  ['productId', 'name', 'code', 'price', 'discountPrice', 'img', 'colors', 'sizes'].forEach(
     (id) => ($('#' + id).value = ''),
   );
   $('#code').readOnly = true;
@@ -103,6 +106,7 @@ function openModal(p) {
     $('#code').readOnly = true;
     $('#code').required = false;
     $('#price').value = p.price || '';
+    $('#discountPrice').value = p.discount_price != null ? p.discount_price : '';
     $('#type').value = p.type || 'shoes';
     $('#img').value = p.img || '';
     $('#extraImgs').value = p.extra_img || '';
@@ -369,12 +373,21 @@ async function save(e) {
     $('#code').required = true;
   }
 
+  const price = Number($('#price').value || 0);
+  const discountPriceRaw = $('#discountPrice').value.trim();
+  const discountPrice = discountPriceRaw === '' ? null : Number(discountPriceRaw);
+  if (discountPrice != null && (Number.isNaN(discountPrice) || discountPrice >= price)) {
+    $('#formError').textContent = 'سعر الخصم لازم يكون أقل من السعر الأصلي.';
+    return;
+  }
+
   const sizeQuantities = isSized ? getSizeQuantities() : {};
 
   const payload = {
     name: $('#name').value.trim(),
     code: $('#code').value.trim(),
-    price: Number($('#price').value || 0),
+    price,
+    discount_price: discountPrice,
     type: $('#type').value,
     img: $('#img').value.trim(),
     extra_img:

@@ -65,7 +65,7 @@ async function fetchProductsDirect() {
     timer = setTimeout(() => controller.abort(), SUPABASE_LOAD_TIMEOUT);
   try {
     const response = await fetch(
-      `${SUPABASE_URL}/rest/v1/products?select=id,code,name,price,type,img,extra_img,rating,reviews,colors,sizes,quantity&is_active=eq.true&order=id.asc`,
+      `${SUPABASE_URL}/rest/v1/products?select=id,code,name,price,discount_price,type,img,extra_img,rating,reviews,colors,sizes,quantity&is_active=eq.true&order=id.asc`,
       {
         headers: { apikey: SUPABASE_PUBLISHABLE_KEY },
         signal: controller.signal,
@@ -97,7 +97,9 @@ function loadProductsFromSupabase() {
         const client = await loadSupabaseClient();
         const result = await client
           .from('products')
-          .select('id,code,name,price,type,img,extra_img,rating,reviews,colors,sizes,quantity')
+          .select(
+            'id,code,name,price,discount_price,type,img,extra_img,rating,reviews,colors,sizes,quantity',
+          )
           .eq('is_active', true)
           .order('id', { ascending: true });
         if (result.error) throw result.error;
@@ -119,6 +121,7 @@ function loadProductsFromSupabase() {
             code: row.code,
             name: row.name,
             price: Number(row.price || 0),
+            discountPrice: row.discount_price != null ? Number(row.discount_price) : null,
             type: row.type,
             img: row.img,
             extraImg: extras[0] || undefined,
@@ -163,6 +166,12 @@ const $ = (s) => document.querySelector(s),
 function money(n) {
   return `${Number(n || 0).toLocaleString('ar-LY')} د.ل`;
 }
+function hasDiscount(p) {
+  return p.discountPrice != null && Number(p.discountPrice) < Number(p.price);
+}
+function effectivePrice(p) {
+  return hasDiscount(p) ? Number(p.discountPrice) : Number(p.price || 0);
+}
 function esc(v) {
   return String(v ?? '').replace(
     /[&<>"']/g,
@@ -197,13 +206,29 @@ function renderProducts(list = products) {
   currentList = list;
   const grid = $('#productGrid');
   if (!grid) return;
+  if (!list.length) {
+    grid.innerHTML =
+      '<p style="grid-column:1/-1;text-align:center;color:#888;padding:24px 0">لا توجد منتجات هنا حالياً.</p>';
+    return;
+  }
   grid.innerHTML = list
     .map((p) => {
       const fav = wishlist.includes(p.id);
       const rating = Math.min(5, Math.max(0, Math.round(Number(p.rating) || 0)));
       const stars = '★'.repeat(rating) + '☆'.repeat(5 - rating);
       const outOfStock = Number(p.quantity || 0) <= 0;
-      return `<article class="product${outOfStock ? ' out-of-stock' : ''}"><div class="product-img" data-product-view="${p.id}" role="button" tabindex="0" aria-label="عرض تفاصيل ${esc(p.name)}">${productVisual(p)}<button class="heart ${fav ? 'is-fav' : ''}" data-fav="${p.id}" aria-label="${fav ? 'إزالة من المفضلة' : 'إضافة للمفضلة'}">${fav ? '♥' : '♡'}</button>${outOfStock ? '<span class="soldout-badge">نفذت الكمية</span>' : p.type === 'set' ? '<span class="set-badge">سيت كامل</span>' : ''}</div><div class="product-info"><button class="product-name product-name-button" data-product-view="${p.id}">${esc(p.name)}</button><div class="price">${money(p.price)}</div><div class="stars">${stars} <span>(${p.reviews})</span></div>${optionMarkup(p)}<button class="add" data-add="${p.id}"${outOfStock ? ' disabled' : ''}>${outOfStock ? 'نفذت الكمية' : 'أضف إلى السلة　♧'}</button></div></article>`;
+      const discounted = hasDiscount(p);
+      const priceHtml = discounted
+        ? `<div class="price"><s class="price-original">${money(p.price)}</s><span class="price-discounted">${money(p.discountPrice)}</span></div>`
+        : `<div class="price">${money(p.price)}</div>`;
+      const badgeHtml = outOfStock
+        ? '<span class="soldout-badge">نفذت الكمية</span>'
+        : discounted
+          ? '<span class="discount-badge">خصم</span>'
+          : p.type === 'set'
+            ? '<span class="set-badge">سيت كامل</span>'
+            : '';
+      return `<article class="product${outOfStock ? ' out-of-stock' : ''}"><div class="product-img" data-product-view="${p.id}" role="button" tabindex="0" aria-label="عرض تفاصيل ${esc(p.name)}">${productVisual(p)}<button class="heart ${fav ? 'is-fav' : ''}" data-fav="${p.id}" aria-label="${fav ? 'إزالة من المفضلة' : 'إضافة للمفضلة'}">${fav ? '♥' : '♡'}</button>${badgeHtml}</div><div class="product-info"><button class="product-name product-name-button" data-product-view="${p.id}">${esc(p.name)}</button>${priceHtml}<div class="stars">${stars} <span>(${p.reviews})</span></div>${optionMarkup(p)}<button class="add" data-add="${p.id}"${outOfStock ? ' disabled' : ''}>${outOfStock ? 'نفذت الكمية' : 'أضف إلى السلة　♧'}</button></div></article>`;
     })
     .join('');
   $$('[data-add]').forEach(
@@ -301,7 +326,7 @@ function addToCartCore(id, color, size, qty = 1) {
   if (existing) {
     existing.qty = currentQty + q;
   } else {
-    cart.push({ ...p, qty: q, color, size });
+    cart.push({ ...p, price: effectivePrice(p), qty: q, color, size });
   }
   save();
   renderCart();
@@ -685,7 +710,7 @@ function ensureProductModal() {
       alert(stock <= 0 ? 'عذراً، هذا المنتج نفذ من المخزون حالياً.' : `الكمية المتوفرة: ${stock}.`);
       return;
     }
-    quickBuyItem = { ...p, qty: q, color, size };
+    quickBuyItem = { ...p, price: effectivePrice(p), qty: q, color, size };
     closeProductDetails();
     openCheckout(true);
   };
@@ -701,7 +726,9 @@ function openProductDetails(id, updateUrl = true) {
   modal._galleryState.index = 0;
   modal._renderGallery();
   modal.querySelector('[data-detail-code]').textContent = `كود المنتج: ${p.code}`;
-  modal.querySelector('[data-detail-price]').textContent = money(p.price);
+  modal.querySelector('[data-detail-price]').innerHTML = hasDiscount(p)
+    ? `<s class="price-original">${money(p.price)}</s><span class="price-discounted">${money(p.discountPrice)}</span>`
+    : money(p.price);
   const dr = Math.min(5, Math.max(0, Math.round(Number(p.rating) || 0)));
   modal.querySelector('[data-detail-rating]').textContent =
     `${'★'.repeat(dr)}${'☆'.repeat(5 - dr)} ${p.rating} · ${p.reviews} تقييم`;
