@@ -318,7 +318,9 @@ function updateSizesRequired() {
   const required = $('#type').value === 'shoes' || $('#type').value === 'set';
   $('#sizes').required = required;
   $('#sizes').closest('label').classList.toggle('required', required);
-  renderSizeOptions([], {});
+  const selected = [...document.querySelectorAll('.size-option:checked')].map((i) => i.value);
+  const existing = getSizeQuantities();
+  renderSizeOptions(selected, existing);
 }
 
 function renderSizeQuantities(existing = {}) {
@@ -382,8 +384,11 @@ async function save(e) {
   const price = Number($('#price').value || 0);
   const discountPriceRaw = $('#discountPrice').value.trim();
   const discountPrice = discountPriceRaw === '' ? null : Number(discountPriceRaw);
-  if (discountPrice != null && (Number.isNaN(discountPrice) || discountPrice >= price)) {
-    $('#formError').textContent = 'سعر الخصم لازم يكون أقل من السعر الأصلي.';
+  if (
+    discountPrice != null &&
+    (Number.isNaN(discountPrice) || discountPrice < 0 || discountPrice >= price)
+  ) {
+    $('#formError').textContent = 'سعر الخصم لازم يكون رقم موجب وأقل من السعر الأصلي.';
     return;
   }
 
