@@ -119,6 +119,16 @@ module.exports = async (req, res) => {
     if (!product) return json(req, res, 400, { error: `منتج غير صالح: ${code}` });
     const color = rawItem.color ? String(rawItem.color).trim() || null : null;
     const size = rawItem.size ? String(rawItem.size).trim() || null : null;
+    const isSized = ['shoes', 'set'].includes(String(product.type).toLowerCase());
+    if (isSized && !size) return json(req, res, 400, { error: `المقاس مطلوب لـ ${code}` });
+    if (
+      size &&
+      isSized &&
+      Array.isArray(product.sizes) &&
+      product.sizes.length &&
+      !product.sizes.includes(size)
+    )
+      return json(req, res, 400, { error: `مقاس غير صالح لـ ${code}` });
     const basePrice = Number(product.price) || 0;
     const discountPrice = product.discount_price != null ? Number(product.discount_price) : null;
     const unitPrice = discountPrice != null && discountPrice < basePrice ? discountPrice : basePrice;

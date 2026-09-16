@@ -14,8 +14,10 @@
       this.localStream = null;
       this.state = 'idle'; // idle | calling | ringing | connected | ended
       this._pendingOfferSdp = null;
+      this._pendingIceCandidates = [];
       this._callTimeout = null;
       this._offerInterval = null;
+      this._ringTimeout = null;
       this.onStateChange = null;
       this.onIncomingCall = null;
       this.onRemoteStream = null;
@@ -108,17 +110,25 @@
       }
       this._pendingOfferSdp = payload.sdp;
       this._setState('ringing');
+      // Guards against a stuck "ringing" UI if this side never acts on it
+      // (e.g. the same admin has a second tab open and answers there instead).
+      clearTimeout(this._ringTimeout);
+      this._ringTimeout = setTimeout(() => {
+        if (this.state === 'ringing') this.rejectCall();
+      }, CALL_TIMEOUT_MS + 5000);
       this.onIncomingCall?.();
     }
 
     async acceptCall() {
       if (this.state !== 'ringing' || !this._pendingOfferSdp) return;
+      clearTimeout(this._ringTimeout);
       try {
         this._setState('calling');
         this.localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
         const pc = this._ensurePc();
         this.localStream.getTracks().forEach((t) => pc.addTrack(t, this.localStream));
         await pc.setRemoteDescription(this._pendingOfferSdp);
+        await this._flushPendingIce();
         const answer = await pc.createAnswer();
         await pc.setLocalDescription(answer);
         this._send({ type: 'answer', sdp: answer });
@@ -140,17 +150,34 @@
       if (!this.pc) return;
       try {
         await this.pc.setRemoteDescription(payload.sdp);
+        await this._flushPendingIce();
       } catch (e) {
         this.onError?.(e);
       }
     }
 
     async _handleIce(payload) {
-      if (!this.pc) return;
+      // A candidate can arrive before we even have a pc (still ringing) or
+      // before its remote description is set — queue it instead of dropping
+      // it, since the caller only sends each candidate once.
+      if (!this.pc || !this.pc.remoteDescription || !this.pc.remoteDescription.type) {
+        this._pendingIceCandidates.push(payload.candidate);
+        return;
+      }
       try {
         await this.pc.addIceCandidate(payload.candidate);
       } catch (_) {
-        // benign — candidates can arrive before the remote description is set
+        // benign — a late-arriving candidate for a connection already torn down
+      }
+    }
+
+    async _flushPendingIce() {
+      const queued = this._pendingIceCandidates;
+      this._pendingIceCandidates = [];
+      for (const candidate of queued) {
+        try {
+          await this.pc.addIceCandidate(candidate);
+        } catch (_) {}
       }
     }
 
@@ -175,10 +202,20 @@
     _teardown() {
       clearTimeout(this._callTimeout);
       clearInterval(this._offerInterval);
+      clearTimeout(this._ringTimeout);
       this._pendingOfferSdp = null;
+      this._pendingIceCandidates = [];
       this.localStream?.getTracks().forEach((t) => t.stop());
       this.localStream = null;
-      this.pc?.close();
+      if (this.pc) {
+        // Detach handlers before closing — otherwise a delayed
+        // connectionstatechange from this now-closed connection could fire
+        // after a new call has already started and wrongly tear it down.
+        this.pc.onconnectionstatechange = null;
+        this.pc.onicecandidate = null;
+        this.pc.ontrack = null;
+        this.pc.close();
+      }
       this.pc = null;
     }
 
