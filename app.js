@@ -368,10 +368,48 @@ function whatsappMessage(customer, items = cart) {
         `• ${x.name}\n  الكود: ${x.code}\n  اللون: ${x.color}${isSizeRequired(x) ? '\n  المقاس: ' + x.size : ''}\n  الكمية: ${x.qty}\n  السعر: ${money(x.price * x.qty)}\n  الصورة: ${x.img}`,
     ),
     total = items.reduce((s, x) => s + x.price * x.qty, 0);
-  return `السلام عليكم، نبي نطلب من Veronza Boutique\n\n${lines.join('\n\n')}\n\nالإجمالي: ${money(total)}\n\nبيانات الزبون:\nالاسم: ${customer.name}\nرقم الهاتف: ${customer.phone}\nالعنوان: ${customer.address}\n\nنبي نكمل تفاصيل الطلب والتوصيل عبر واتساب.`;
+  return `السلام عليكم، نبي نطلب من Veronza Boutique\n\n${lines.join('\n\n')}\n\nالإجمالي: ${money(total)}\n\nبيانات الزبون:\nالاسم: ${customer.name}\nرقم الهاتف: ${customer.phone}\nالعنوان: ${customer.address}`;
 }
 function openWhatsApp(message) {
   window.location.href = `https://wa.me/${WHATSAPP}?text=${encodeURIComponent(message)}`;
+}
+let orderReadyMessage = '';
+function ensureOrderReadySheet() {
+  if ($('[data-order-ready]')) return;
+  const style = document.createElement('style');
+  style.textContent =
+    '.order-ready{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:flex-end;justify-content:center;z-index:110}.order-ready.open{display:flex}.order-ready-card{position:relative;width:min(100%,560px);max-height:92vh;overflow:auto;background:#fff;padding:24px;border-radius:24px 24px 0 0;box-shadow:0 -10px 40px rgba(0,0,0,.18);display:flex;flex-direction:column;gap:16px}.order-ready-close{position:absolute;top:16px;inset-inline-start:16px;width:34px;height:34px;border-radius:50%;border:0;background:#f4f1ec;color:#73706b;font-size:18px;line-height:1;cursor:pointer}.order-ready-icon{width:46px;height:46px;border-radius:50%;background:#eaf9f0;display:flex;align-items:center;justify-content:center}.order-ready-card h2{margin:0;font-size:19px;font-weight:800}.order-ready-sub{margin:0;font-size:13px;color:#73706b;line-height:1.8}.order-ready-items{display:flex;flex-direction:column;gap:10px}.order-ready-row{border:1px solid #e8e2d8;border-radius:14px;padding:10px;display:flex;gap:12px;align-items:center}.order-ready-thumb{width:48px;height:48px;border-radius:10px;object-fit:cover;flex:none;background:#f7f3ed;border:1px solid #e8e2d8}.order-ready-info{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}.order-ready-info strong{font-size:13.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.order-ready-info span{font-size:11.5px;color:#73706b}.order-ready-price{font-family:"Playfair Display",Cairo,serif;font-weight:700;font-size:14px;white-space:nowrap}.order-ready-cta{display:flex;align-items:center;justify-content:center;gap:10px;background:#25d366;color:#fff;border:0;border-radius:14px;padding:15px;font:inherit;font-weight:800;font-size:15px;cursor:pointer}.order-ready-cta svg{width:20px;height:20px;flex:none}';
+  document.head.appendChild(style);
+  const sheet = document.createElement('div');
+  sheet.className = 'order-ready';
+  sheet.setAttribute('data-order-ready', '');
+  sheet.innerHTML =
+    '<div class="order-ready-card"><button type="button" class="order-ready-close" data-order-ready-close aria-label="إغلاق">×</button><div class="order-ready-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#128c4a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17.5 14.4c-.3-.15-1.76-.87-2.03-.97-.27-.1-.47-.15-.67.15-.2.3-.77.97-.94 1.16-.17.2-.35.22-.64.08-.3-.15-1.26-.46-2.4-1.48-.88-.79-1.48-1.76-1.65-2.06-.17-.3-.02-.46.13-.61.13-.13.3-.35.45-.52.15-.17.2-.3.3-.5.1-.2.05-.37-.02-.52-.08-.15-.67-1.61-.92-2.21-.24-.58-.49-.5-.67-.51h-.57c-.2 0-.52.08-.79.37-.27.3-1.04 1.02-1.04 2.48s1.07 2.88 1.21 3.08c.15.2 2.1 3.2 5.08 4.49.71.3 1.26.49 1.69.63.71.22 1.36.19 1.87.12.57-.09 1.76-.72 2-1.42.25-.69.25-1.29.17-1.41-.07-.13-.27-.2-.57-.35Z"/><path d="M12.05 21.79A9.9 9.9 0 0 1 7 20.4l-.36-.21-3.74.98 1-3.65-.24-.37A9.86 9.86 0 1 1 22 11.9c0 5.45-4.44 9.88-9.88 9.88Z"/></svg></div><h2>طلبك جاهز ✓</h2><p class="order-ready-sub">مزال خطوة وحدة بسيطة — اضغط الزر الأخضر تحت متع واتساب لإرسال طلبك وإتمامه عبر واتساب.</p><div class="order-ready-items" data-order-ready-items></div><button type="button" class="order-ready-cta" data-order-ready-cta><svg viewBox="0 0 24 24" fill="#fff"><path d="M17.47 14.38c-.3-.15-1.76-.87-2.03-.97-.27-.1-.47-.15-.67.15-.2.3-.77.97-.94 1.16-.17.2-.35.22-.64.08-.3-.15-1.26-.46-2.39-1.47-.88-.79-1.48-1.76-1.65-2.06-.17-.3-.02-.46.13-.6.13-.14.3-.35.44-.52.15-.17.2-.3.3-.5.1-.2.05-.37-.02-.52-.08-.15-.67-1.61-.92-2.21-.24-.58-.49-.5-.67-.51h-.57c-.2 0-.52.08-.79.37-.27.3-1.04 1.02-1.04 2.48s1.07 2.88 1.21 3.08c.15.2 2.1 3.2 5.08 4.49.7.3 1.26.49 1.69.63.71.22 1.36.19 1.87.12.57-.09 1.76-.72 2-1.42.25-.69.25-1.29.17-1.41-.07-.13-.27-.2-.57-.35ZM12.05 21.78a9.9 9.9 0 0 1-5.04-1.38l-.36-.22-3.74.98 1-3.65-.24-.37a9.86 9.86 0 1 1 8.38 4.64Zm0-18.33A11.87 11.87 0 0 0 0 15.32c0 2.1.55 4.14 1.59 5.94L0 24l6.31-1.65a11.87 11.87 0 0 0 5.68 1.45h.01c6.55 0 11.89-5.34 11.9-11.89a11.8 11.8 0 0 0-3.48-8.43Z"/></svg>إرسال طلبك عبر واتساب</button></div>';
+  document.body.appendChild(sheet);
+  sheet.querySelector('[data-order-ready-close]').onclick = closeOrderReadySheet;
+  sheet.onclick = (e) => {
+    if (e.target === sheet) closeOrderReadySheet();
+  };
+  sheet.querySelector('[data-order-ready-cta]').onclick = () => {
+    openWhatsApp(orderReadyMessage);
+    closeOrderReadySheet();
+  };
+}
+function openOrderReadySheet(customer, items) {
+  ensureOrderReadySheet();
+  orderReadyMessage = whatsappMessage(customer, items);
+  $('[data-order-ready-items]').innerHTML = items
+    .map(
+      (x) =>
+        `<div class="order-ready-row"><img src="${esc(x.img)}" alt="${esc(x.name)}" class="order-ready-thumb"><div class="order-ready-info"><strong>${esc(x.name)}</strong><span>الكود ${esc(x.code)}${x.color ? ' · ' + esc(x.color) : ''}${isSizeRequired(x) && x.size ? ' · المقاس ' + esc(x.size) : ''}</span></div><div class="order-ready-price">${money(x.price * x.qty)}</div></div>`,
+    )
+    .join('');
+  $('[data-order-ready]').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function closeOrderReadySheet() {
+  $('[data-order-ready]')?.classList.remove('open');
+  document.body.style.overflow = '';
 }
 async function sendOrderToCloudAPI(customer, items = cart) {
   const total = items.reduce((s, x) => s + x.price * x.qty, 0);
@@ -441,7 +479,7 @@ function ensureProductModal() {
   if ($('#productDetailsModal')) return;
   const style = document.createElement('style');
   style.textContent =
-    '.product-name-button{display:block;width:100%;padding:0;border:0;background:none;text-align:right;cursor:pointer}.product-details-modal{position:fixed;inset:0;background:rgba(0,0,0,.58);display:none;align-items:flex-end;justify-content:center;z-index:90}.product-details-modal.open{display:flex}.product-details-card{width:min(100%,680px);max-height:94vh;overflow:auto;overscroll-behavior:contain;background:#fff;border-radius:24px 24px 0 0;padding:18px}.product-details-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}.product-details-close{border:0;background:#f4f1ec;width:40px;height:40px;border-radius:50%;font-size:25px}.product-details-media{aspect-ratio:1/1;background:#f5f2ed;overflow:hidden}.product-details-media img{width:100%;height:100%;object-fit:cover}.product-details-media.set{display:grid;grid-template-columns:1fr 1fr;gap:2px}.product-details-info h2{font-size:22px;margin:14px 0 4px}.product-details-code{color:#888;font-size:11px}.product-details-price{font-family:"Playfair Display",serif;font-size:24px;font-weight:700;margin:8px 0}.product-details-rating{color:#b58a3b;font-size:12px}.detail-options{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:16px 0}.detail-options label{display:grid;gap:6px;font-size:12px;font-weight:700}.detail-options select{padding:11px;border:1px solid #ddd8d0;border-radius:10px;background:#fff}.detail-qty{display:flex;align-items:center;justify-content:space-between;border:1px solid #ddd8d0;border-radius:10px;padding:5px 10px;margin-bottom:12px}.detail-qty button{border:0;background:#f4f1ec;width:34px;height:34px;border-radius:8px;font-size:20px}.detail-qty span{font-weight:700}.detail-add{width:100%;border:0;background:#111;color:#fff;padding:14px;border-radius:12px;font-weight:800}.detail-add:hover{background:#b58a3b}.detail-buy-now{width:100%;border:2px solid #111;background:#fff;color:#111;padding:13px;border-radius:12px;font-weight:800;margin-top:10px}.detail-buy-now:hover{background:#111;color:#fff}.product-gallery{position:relative}.gallery-main{aspect-ratio:1/1;background:#f5f2ed;overflow:hidden;position:relative;cursor:zoom-in;direction:ltr}.gallery-track{display:flex;height:100%;width:100%;touch-action:pan-y}.gallery-track img{width:100%;height:100%;object-fit:cover;display:block;flex-shrink:0;user-select:none;-webkit-user-drag:none;pointer-events:none}.gallery-counter{position:absolute;bottom:10px;left:10px;background:rgba(0,0,0,.55);color:#fff;font-size:12px;padding:4px 11px;border-radius:20px;pointer-events:none}.gallery-nav{position:absolute;top:0;bottom:0;width:34%;background:none;border:0}.gallery-nav.prev{left:0}.gallery-nav.next{right:0}.gallery-dots{display:flex;gap:6px;justify-content:center;margin-top:10px}.gallery-dots button{width:7px;height:7px;padding:0;border-radius:50%;background:#ddd8d0;border:0}.gallery-dots button.active{background:#111;width:18px;border-radius:5px}.veronza-lightbox{position:fixed;inset:0;background:#000;display:flex;align-items:center;justify-content:center;z-index:200;opacity:0;pointer-events:none;transition:opacity .22s ease}.veronza-lightbox.open{opacity:1;pointer-events:auto}.lightbox-track{display:flex;height:85vh;width:100%;touch-action:pan-y;direction:ltr}.lightbox-track img{width:100%;height:100%;object-fit:contain;flex-shrink:0;user-select:none;-webkit-user-drag:none;pointer-events:none}.lightbox-close{position:absolute;top:18px;inset-inline-start:18px;width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,.15);color:#fff;border:0;font-size:24px;line-height:1;z-index:2}.lightbox-counter{position:absolute;bottom:22px;left:50%;transform:translateX(-50%);color:#fff;font-size:13px;background:rgba(255,255,255,.15);padding:5px 14px;border-radius:20px;z-index:2}.lightbox-nav{position:absolute;top:0;bottom:0;width:40%;background:none;border:0;z-index:1}.lightbox-nav.prev{left:0}.lightbox-nav.next{right:0}.product-details-share{border:0;background:#f4f1ec;width:40px;height:40px;border-radius:50%;display:grid;place-items:center;margin-inline-end:8px}.veronza-toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#111;color:#fff;padding:10px 20px;border-radius:30px;font-size:13px;z-index:999;opacity:0;transition:.25s}.veronza-toast.show{opacity:1}@media(min-width:901px){.product-details-modal{align-items:center}.product-details-card{border-radius:24px}}';
+    '.product-name-button{display:block;width:100%;padding:0;border:0;background:none;text-align:right;cursor:pointer}.product-details-modal{position:fixed;inset:0;background:rgba(0,0,0,.58);display:none;align-items:flex-end;justify-content:center;z-index:90}.product-details-modal.open{display:flex}.product-details-card{width:min(100%,680px);max-height:94vh;overflow:auto;overscroll-behavior:contain;background:#fff;border-radius:24px 24px 0 0;padding:18px}.product-details-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}.product-details-close{border:0;background:#f4f1ec;width:40px;height:40px;border-radius:50%;font-size:25px}.product-details-media{aspect-ratio:1/1;background:#f5f2ed;overflow:hidden}.product-details-media img{width:100%;height:100%;object-fit:cover}.product-details-media.set{display:grid;grid-template-columns:1fr 1fr;gap:2px}.product-details-info h2{font-size:22px;margin:14px 0 4px}.product-details-code{color:#888;font-size:11px}.product-details-price{font-family:"Playfair Display",serif;font-size:24px;font-weight:700;margin:8px 0}.product-details-rating{color:#b58a3b;font-size:12px}.detail-options{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:16px 0}.detail-options label{display:grid;gap:6px;font-size:12px;font-weight:700}.detail-options select{padding:11px;border:1px solid #ddd8d0;border-radius:10px;background:#fff}.detail-qty{display:flex;align-items:center;justify-content:space-between;border:1px solid #ddd8d0;border-radius:10px;padding:5px 10px;margin-bottom:12px}.detail-qty button{border:0;background:#f4f1ec;width:34px;height:34px;border-radius:8px;font-size:20px}.detail-qty span{font-weight:700}.detail-add{width:100%;border:0;background:#111;color:#fff;padding:14px;border-radius:12px;font-weight:800}.detail-add:hover{background:#b58a3b}.detail-buy-now{width:100%;border:2px solid #111;background:#fff;color:#111;padding:13px;border-radius:12px;font-weight:800;margin-top:10px}.detail-buy-now:hover{background:#111;color:#fff}.product-gallery{position:relative}.gallery-main{aspect-ratio:1/1;background:#f5f2ed;overflow:hidden;position:relative;cursor:zoom-in;direction:ltr}.gallery-track{display:flex;height:100%;width:100%;touch-action:pan-y}.gallery-track img{width:100%;height:100%;object-fit:cover;display:block;flex-shrink:0;user-select:none;-webkit-user-drag:none;pointer-events:none}.gallery-counter{position:absolute;bottom:10px;left:10px;background:rgba(0,0,0,.55);color:#fff;font-size:12px;padding:4px 11px;border-radius:20px;pointer-events:none}.gallery-nav{position:absolute;top:0;bottom:0;width:34%;background:none;border:0}.gallery-nav.prev{left:0}.gallery-nav.next{right:0}.gallery-dots{display:flex;gap:6px;justify-content:center;margin-top:10px}.gallery-dots button{width:7px;height:7px;padding:0;border-radius:50%;background:#ddd8d0;border:0}.gallery-dots button.active{background:#111;width:18px;border-radius:5px}.veronza-lightbox{position:fixed;inset:0;background:#000;display:flex;align-items:center;justify-content:center;z-index:200;opacity:0;pointer-events:none;transition:opacity .22s ease}.veronza-lightbox.open{opacity:1;pointer-events:auto}.lightbox-track{display:flex;height:85vh;width:100%;touch-action:pan-y;direction:ltr}.lightbox-track img{width:100%;height:100%;object-fit:contain;flex-shrink:0;user-select:none;-webkit-user-drag:none;pointer-events:none}.lightbox-close{position:absolute;top:18px;inset-inline-start:18px;width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,.15);color:#fff;border:0;font-size:24px;line-height:1;z-index:2}.lightbox-counter{position:absolute;bottom:22px;left:50%;transform:translateX(-50%);color:#fff;font-size:13px;background:rgba(255,255,255,.15);padding:5px 14px;border-radius:20px;z-index:2}.lightbox-nav{position:absolute;top:0;bottom:0;width:40%;background:none;border:0;z-index:1}.lightbox-nav.prev{left:0}.lightbox-nav.next{right:0}.product-details-share{border:0;background:#f4f1ec;width:40px;height:40px;border-radius:50%;display:grid;place-items:center;margin-inline-end:8px}.veronza-toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#111;color:#fff;padding:12px 20px;border-radius:18px;font-size:13px;line-height:1.7;white-space:pre-line;text-align:center;max-width:min(92vw,380px);box-shadow:0 10px 30px rgba(0,0,0,.25);z-index:999;opacity:0;transition:.25s}.veronza-toast.show{opacity:1}@media(min-width:901px){.product-details-modal{align-items:center}.product-details-card{border-radius:24px}}';
   document.head.appendChild(style);
   const modal = document.createElement('div');
   modal.id = 'productDetailsModal';
@@ -701,7 +739,7 @@ function closeProductDetails() {
     history.replaceState({}, '', url);
   }
 }
-function veronzaToast(msg) {
+function veronzaToast(msg, ms = 2200) {
   let t = $('.veronza-toast');
   if (!t) {
     t = document.createElement('div');
@@ -711,7 +749,7 @@ function veronzaToast(msg) {
   t.textContent = msg;
   t.classList.add('show');
   clearTimeout(t._h);
-  t._h = setTimeout(() => t.classList.remove('show'), 2200);
+  t._h = setTimeout(() => t.classList.remove('show'), ms);
 }
 function copyProductLink(id) {
   const url = new URL(location.href);
@@ -801,13 +839,13 @@ $('[data-checkout-form]').onsubmit = async (e) => {
   const isQuickBuy = !!quickBuyItem;
   const orderItems = isQuickBuy ? [quickBuyItem] : cart;
   if (!orderItems.length) {
-    alert('السلة فارغة.');
+    veronzaToast('السلة فارغة.');
     return;
   }
   for (const item of orderItems) {
     const p = products.find((x) => x.id === item.id);
     if (p && isSizeRequired(p) && !item.size) {
-      alert(`اختار المقاس للمنتج: ${p.name}`);
+      veronzaToast(`اختار المقاس للمنتج: ${p.name}`);
       return;
     }
   }
@@ -818,7 +856,7 @@ $('[data-checkout-form]').onsubmit = async (e) => {
     marketingOptIn: form.querySelector('[name="marketing_opt_in"]').checked,
   };
   if (!customer.name || !customer.phone || !customer.address) {
-    alert('لازم تكتب الاسم ورقم الهاتف والعنوان.');
+    veronzaToast('لازم تكتب الاسم ورقم الهاتف والعنوان.');
     return;
   }
   const submit = form.querySelector('.checkout-submit');
@@ -833,7 +871,7 @@ $('[data-checkout-form]').onsubmit = async (e) => {
       if (isQuickBuy) {
         quickBuyItem = null;
         closeCheckout();
-        alert('عذرًا، هذا المنتج نفذت كميته حالياً. جرب منتجاً آخر.');
+        veronzaToast('عذرًا، هذا المنتج نفذت كميته حالياً. جرب منتجاً آخر.');
       } else {
         const removedNames = insufficient.map((r) => {
           const item = cart.find((x) => x.code === r.product_code);
@@ -843,8 +881,9 @@ $('[data-checkout-form]').onsubmit = async (e) => {
         window.cart = cart;
         save();
         renderCart();
-        alert(
+        veronzaToast(
           `عذرًا، المنتجات التالية نفذت كميتها وتم حذفها من السلة:\n${removedNames.join('\n')}\n\nراجع سلتك وأعد إرسال الطلب.`,
+          4500,
         );
         if (!cart.length) closeCheckout();
       }
@@ -855,7 +894,10 @@ $('[data-checkout-form]').onsubmit = async (e) => {
   try {
     const result = await sendOrderToCloudAPI(customer, orderItems);
     closeCheckout();
-    alert(`تم إرسال الطلب بنجاح إلى واتساب Veronza.\nرقم الطلب: ${result.order_number}`);
+    veronzaToast(
+      `تم إرسال الطلب بنجاح إلى واتساب Veronza.\nرقم الطلب: ${result.order_number}`,
+      4500,
+    );
     if (!isQuickBuy) {
       cart = [];
       window.cart = cart;
@@ -864,8 +906,7 @@ $('[data-checkout-form]').onsubmit = async (e) => {
     }
   } catch (error) {
     closeCheckout();
-    openWhatsApp(whatsappMessage(customer, orderItems));
-    alert('تعذر الإرسال التلقائي حالياً، ففتحنا واتساب برسالة الطلب الجاهزة.');
+    openOrderReadySheet(customer, orderItems);
   } finally {
     submit.disabled = false;
     submit.textContent = 'تأكيد الطلب';
