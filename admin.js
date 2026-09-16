@@ -176,8 +176,26 @@ function anyModalOpen() {
     !!document.querySelector('.vz-chatw-panel.open')
   );
 }
+// overflow:hidden alone doesn't reliably block touch-driven scrolling on
+// some mobile browsers - pin the body with position:fixed at its current
+// scroll offset, which actually holds there too.
+let vzScrollLockY = 0;
 function syncBodyScrollLock() {
-  document.body.style.overflow = anyModalOpen() ? 'hidden' : '';
+  const anyOpen = anyModalOpen();
+  const isLocked = document.body.style.position === 'fixed';
+  if (anyOpen && !isLocked) {
+    vzScrollLockY = window.scrollY;
+    Object.assign(document.body.style, {
+      position: 'fixed',
+      top: `-${vzScrollLockY}px`,
+      left: '0',
+      right: '0',
+      width: '100%',
+    });
+  } else if (!anyOpen && isLocked) {
+    Object.assign(document.body.style, { position: '', top: '', left: '', right: '', width: '' });
+    window.scrollTo(0, vzScrollLockY);
+  }
 }
 function openStatusList(status) {
   const label = status === 'all' ? 'جميع الطلبات' : statusNames[status] || status;

@@ -392,11 +392,30 @@ function renderCart() {
 // closing one doesn't unlock scrolling while another is still open (e.g. the
 // image lightbox inside the still-open product modal, or the chat panel
 // opened from a page that owns other modals). Re-run after any open/close.
+//
+// overflow:hidden alone doesn't reliably block touch-driven scrolling on
+// some mobile browsers (the background page could still be dragged behind
+// an open sheet) - pinning the body with position:fixed at its current
+// scroll offset is the technique that actually holds there too.
+let vzScrollLockY = 0;
 function syncBodyScrollLock() {
   const anyOpen = !!document.querySelector(
     '.cart-drawer.open,.search-panel.open,.mobile-menu.open,.product-details-modal.open,.veronza-lightbox.open,[data-checkout-modal].open,.auth-modal.open,.order-ready.open,.vz-chat-panel.open',
   );
-  document.body.style.overflow = anyOpen ? 'hidden' : '';
+  const isLocked = document.body.style.position === 'fixed';
+  if (anyOpen && !isLocked) {
+    vzScrollLockY = window.scrollY;
+    Object.assign(document.body.style, {
+      position: 'fixed',
+      top: `-${vzScrollLockY}px`,
+      left: '0',
+      right: '0',
+      width: '100%',
+    });
+  } else if (!anyOpen && isLocked) {
+    Object.assign(document.body.style, { position: '', top: '', left: '', right: '', width: '' });
+    window.scrollTo(0, vzScrollLockY);
+  }
 }
 window.syncBodyScrollLock = syncBodyScrollLock;
 function openLayer(el) {
