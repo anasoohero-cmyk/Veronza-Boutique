@@ -181,11 +181,10 @@ module.exports = async (req, res) => {
       );
       const subscriptions = subsResp.ok ? await subsResp.json() : [];
       if (cfg && subscriptions.length) {
-        webpush.setVapidDetails(
-          'mailto:veronza@localhost',
-          cfg.vapid_public_key,
-          cfg.vapid_private_key,
-        );
+        const vapidSubject =
+          process.env.SITE_URL ||
+          (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'https://veronza.vercel.app');
+        webpush.setVapidDetails(vapidSubject, cfg.vapid_public_key, cfg.vapid_private_key);
         await Promise.all(
           subscriptions.map(async (sub) => {
             try {
@@ -197,7 +196,35 @@ module.exports = async (req, res) => {
                   url: '/',
                 }),
               );
+              await fetch(
+                `${supabaseUrl}/rest/v1/push_subscriptions?id=eq.${encodeURIComponent(sub.id)}`,
+                {
+                  method: 'PATCH',
+                  headers: { ...headers, Prefer: 'return=minimal' },
+                  body: JSON.stringify({
+                    last_sent_at: new Date().toISOString(),
+                    last_error: null,
+                    last_error_at: null,
+                  }),
+                },
+              ).catch(() => {});
             } catch (e) {
+              const errorDetail = `${e?.statusCode || ''} ${e?.body || e?.message || e}`.slice(
+                0,
+                500,
+              );
+              console.error('Push notification failed:', errorDetail);
+              await fetch(
+                `${supabaseUrl}/rest/v1/push_subscriptions?id=eq.${encodeURIComponent(sub.id)}`,
+                {
+                  method: 'PATCH',
+                  headers: { ...headers, Prefer: 'return=minimal' },
+                  body: JSON.stringify({
+                    last_error: errorDetail,
+                    last_error_at: new Date().toISOString(),
+                  }),
+                },
+              ).catch(() => {});
               if (e?.statusCode === 404 || e?.statusCode === 410)
                 await fetch(
                   `${supabaseUrl}/rest/v1/push_subscriptions?id=eq.${encodeURIComponent(sub.id)}`,
