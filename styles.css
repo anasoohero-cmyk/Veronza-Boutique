@@ -1063,6 +1063,11 @@ a,
     justify-content: space-between;
     margin-bottom: 24px;
   }
+  .mobile-menu-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
   .mobile-menu-head button,
   .search-panel > button {
     align-self: flex-start;
