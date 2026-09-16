@@ -613,21 +613,28 @@ a,
   overflow: hidden;
 }
 .promo-dark {
-  background-image:
-    linear-gradient(90deg, rgba(0, 0, 0, 0.82), rgba(0, 0, 0, 0.12)),
-    url('/images/images%3Apromo-set.jpg');
+  background-image: url('/images/images%3Apromo-set.jpg');
 }
 .promo-shoe {
-  background-image:
-    linear-gradient(90deg, rgba(20, 20, 20, 0.7), rgba(20, 20, 20, 0.1)),
-    url('/images/promo-shoe-new.jpg');
+  background-image: url('/images/promo-shoe-new.jpg');
 }
 .promo span {
+  display: block;
+  width: fit-content;
   font-size: 15px;
+  background: rgba(0, 0, 0, 0.55);
+  padding: 3px 12px;
+  border-radius: 8px;
 }
 .promo strong {
+  display: block;
+  width: fit-content;
   font-size: 34px;
   font-family: 'Playfair Display', serif;
+  background: rgba(0, 0, 0, 0.55);
+  padding: 3px 14px;
+  border-radius: 10px;
+  margin-top: 6px;
 }
 .promo button {
   margin-top: 12px;
