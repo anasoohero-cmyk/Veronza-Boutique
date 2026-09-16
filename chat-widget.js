@@ -126,9 +126,24 @@
         if (panelOpen) newMsgs.forEach(appendMessage);
         else {
           lastMessageAt = newMsgs[newMsgs.length - 1].created_at;
-          if (newMsgs.some((m) => m.sender === 'admin')) showUnreadDot(true);
+          const adminMsgs = newMsgs.filter((m) => m.sender === 'admin');
+          if (adminMsgs.length) {
+            showUnreadDot(true);
+            notifyNewMessage(adminMsgs[adminMsgs.length - 1].body);
+          }
         }
       }
+    } catch (_) {}
+  }
+
+  function notifyNewMessage(preview) {
+    try {
+      if (typeof window.veronzaToast === 'function') {
+        window.veronzaToast(`رسالة جديدة من Veronza: ${preview}`.slice(0, 120), 4500);
+      }
+      new Audio(
+        'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABAAZGF0YQAAAAA=',
+      ).play();
     } catch (_) {}
   }
 
@@ -149,12 +164,18 @@
   }
   function startIdlePolling() {
     stopIdlePolling();
-    idleTimer = setInterval(() => poll(true), 25000);
+    idleTimer = setInterval(() => poll(true), 15000);
   }
   function stopIdlePolling() {
     if (idleTimer) clearInterval(idleTimer);
     idleTimer = null;
   }
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && session?.conversation_id) poll(!panelOpen);
+  });
+  window.addEventListener('focus', () => {
+    if (session?.conversation_id) poll(!panelOpen);
+  });
 
   async function openPanel() {
     panelOpen = true;
