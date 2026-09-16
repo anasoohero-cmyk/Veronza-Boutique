@@ -339,15 +339,17 @@ a,
 }
 .category-offers h2 {
   color: #fff;
-  font-size: 15px;
+  font-size: clamp(11px, 3vw, 15px);
   font-weight: 400;
   font-family: Cairo, Arial, sans-serif;
+  white-space: nowrap;
 }
 .category-offers p {
   color: #fff;
-  font-size: 34px;
+  font-size: clamp(18px, 6vw, 34px);
   font-family: 'Playfair Display', serif;
-  margin: 4px 0 15px;
+  margin: 4px 0 10px;
+  white-space: nowrap;
 }
 .category-offers strong {
   display: inline-block;
