@@ -20,6 +20,19 @@ window.syncBodyScrollLock = function syncBodyScrollLock() {
     ? 'hidden'
     : '';
 };
+let restoredAfterUpdate = false;
+function restoreAfterUpdate() {
+  if (restoredAfterUpdate) return;
+  restoredAfterUpdate = true;
+  const state = window.veronzaConsumeRestoreState?.();
+  if (!state) return;
+  if (state.window === 'admin-chat-widget') waitAndRestoreChatWidget();
+  if (typeof state.scrollY === 'number') window.scrollTo(0, state.scrollY);
+}
+function waitAndRestoreChatWidget(tries = 20) {
+  if (window.veronzaOpenAdminChatWidget) window.veronzaOpenAdminChatWidget();
+  else if (tries > 0) setTimeout(() => waitAndRestoreChatWidget(tries - 1), 200);
+}
 
 function toast(t) {
   const x = $('#toast');
@@ -212,6 +225,7 @@ function applyOwnerGate(adminCheck) {
     $('#notOwnerNotice').classList.remove('hidden');
     $('#usersSection').classList.add('hidden');
   }
+  restoreAfterUpdate();
 }
 
 (async () => {

@@ -1,27 +1,71 @@
 (() => {
   const CHECK_INTERVAL = 60000;
   const VERSION_KEY = 'veronza:lastVersion';
-  const REOPEN_CHECK_MS = 3000;
+  const RESTORE_KEY = 'veronza:restoreAfterUpdate';
+  const RESTORE_MAX_AGE_MS = 5 * 60 * 1000;
   let currentVersion = null;
   let checking = false;
   let reloadQueued = false;
 
-  // True while any modal/sheet/panel is open, on either the customer site or
-  // the admin panel — a pending update waits behind this instead of
-  // reloading (and closing whatever the person has open) out from under
-  // them the moment they come back to the tab.
-  const anyWindowOpen = () => {
-    if (
-      document.querySelector(
-        '.cart-drawer.open,.search-panel.open,.mobile-menu.open,.product-details-modal.open,.veronza-lightbox.open,[data-checkout-modal].open,.auth-modal.open,.order-ready.open,.vz-chat-panel.open,.vz-chatw-panel.open',
-      )
-    )
-      return true;
-    for (const sel of ['#orderModal', '#statusModal', '#manualOrderModal', '#modal']) {
-      const el = document.querySelector(sel);
-      if (el && !el.classList.contains('hidden')) return true;
+  // Figures out which window (if any) is open right now, on either the
+  // customer site or the admin panel, plus enough context (an order id, a
+  // status filter, a product id...) for that specific page's own script to
+  // put the person back exactly where they were after the reload. The
+  // product details modal isn't listed here — it already restores itself
+  // via its own ?p= URL parameter, which survives a reload on its own.
+  const captureWindowState = () => {
+    if (document.querySelector('.cart-drawer.open')) return { window: 'cart' };
+    if (document.querySelector('[data-checkout-modal].open')) return { window: 'checkout' };
+    if (document.querySelector('.mobile-menu.open')) return { window: 'mobile-menu' };
+    if (document.querySelector('.search-panel.open')) return { window: 'search-panel' };
+    if (document.querySelector('.auth-modal.open')) return { window: 'auth-modal' };
+    if (document.querySelector('.vz-chat-panel.open')) return { window: 'chat-panel' };
+
+    const orderModal = document.querySelector('#orderModal');
+    if (orderModal && !orderModal.classList.contains('hidden')) {
+      return { window: 'admin-order', context: { orderId: window.selected?.id || null } };
     }
-    return false;
+    const statusModal = document.querySelector('#statusModal');
+    if (statusModal && !statusModal.classList.contains('hidden')) {
+      return { window: 'admin-status', context: { status: window.filter || 'all' } };
+    }
+    const manualOrderModal = document.querySelector('#manualOrderModal');
+    if (manualOrderModal && !manualOrderModal.classList.contains('hidden')) {
+      return { window: 'admin-manual-order' };
+    }
+    const productModal = document.querySelector('#modal');
+    if (productModal && !productModal.classList.contains('hidden')) {
+      return {
+        window: 'admin-product-edit',
+        context: { productId: document.querySelector('#productId')?.value || null },
+      };
+    }
+    if (document.querySelector('.vz-chatw-panel.open')) return { window: 'admin-chat-widget' };
+    return { window: null };
+  };
+
+  const saveRestoreState = () => {
+    try {
+      const state = captureWindowState();
+      state.scrollY = window.scrollY;
+      state.savedAt = Date.now();
+      sessionStorage.setItem(RESTORE_KEY, JSON.stringify(state));
+    } catch (_) {}
+  };
+
+  // Each page's own script calls this once, after it's ready to act on it,
+  // to pick up (and clear) whatever was saved just before the reload.
+  window.veronzaConsumeRestoreState = () => {
+    try {
+      const raw = sessionStorage.getItem(RESTORE_KEY);
+      if (!raw) return null;
+      sessionStorage.removeItem(RESTORE_KEY);
+      const state = JSON.parse(raw);
+      if (!state || Date.now() - (state.savedAt || 0) > RESTORE_MAX_AGE_MS) return null;
+      return state;
+    } catch (_) {
+      return null;
+    }
   };
 
   const reloadWhenSafe = (version) => {
@@ -37,10 +81,7 @@
         document.addEventListener('visibilitychange', attemptReload, { once: true });
         return;
       }
-      if (anyWindowOpen()) {
-        setTimeout(attemptReload, REOPEN_CHECK_MS);
-        return;
-      }
+      saveRestoreState();
       window.location.reload();
     };
     attemptReload();

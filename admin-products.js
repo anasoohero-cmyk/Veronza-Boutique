@@ -82,6 +82,25 @@ async function load() {
   }
   products = Array.isArray(data) ? data : [];
   render();
+  restoreAfterUpdate();
+}
+let restoredAfterUpdate = false;
+function restoreAfterUpdate() {
+  if (restoredAfterUpdate) return;
+  restoredAfterUpdate = true;
+  const state = window.veronzaConsumeRestoreState?.();
+  if (!state) return;
+  if (state.window === 'admin-product-edit' && state.context?.productId) {
+    const product = products.find((p) => String(p.id) === String(state.context.productId));
+    if (product) openModal(product);
+  } else if (state.window === 'admin-chat-widget') {
+    waitAndRestoreChatWidget();
+  }
+  if (typeof state.scrollY === 'number') window.scrollTo(0, state.scrollY);
+}
+function waitAndRestoreChatWidget(tries = 20) {
+  if (window.veronzaOpenAdminChatWidget) window.veronzaOpenAdminChatWidget();
+  else if (tries > 0) setTimeout(() => waitAndRestoreChatWidget(tries - 1), 200);
 }
 
 function render() {

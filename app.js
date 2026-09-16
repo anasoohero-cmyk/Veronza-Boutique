@@ -945,6 +945,35 @@ window.addEventListener(
   },
   { once: true },
 );
+window.addEventListener(
+  'productsLoaded',
+  () => {
+    const state = window.veronzaConsumeRestoreState?.();
+    if (!state) return;
+    switch (state.window) {
+      case 'cart':
+        openCart();
+        break;
+      case 'checkout':
+        openCheckout(true);
+        break;
+      case 'mobile-menu':
+        openLayer($('[data-mobile-menu]'));
+        break;
+      case 'search-panel':
+        openLayer($('[data-search-panel]'));
+        break;
+      case 'auth-modal':
+        window.veronzaOpenAccount?.();
+        break;
+      case 'chat-panel':
+        window.veronzaOpenChat?.();
+        break;
+    }
+    if (typeof state.scrollY === 'number') window.scrollTo(0, state.scrollY);
+  },
+  { once: true },
+);
 $('[data-menu]').onclick = () => openLayer($('[data-mobile-menu]'));
 $('[data-menu-close]').onclick = closeLayers;
 $$('[data-menu-share]').forEach(
