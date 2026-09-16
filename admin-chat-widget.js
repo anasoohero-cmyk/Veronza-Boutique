@@ -250,8 +250,10 @@
         (payload) => {
           const msg = payload.new;
           if (msg.conversation_id === activeId && msg.sender === 'customer') {
-            activeMessages.push(msg);
-            renderMessages();
+            if (!activeMessages.some((m) => m.id === msg.id)) {
+              activeMessages.push(msg);
+              renderMessages();
+            }
             client.from('chat_conversations').update({ admin_unread: false }).eq('id', activeId);
           }
           loadConversations();
