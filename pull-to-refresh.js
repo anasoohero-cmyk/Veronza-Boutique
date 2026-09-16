@@ -119,8 +119,8 @@
         }
         return;
       }
-      if (e.cancelable) e.preventDefault();
       if (distance < deadzone) return;
+      if (e.cancelable) e.preventDefault();
       if (!dragging) {
         dragging = true;
         document.body.style.willChange = 'transform';
