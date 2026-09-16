@@ -368,6 +368,8 @@ module.exports = async (req, res) => {
             type: 'body',
             parameters: [
               { type: 'text', text: name },
+              { type: 'text', text: phone },
+              { type: 'text', text: address },
               { type: 'text', text: finalOrderNumber },
               { type: 'text', text: String(serverTotal) },
             ],
