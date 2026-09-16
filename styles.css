@@ -637,8 +637,19 @@ a,
   color: #555;
 }
 .social {
-  font-size: 18px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 18px;
   margin-bottom: 16px;
+}
+.social a {
+  display: flex;
+  color: #8a826f;
+  transition: color 0.2s ease;
+}
+.social a:hover {
+  color: var(--gold);
 }
 .footer p {
   font-size: 11px;
