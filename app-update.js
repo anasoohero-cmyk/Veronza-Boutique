@@ -1,9 +1,50 @@
 (() => {
   const CHECK_INTERVAL = 60000;
   const VERSION_KEY = 'veronza:lastVersion';
+  const REOPEN_CHECK_MS = 3000;
   let currentVersion = null;
   let checking = false;
   let reloadQueued = false;
+
+  // True while any modal/sheet/panel is open, on either the customer site or
+  // the admin panel — a pending update waits behind this instead of
+  // reloading (and closing whatever the person has open) out from under
+  // them the moment they come back to the tab.
+  const anyWindowOpen = () => {
+    if (
+      document.querySelector(
+        '.cart-drawer.open,.search-panel.open,.mobile-menu.open,.product-details-modal.open,.veronza-lightbox.open,[data-checkout-modal].open,.auth-modal.open,.order-ready.open,.vz-chat-panel.open,.vz-chatw-panel.open',
+      )
+    )
+      return true;
+    for (const sel of ['#orderModal', '#statusModal', '#manualOrderModal', '#modal']) {
+      const el = document.querySelector(sel);
+      if (el && !el.classList.contains('hidden')) return true;
+    }
+    return false;
+  };
+
+  const reloadWhenSafe = (version) => {
+    if (reloadQueued) return;
+    reloadQueued = true;
+    if (version) {
+      try {
+        localStorage.setItem(VERSION_KEY, version);
+      } catch (_) {}
+    }
+    const attemptReload = () => {
+      if (document.visibilityState !== 'visible') {
+        document.addEventListener('visibilitychange', attemptReload, { once: true });
+        return;
+      }
+      if (anyWindowOpen()) {
+        setTimeout(attemptReload, REOPEN_CHECK_MS);
+        return;
+      }
+      window.location.reload();
+    };
+    attemptReload();
+  };
 
   if ('serviceWorker' in navigator) {
     const hadControllerAtStart = !!navigator.serviceWorker.controller;
@@ -21,26 +62,9 @@
       if (controllerChanged) return;
       controllerChanged = true;
       if (!hadControllerAtStart) return;
-      if (document.visibilityState === 'visible') window.location.reload();
-      else
-        document.addEventListener('visibilitychange', () => window.location.reload(), {
-          once: true,
-        });
+      reloadWhenSafe(null);
     });
   }
-
-  const reloadWhenSafe = (version) => {
-    if (reloadQueued) return;
-    reloadQueued = true;
-    try {
-      localStorage.setItem(VERSION_KEY, version);
-    } catch (_) {}
-    const reload = () => {
-      if (document.visibilityState === 'visible') window.location.reload();
-      else document.addEventListener('visibilitychange', reload, { once: true });
-    };
-    reload();
-  };
 
   const check = async () => {
     if (checking || document.visibilityState === 'hidden') return;
