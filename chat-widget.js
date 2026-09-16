@@ -10,7 +10,8 @@
     pollTimer = null,
     idleTimer = null,
     lastMessageAt = null,
-    sending = false;
+    sending = false,
+    unreadCount = 0;
 
   function saveSession(s) {
     session = s;
@@ -32,7 +33,9 @@
     const s = document.createElement('style');
     s.id = 'vz-chat-style';
     s.textContent = `
-      .vz-chat-badge{display:inline-block;width:8px;height:8px;border-radius:50%;background:#b21f2d;margin-inline-start:6px;vertical-align:middle}
+      .vz-chat-badge{display:inline-flex;align-items:center;justify-content:center;min-width:17px;height:17px;padding:0 4px;border-radius:99px;background:#b21f2d;color:#fff;font-size:9px;font-weight:700;margin-inline-start:6px;vertical-align:middle}
+      .chat-header-btn{position:relative}
+      .chat-header-btn .vz-chat-badge{position:absolute;top:1px;right:2px;margin:0}
       .vz-chat-panel{position:fixed;left:50%;bottom:0;transform:translate(-50%,110%);width:min(100%,400px);max-height:78vh;background:#fff;z-index:95;display:flex;flex-direction:column;border-radius:24px 24px 0 0;box-shadow:0 -15px 40px rgba(0,0,0,.2);transition:.3s;overflow:hidden}
       .vz-chat-panel.open{transform:translate(-50%,0)}
       .vz-chat-head{display:flex;align-items:center;justify-content:space-between;padding:16px 18px;padding-top:max(16px,calc(env(safe-area-inset-top) + 8px));border-bottom:1px solid #eee;background:#faf9f7}
@@ -128,7 +131,8 @@
           lastMessageAt = newMsgs[newMsgs.length - 1].created_at;
           const adminMsgs = newMsgs.filter((m) => m.sender === 'admin');
           if (adminMsgs.length) {
-            showUnreadDot(true);
+            unreadCount += adminMsgs.length;
+            updateUnreadBadge();
             notifyNewMessage(adminMsgs[adminMsgs.length - 1].body);
           }
         }
@@ -147,10 +151,12 @@
     } catch (_) {}
   }
 
-  function showUnreadDot(show) {
+  function updateUnreadBadge() {
     chatTriggers.forEach((t) => {
       const badge = t.querySelector('.vz-chat-badge');
-      if (badge) badge.hidden = !show;
+      if (!badge) return;
+      badge.hidden = unreadCount <= 0;
+      badge.textContent = unreadCount > 99 ? '99+' : String(unreadCount);
     });
   }
 
@@ -180,7 +186,8 @@
   async function openPanel() {
     panelOpen = true;
     panel.classList.add('open');
-    showUnreadDot(false);
+    unreadCount = 0;
+    updateUnreadBadge();
     stopIdlePolling();
     nameRow.hidden = !!session?.conversation_id;
     if (session?.conversation_id) {
