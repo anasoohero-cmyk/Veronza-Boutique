@@ -335,7 +335,7 @@ a,
   background-image: url('/images/promo-set-new.jpg');
 }
 .category-offers:before {
-  background: linear-gradient(90deg, rgba(0, 0, 0, 0.82), rgba(0, 0, 0, 0.12));
+  background: none;
 }
 .category-offers h2 {
   color: #fff;
