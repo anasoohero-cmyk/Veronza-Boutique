@@ -2,6 +2,7 @@
   const SUPABASE_URL = 'https://kahbxvbirsjmednkybse.supabase.co';
   const SUPABASE_KEY = 'sb_publishable_L1TY-QEyFsWDeDRy_saOUQ_GP8TjADm';
   const sb = window.supabase?.createClient(SUPABASE_URL, SUPABASE_KEY) || null;
+  const STORE_PHONE = '+218944000974';
   const STORAGE_KEY = 'veronza-chat-session';
   let session = null;
   try {
@@ -93,6 +94,17 @@
   let activeCall = null,
     activeCallUI = null,
     callConversationId = null;
+  function notifyCallStarted(conversationId) {
+    fetch('/api/call-notify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ conversation_id: conversationId }),
+    }).catch(() => {});
+  }
+  function beginInSiteCall(conversationId) {
+    activeCall.startCall();
+    notifyCallStarted(conversationId);
+  }
   function ensureCallFor(conversationId) {
     if (!sb || !window.VeronzaCall || !conversationId) return;
     if (activeCall && callConversationId === conversationId) return;
@@ -103,14 +115,18 @@
     callConversationId = conversationId;
     callBtn.hidden = false;
     callBtn.onclick = () => {
-      activeCall.startCall();
-      fetch('/api/call-notify', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ conversation_id: conversationId }),
-      }).catch(() => {});
+      window.VeronzaCall.showChoice({
+        phone: STORE_PHONE,
+        onInSite: () => beginInSiteCall(conversationId),
+      });
     };
   }
+  window.veronzaStartInSiteCall = async () => {
+    const s = await ensureConversation();
+    ensureCallFor(s.conversation_id);
+    openPanel();
+    beginInSiteCall(s.conversation_id);
+  };
 
   function renderMessages(messages) {
     if (!messages.length) return;

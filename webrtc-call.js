@@ -315,6 +315,41 @@
     };
   }
 
+  function showCallChoice({ phone, onInSite }) {
+    if (!document.getElementById('vz-callchoice-style')) {
+      const style = document.createElement('style');
+      style.id = 'vz-callchoice-style';
+      style.textContent = `
+        .vz-callchoice-overlay{position:fixed;inset:0;background:#0007;display:flex;align-items:center;justify-content:center;z-index:430;padding:16px}
+        .vz-callchoice-card{background:#fff;border-radius:18px;padding:20px;max-width:320px;width:100%;text-align:center;box-shadow:0 12px 40px #0003}
+        .vz-callchoice-title{font:700 16px/1.5 Cairo,sans-serif;margin-bottom:16px}
+        .vz-callchoice-card button{display:block;width:100%;border:0;border-radius:12px;padding:13px;font:700 14px Cairo,sans-serif;cursor:pointer;margin-bottom:10px}
+        .vz-callchoice-card [data-choice-insite]{background:#111;color:#fff}
+        .vz-callchoice-card [data-choice-phone]{background:#f4f1ec;color:#111}
+        .vz-callchoice-card [data-choice-cancel]{background:none;color:#888;margin-bottom:0;padding:6px}
+      `;
+      document.head.appendChild(style);
+    }
+    const overlay = document.createElement('div');
+    overlay.className = 'vz-callchoice-overlay';
+    overlay.innerHTML = `<div class="vz-callchoice-card"><div class="vz-callchoice-title">كيف تحب تتواصل معنا؟</div><button type="button" data-choice-insite>📞 مكالمة داخل الموقع</button><button type="button" data-choice-phone>☎️ اتصال بالرقم ${esc(phone)}</button><button type="button" data-choice-cancel>إلغاء</button></div>`;
+    document.body.appendChild(overlay);
+    const close = () => overlay.remove();
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) close();
+    });
+    overlay.querySelector('[data-choice-insite]').onclick = () => {
+      close();
+      onInSite?.();
+    };
+    overlay.querySelector('[data-choice-phone]').onclick = () => {
+      close();
+      window.location.href = 'tel:' + phone;
+    };
+    overlay.querySelector('[data-choice-cancel]').onclick = close;
+  }
+
   window.VeronzaCall = VeronzaCall;
   window.VeronzaCall.mountUI = mountCallUI;
+  window.VeronzaCall.showChoice = showCallChoice;
 })();
