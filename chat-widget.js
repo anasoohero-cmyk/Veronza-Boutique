@@ -36,12 +36,15 @@
       .vz-chat-badge{display:inline-flex;align-items:center;justify-content:center;min-width:17px;height:17px;padding:0 4px;border-radius:99px;background:#b21f2d;color:#fff;font-size:9px;font-weight:700;margin-inline-start:6px;vertical-align:middle}
       .chat-header-btn{position:relative}
       .chat-header-btn .vz-chat-badge{position:absolute;top:1px;right:2px;margin:0}
-      .vz-chat-panel{position:fixed;left:50%;bottom:0;transform:translate(-50%,110%);width:min(100%,400px);max-height:78vh;background:#fff;z-index:95;display:flex;flex-direction:column;border-radius:24px 24px 0 0;box-shadow:0 -15px 40px rgba(0,0,0,.2);transition:.3s;overflow:hidden}
-      .vz-chat-panel.open{transform:translate(-50%,0)}
-      .vz-chat-head{display:flex;align-items:center;justify-content:space-between;padding:16px 18px;padding-top:max(16px,calc(env(safe-area-inset-top) + 8px));border-bottom:1px solid #eee;background:#faf9f7}
-      .vz-chat-head strong{font-family:'Playfair Display',serif;font-size:16px}
-      .vz-chat-head small{display:block;color:#777;font-size:11px;margin-top:2px}
-      .vz-chat-close{border:0;background:#f4f1ec;width:32px;height:32px;border-radius:50%;font-size:18px}
+      .vz-chat-panel{position:fixed;left:50%;bottom:0;transform:translate(-50%,16px);opacity:0;pointer-events:none;width:min(100%,400px);max-height:78vh;background:#fff;z-index:95;display:flex;flex-direction:column;border-radius:22px 22px 0 0;box-shadow:0 -15px 45px rgba(0,0,0,.22);transition:transform .22s ease,opacity .22s ease;overflow:hidden}
+      .vz-chat-panel.open{transform:translate(-50%,0);opacity:1;pointer-events:auto}
+      .vz-chat-head{display:flex;align-items:center;gap:10px;padding:16px 18px;padding-top:max(16px,calc(env(safe-area-inset-top) + 8px));border-bottom:1px solid #eee;background:#111;color:#fff}
+      .vz-chat-avatar{width:36px;height:36px;border-radius:50%;background:var(--gold,#b58a3b);display:grid;place-items:center;flex-shrink:0;font-family:'Playfair Display',serif;font-weight:700;font-size:15px}
+      .vz-chat-head-info{flex:1;min-width:0}
+      .vz-chat-head strong{font-family:'Playfair Display',serif;font-size:15px;display:block}
+      .vz-chat-head small{display:flex;align-items:center;gap:5px;color:#c9c2b4;font-size:11px;margin-top:2px}
+      .vz-chat-online-dot{width:7px;height:7px;border-radius:50%;background:#3ecf6a;display:inline-block;flex-shrink:0}
+      .vz-chat-close{border:0;background:rgba(255,255,255,.12);color:#fff;width:32px;height:32px;border-radius:50%;font-size:18px;flex-shrink:0}
       .vz-chat-body{flex:1;overflow:auto;padding:16px;display:flex;flex-direction:column;gap:10px;overscroll-behavior:contain}
       .vz-chat-msg{max-width:78%;padding:10px 14px;border-radius:16px;font-size:13px;line-height:1.6;word-break:break-word}
       .vz-chat-msg.customer{align-self:flex-end;background:#111;color:#fff;border-bottom-right-radius:4px}
@@ -54,7 +57,10 @@
       .vz-chat-foot input{flex:1;border:1px solid #ddd8d0;border-radius:99px;padding:11px 16px;font:inherit;font-size:13px}
       .vz-chat-foot button{border:0;background:#111;color:#fff;border-radius:99px;padding:11px 18px;font:inherit;font-weight:700}
       .vz-chat-foot button:disabled{opacity:.5}
-      @media(min-width:700px){.vz-chat-panel{border-radius:24px;max-width:420px}}
+      @media(min-width:700px){
+        .vz-chat-panel{left:auto;right:24px;bottom:24px;transform:translateY(16px);width:380px;max-width:calc(100vw - 32px);max-height:min(600px,calc(100vh - 110px));border-radius:20px}
+        .vz-chat-panel.open{transform:translateY(0)}
+      }
     `;
     document.head.appendChild(s);
   }
@@ -65,7 +71,7 @@
   const panel = document.createElement('div');
   panel.className = 'vz-chat-panel';
   panel.innerHTML = `
-    <div class="vz-chat-head"><div><strong>تواصل مع Veronza</strong><small>عادة نرد خلال دقائق</small></div><button type="button" class="vz-chat-close" aria-label="إغلاق">×</button></div>
+    <div class="vz-chat-head"><span class="vz-chat-avatar">V</span><div class="vz-chat-head-info"><strong>تواصل مع Veronza</strong><small><span class="vz-chat-online-dot"></span>عادة نرد خلال دقائق</small></div><button type="button" class="vz-chat-close" aria-label="إغلاق">×</button></div>
     <div class="vz-chat-name-row" data-name-row hidden><input type="text" data-name-input placeholder="اسمك (اختياري)"></div>
     <div class="vz-chat-body" data-body><div class="vz-chat-welcome">أهلاً 👋 اكتب لنا أي سؤال عن المنتجات أو الطلب وبنرد عليك بأقرب وقت.</div></div>
     <form class="vz-chat-foot" data-form><input type="text" data-input placeholder="اكتب رسالتك..." autocomplete="off" required><button type="submit">إرسال</button></form>
