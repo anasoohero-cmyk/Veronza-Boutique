@@ -172,8 +172,10 @@ module.exports = async (req, res) => {
     const previousOrder = existing.ok && Array.isArray(existing.data) ? existing.data[0] : null;
     if (!previousOrder) return json(req, res, 404, { error: 'الطلب غير موجود' });
 
+    // Stock stays decremented only while an order sits in "shipped"/"delivered".
+    // Moving into either of those (from anywhere) decrements it; moving out of
+    // them to any other status (preparing, cancelled, returned, ...) restores it.
     const isShippedOrDelivered = ['shipped', 'delivered'].includes(body.status);
-    const isCancelledOrReturned = ['cancelled', 'returned'].includes(body.status);
 
     if (isShippedOrDelivered && !previousOrder.stock_decremented) {
       const dec = await sbFetch('/rest/v1/rpc/decrement_stock_for_order', {
@@ -188,7 +190,7 @@ module.exports = async (req, res) => {
           });
         return json(req, res, 502, { error: 'تعذر خصم الكمية من المخزون' });
       }
-    } else if (isCancelledOrReturned && previousOrder.stock_decremented) {
+    } else if (!isShippedOrDelivered && previousOrder.stock_decremented) {
       const rest = await sbFetch('/rest/v1/rpc/restore_stock_for_order', {
         method: 'POST',
         body: JSON.stringify({ p_order_id: body.id }),
