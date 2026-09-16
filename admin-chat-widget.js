@@ -259,12 +259,14 @@
     const open = () => {
       panel.classList.add('open');
       shade.classList.add('open');
+      window.syncBodyScrollLock?.();
       loadConversations();
       window.veronzaEnsurePush?.();
     };
     const close = () => {
       panel.classList.remove('open');
       shade.classList.remove('open');
+      window.syncBodyScrollLock?.();
       backToList();
     };
     btn.onclick = open;

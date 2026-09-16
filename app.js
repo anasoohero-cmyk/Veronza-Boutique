@@ -388,16 +388,27 @@ function renderCart() {
       }),
   );
 }
+// Covers every overlay on the site regardless of which script manages it, so
+// closing one doesn't unlock scrolling while another is still open (e.g. the
+// image lightbox inside the still-open product modal, or the chat panel
+// opened from a page that owns other modals). Re-run after any open/close.
+function syncBodyScrollLock() {
+  const anyOpen = !!document.querySelector(
+    '.cart-drawer.open,.search-panel.open,.mobile-menu.open,.product-details-modal.open,.veronza-lightbox.open,[data-checkout-modal].open,.auth-modal.open,.order-ready.open,.vz-chat-panel.open',
+  );
+  document.body.style.overflow = anyOpen ? 'hidden' : '';
+}
+window.syncBodyScrollLock = syncBodyScrollLock;
 function openLayer(el) {
   if (!el) return;
   el.classList.add('open');
   $('.overlay')?.classList.add('show');
-  document.body.style.overflow = 'hidden';
+  syncBodyScrollLock();
 }
 function closeLayers() {
   $$('.mobile-menu,.search-panel,.cart-drawer').forEach((x) => x.classList.remove('open'));
   $('.overlay')?.classList.remove('show');
-  document.body.style.overflow = '';
+  syncBodyScrollLock();
 }
 function openCart() {
   closeLayers();
@@ -435,6 +446,7 @@ function ensureOrderReadySheet() {
     openWhatsApp(orderReadyMessage);
     closeOrderReadySheet();
   };
+  attachSwipeDownToClose(sheet.querySelector('.order-ready-card'), closeOrderReadySheet);
 }
 function openOrderReadySheet(customer, items) {
   ensureOrderReadySheet();
@@ -446,11 +458,11 @@ function openOrderReadySheet(customer, items) {
     )
     .join('');
   $('[data-order-ready]').classList.add('open');
-  document.body.style.overflow = 'hidden';
+  syncBodyScrollLock();
 }
 function closeOrderReadySheet() {
   $('[data-order-ready]')?.classList.remove('open');
-  document.body.style.overflow = '';
+  syncBodyScrollLock();
 }
 async function sendOrderToCloudAPI(customer, items = cart) {
   const total = items.reduce((s, x) => s + x.price * x.qty, 0);
@@ -511,10 +523,81 @@ function openCheckout(isQuickBuy = false) {
   }
   const modal = $('[data-checkout-modal]');
   if (modal) modal.classList.add('open');
+  syncBodyScrollLock();
 }
 function closeCheckout() {
   $('[data-checkout-modal]')?.classList.remove('open');
   quickBuyItem = null;
+  syncBodyScrollLock();
+}
+// Swipe-down-to-close for a bottom sheet / dialog card. Works whether the
+// card is positioned with plain flexbox (no base transform) or already uses
+// a transform for its own open/closed state (e.g. translateX(-50%) sheets) —
+// it reads whatever transform is in effect when the drag starts and layers
+// the drag offset on top of it, instead of overwriting it.
+function attachSwipeDownToClose(card, closeFn, { scrollEl } = {}) {
+  const scroller = scrollEl || card;
+  let startX = 0,
+    startY = 0,
+    dragging = false,
+    moved = false,
+    scrollTopAtStart = 0,
+    baseTransform = '';
+  const setOffset = (dy) => {
+    card.style.transform = baseTransform ? `${baseTransform} translateY(${dy}px)` : `translateY(${dy}px)`;
+  };
+  const start = (e) => {
+    const p = e.touches[0];
+    startX = p.clientX;
+    startY = p.clientY;
+    scrollTopAtStart = scroller.scrollTop;
+    dragging = true;
+    moved = false;
+    const computed = getComputedStyle(card).transform;
+    baseTransform = computed && computed !== 'none' ? computed : '';
+    card.style.transition = 'none';
+  };
+  const move = (e) => {
+    if (!dragging) return;
+    const p = e.touches[0];
+    const dx = p.clientX - startX,
+      dy = p.clientY - startY;
+    if (!moved && Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
+    // Only take over for a clearly-vertical, downward drag while the sheet
+    // is scrolled to the top — otherwise leave it to normal scrolling or
+    // the image gallery's own horizontal swipe.
+    if (!moved && (Math.abs(dx) >= Math.abs(dy) || dy < 0 || scrollTopAtStart > 0)) {
+      dragging = false;
+      return;
+    }
+    moved = true;
+    if (e.cancelable) e.preventDefault();
+    setOffset(dy);
+  };
+  const end = (e) => {
+    if (!dragging) return;
+    dragging = false;
+    if (!moved) return;
+    const p = e.changedTouches[0];
+    const dy = p.clientY - startY;
+    card.style.transition = 'transform .2s ease';
+    if (dy > 90) {
+      setOffset(window.innerHeight);
+      setTimeout(() => {
+        closeFn();
+        card.style.transition = '';
+        card.style.transform = '';
+      }, 180);
+    } else {
+      card.style.transform = '';
+      setTimeout(() => {
+        card.style.transition = '';
+      }, 200);
+    }
+  };
+  card.addEventListener('touchstart', start, { passive: true });
+  card.addEventListener('touchmove', move, { passive: false });
+  card.addEventListener('touchend', end);
 }
 function ensureProductModal() {
   if ($('#productDetailsModal')) return;
@@ -526,7 +609,7 @@ function ensureProductModal() {
   modal.id = 'productDetailsModal';
   modal.className = 'product-details-modal';
   modal.innerHTML =
-    '<div class="product-details-card"><div class="product-details-head"><strong>تفاصيل المنتج</strong><div style="display:flex;align-items:center"><button type="button" class="product-details-share" data-detail-share aria-label="نسخ رابط المنتج"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="2.4"/><circle cx="6" cy="12" r="2.4"/><circle cx="18" cy="19" r="2.4"/><path d="M8.1 10.7l7.8-4.4M8.1 13.3l7.8 4.4"/></svg></button><button type="button" class="product-details-close" aria-label="إغلاق">×</button></div></div><div class="product-gallery" data-gallery><div class="gallery-main" data-gallery-main><div class="gallery-track" data-gallery-track></div><span class="gallery-counter" data-gallery-counter hidden></span><button type="button" class="gallery-nav prev" data-gallery-prev aria-label="السابق" hidden></button><button type="button" class="gallery-nav next" data-gallery-next aria-label="التالي" hidden></button></div><div class="gallery-dots" data-gallery-dots></div></div><div class="product-details-info"><h2 data-detail-name></h2><div class="product-details-description" data-detail-description hidden></div><div class="product-details-code" data-detail-code></div><div class="product-details-price" data-detail-price></div><div class="product-details-rating" data-detail-rating></div><div class="detail-options"><label>اللون<select data-detail-color></select></label><label>المقاس<select data-detail-size></select></label></div><div class="detail-qty"><button type="button" data-detail-minus>−</button><span data-detail-qty>1</span><button type="button" data-detail-plus>+</button></div><button type="button" class="detail-add" data-detail-add>أضف إلى السلة</button><button type="button" class="detail-buy-now" data-detail-buy>اطلب الآن (شراء مباشر)</button></div></div>';
+    '<div class="product-details-card"><div class="product-details-head"><strong>تفاصيل المنتج</strong><div style="display:flex;align-items:center"><button type="button" class="product-details-share" data-detail-call aria-label="اتصال"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.362 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.338 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg></button><button type="button" class="product-details-share" data-detail-share aria-label="نسخ رابط المنتج"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="2.4"/><circle cx="6" cy="12" r="2.4"/><circle cx="18" cy="19" r="2.4"/><path d="M8.1 10.7l7.8-4.4M8.1 13.3l7.8 4.4"/></svg></button><button type="button" class="product-details-close" aria-label="إغلاق">×</button></div></div><div class="product-gallery" data-gallery><div class="gallery-main" data-gallery-main><div class="gallery-track" data-gallery-track></div><span class="gallery-counter" data-gallery-counter hidden></span><button type="button" class="gallery-nav prev" data-gallery-prev aria-label="السابق" hidden></button><button type="button" class="gallery-nav next" data-gallery-next aria-label="التالي" hidden></button></div><div class="gallery-dots" data-gallery-dots></div></div><div class="product-details-info"><h2 data-detail-name></h2><div class="product-details-description" data-detail-description hidden></div><div class="product-details-code" data-detail-code></div><div class="product-details-price" data-detail-price></div><div class="product-details-rating" data-detail-rating></div><div class="detail-options"><label>اللون<select data-detail-color></select></label><label>المقاس<select data-detail-size></select></label></div><div class="detail-qty"><button type="button" data-detail-minus>−</button><span data-detail-qty>1</span><button type="button" data-detail-plus>+</button></div><button type="button" class="detail-add" data-detail-add>أضف إلى السلة</button><button type="button" class="detail-buy-now" data-detail-buy>اطلب الآن (شراء مباشر)</button></div></div>';
   document.body.appendChild(modal);
   const lightbox = document.createElement('div');
   lightbox.className = 'veronza-lightbox';
@@ -610,11 +693,14 @@ function ensureProductModal() {
     if (!galleryState.images.length) return;
     setTrackPos(lbTrack, galleryState.index, false);
     lightbox.classList.add('open');
-    document.body.style.overflow = 'hidden';
+    // No separate lock/unlock here — the lightbox only ever opens from
+    // inside the already-open (and already-locked) product details modal,
+    // so scroll should stay locked as long as that modal is still open.
+    syncBodyScrollLock();
   };
   const closeLightbox = () => {
     lightbox.classList.remove('open');
-    document.body.style.overflow = '';
+    syncBodyScrollLock();
   };
   lightbox.querySelector('[data-lb-close]').onclick = closeLightbox;
   lightbox.querySelector('[data-lb-prev]').onclick = () => moveGallery(-1);
@@ -691,7 +777,17 @@ function ensureProductModal() {
   modal._renderGallery = renderGallery;
   modal.querySelector('[data-detail-share]').onclick = () =>
     copyProductLink(Number(modal.dataset.productId));
+  modal.querySelector('[data-detail-call]').onclick = () => {
+    window.VeronzaCall?.showChoice({
+      phone: '+' + WHATSAPP,
+      onInSite: () => {
+        closeProductDetails();
+        window.veronzaStartInSiteCall?.();
+      },
+    });
+  };
   modal.querySelector('.product-details-close').onclick = closeProductDetails;
+  attachSwipeDownToClose(modal.querySelector('.product-details-card'), closeProductDetails);
   modal.onclick = (e) => {
     if (e.target === modal) closeProductDetails();
   };
@@ -772,7 +868,7 @@ function openProductDetails(id, updateUrl = true) {
   addBtn.textContent = outOfStock ? 'نفذت الكمية' : 'أضف إلى السلة';
   buyBtn.textContent = outOfStock ? 'نفذت الكمية' : 'اطلب الآن (شراء مباشر)';
   modal.classList.add('open');
-  document.body.style.overflow = 'hidden';
+  syncBodyScrollLock();
   if (updateUrl) {
     const url = new URL(location.href);
     url.searchParams.set('p', id);
@@ -783,7 +879,7 @@ function closeProductDetails() {
   const modal = $('#productDetailsModal');
   if (modal) modal.classList.remove('open');
   document.querySelector('.veronza-lightbox')?.classList.remove('open');
-  document.body.style.overflow = '';
+  syncBodyScrollLock();
   if (new URLSearchParams(location.search).has('p')) {
     const url = new URL(location.href);
     url.searchParams.delete('p');
@@ -838,7 +934,7 @@ window.addEventListener('popstate', () => {
   } else {
     const modal = $('#productDetailsModal');
     if (modal) modal.classList.remove('open');
-    document.body.style.overflow = '';
+    syncBodyScrollLock();
   }
 });
 window.addEventListener(
@@ -904,6 +1000,11 @@ $('[data-newsletter]').onsubmit = (e) => {
 };
 $('[data-checkout]').onclick = () => openCheckout();
 $('[data-checkout-close]').onclick = closeCheckout;
+attachSwipeDownToClose($('.checkout-card'), closeCheckout);
+attachSwipeDownToClose($('[data-cart-drawer]'), closeLayers, {
+  scrollEl: $('[data-cart-items]'),
+});
+attachSwipeDownToClose($('[data-mobile-menu]'), closeLayers);
 $('[data-checkout-form]').onsubmit = async (e) => {
   e.preventDefault();
   const form = e.currentTarget;

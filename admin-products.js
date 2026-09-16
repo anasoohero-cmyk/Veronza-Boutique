@@ -18,6 +18,14 @@ function toast(t) {
   x.classList.add('show');
   setTimeout(() => x.classList.remove('show'), 2500);
 }
+// Covers this page's own modal plus the floating chat widget it also loads,
+// so closing one doesn't unlock scrolling while the other is still open.
+function syncBodyScrollLock() {
+  const anyOpen =
+    !$('#modal').classList.contains('hidden') || !!document.querySelector('.vz-chatw-panel.open');
+  document.body.style.overflow = anyOpen ? 'hidden' : '';
+}
+window.syncBodyScrollLock = syncBodyScrollLock;
 
 async function checkAdmin(token) {
   try {
@@ -146,10 +154,12 @@ function openModal(p) {
     renderPreview();
   }
   $('#modal').classList.remove('hidden');
+  syncBodyScrollLock();
 }
 
 function closeModal() {
   $('#modal').classList.add('hidden');
+  syncBodyScrollLock();
 }
 
 function csv(v) {

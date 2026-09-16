@@ -1,7 +1,11 @@
 (() => {
-  const threshold = 100;
-  const maxPull = 130;
+  // A longer, more deliberate pull than a modal's swipe-to-close needs, so
+  // the two gestures don't compete: closing a sheet is a short, quick drag,
+  // refreshing the page requires pulling further and holding it.
+  const threshold = 150;
+  const maxPull = 180;
   const deadzone = 6;
+  const minHoldMs = 350;
   let startTime = 0;
   let startY = 0,
     pulling = false,
@@ -51,7 +55,7 @@
 
   const isOverlayOpen = () =>
     !!document.querySelector(
-      '.cart-drawer.open,.search-panel.open,.mobile-menu.open,.product-details-modal.open,[data-checkout-modal].open,.veronza-lightbox.open,.auth-modal.open',
+      '.cart-drawer.open,.search-panel.open,.mobile-menu.open,.product-details-modal.open,[data-checkout-modal].open,.veronza-lightbox.open,.auth-modal.open,.order-ready.open,.vz-chat-panel.open',
     );
 
   const doRefresh = () => {
@@ -140,7 +144,7 @@
       if (!dragging) return;
       const match = /translateY\(([\d.]+)px\)/.exec(document.body.style.transform || '');
       const pulled = match ? parseFloat(match[1]) : 0;
-      const heldLongEnough = Date.now() - startTime >= 150;
+      const heldLongEnough = Date.now() - startTime >= minHoldMs;
       if (pulled >= threshold && heldLongEnough) {
         document.body.style.transition = 'transform .2s ease';
         document.body.style.transform = `translateY(${maxPull}px)`;

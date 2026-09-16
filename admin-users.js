@@ -13,6 +13,13 @@ const SECTIONS = [
   { key: 'products', label: 'المنتجات والتخفيضات' },
   { key: 'chat', label: 'الرسائل' },
 ];
+// This page has no modal of its own, but the floating chat widget it loads
+// needs somewhere to lock/unlock background scroll.
+window.syncBodyScrollLock = function syncBodyScrollLock() {
+  document.body.style.overflow = document.querySelector('.vz-chatw-panel.open')
+    ? 'hidden'
+    : '';
+};
 
 function toast(t) {
   const x = $('#toast');
