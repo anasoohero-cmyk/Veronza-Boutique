@@ -2,6 +2,8 @@ const WHATSAPP = '218944000974';
 const SUPABASE_URL = 'https://kahbxvbirsjmednkybse.supabase.co';
 const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_L1TY-QEyFsWDeDRy_saOUQ_GP8TjADm';
 const SUPABASE_LOAD_TIMEOUT = 10000;
+const PRODUCTS_CACHE_KEY = 'veronza:productsCache';
+const PRODUCTS_CACHE_MAX_AGE_MS = 3 * 24 * 60 * 60 * 1000;
 let products = [];
 window.products = products;
 let supabaseClientPromise;
@@ -51,6 +53,27 @@ function loadSupabaseClient() {
   return supabaseClientPromise;
 }
 
+function readProductsCache() {
+  try {
+    const raw = localStorage.getItem(PRODUCTS_CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed?.products) || !parsed.products.length) return null;
+    if (!parsed.savedAt || Date.now() - parsed.savedAt > PRODUCTS_CACHE_MAX_AGE_MS) return null;
+    return parsed.products;
+  } catch (_) {
+    return null;
+  }
+}
+function writeProductsCache(list) {
+  try {
+    localStorage.setItem(
+      PRODUCTS_CACHE_KEY,
+      JSON.stringify({ products: list, savedAt: Date.now() }),
+    );
+  } catch (_) {}
+}
+
 function showProductsError(grid) {
   if (!grid) return;
   grid.innerHTML =
@@ -84,9 +107,22 @@ async function fetchProductsDirect() {
 function loadProductsFromSupabase() {
   if (productsLoadPromise) return productsLoadPromise;
   const grid = document.querySelector('#productGrid');
-  if (grid)
-    grid.innerHTML =
-      '<p style="grid-column:1/-1;text-align:center;color:#888">جاري تحميل المنتجات…</p>';
+  // Show the last known products immediately (before the network request
+  // even goes out) so the page never sits on a blank loading state on a
+  // slow connection - the real fetch below still runs right away and
+  // silently replaces this the moment it resolves.
+  if (!products.length) {
+    const cached = readProductsCache();
+    if (cached) {
+      products.splice(0, products.length, ...cached);
+      window.products = products;
+      renderProducts(products);
+      window.dispatchEvent(new CustomEvent('productsLoaded'));
+    } else if (grid) {
+      grid.innerHTML =
+        '<p style="grid-column:1/-1;text-align:center;color:#888">جاري تحميل المنتجات…</p>';
+    }
+  }
   productsLoadPromise = (async () => {
     try {
       let rows;
@@ -138,11 +174,14 @@ function loadProductsFromSupabase() {
       );
       window.products = products;
       renderProducts(products);
+      writeProductsCache(products);
       window.dispatchEvent(new CustomEvent('productsLoaded'));
       return products;
     } catch (error) {
       console.error('Veronza products:', error);
-      showProductsError(grid);
+      // If we already have cached products on screen, keep showing them
+      // instead of replacing a perfectly usable view with an error state.
+      if (!products.length) showProductsError(grid);
       return [];
     } finally {
       productsLoadPromise = null;
