@@ -317,17 +317,19 @@ a,
   margin: 0;
   font-size: 24px;
   color: #000;
-  text-shadow:
-    0 0 6px rgba(255, 255, 255, 0.85),
-    0 0 14px rgba(255, 255, 255, 0.6);
+  width: fit-content;
+  background: #fff;
+  padding: 3px 12px;
+  border-radius: 8px;
 }
 .category p {
-  margin: 3px 0 15px;
+  margin: 6px 0 15px;
   color: #000;
   font-size: 13px;
-  text-shadow:
-    0 0 6px rgba(255, 255, 255, 0.85),
-    0 0 14px rgba(255, 255, 255, 0.6);
+  width: fit-content;
+  background: #fff;
+  padding: 3px 12px;
+  border-radius: 8px;
 }
 .category strong {
   font-size: 12px;
@@ -352,19 +354,21 @@ a,
   font-weight: 400;
   font-family: Cairo, Arial, sans-serif;
   white-space: nowrap;
-  text-shadow:
-    0 0 6px rgba(255, 255, 255, 0.85),
-    0 0 14px rgba(255, 255, 255, 0.6);
+  width: fit-content;
+  background: #fff;
+  padding: 3px 12px;
+  border-radius: 8px;
 }
 .category-offers p {
   color: #000;
   font-size: clamp(18px, 6vw, 34px);
   font-family: 'Playfair Display', serif;
-  margin: 4px 0 10px;
+  margin: 6px 0 10px;
   white-space: nowrap;
-  text-shadow:
-    0 0 6px rgba(255, 255, 255, 0.85),
-    0 0 14px rgba(255, 255, 255, 0.6);
+  width: fit-content;
+  background: #fff;
+  padding: 3px 14px;
+  border-radius: 10px;
 }
 .category-offers strong {
   display: inline-block;
