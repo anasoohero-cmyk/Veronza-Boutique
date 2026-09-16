@@ -485,6 +485,15 @@ $('#logoutBtn').onclick = async () => {
   showLogin();
 };
 $('#refreshBtn').onclick = load;
+$('#copySiteLinkBtn').onclick = async () => {
+  const link = `${location.origin}/`;
+  try {
+    await navigator.clipboard.writeText(link);
+    toast('تم نسخ رابط الموقع ✓');
+  } catch (_) {
+    prompt('انسخ رابط الموقع:', link);
+  }
+};
 $('#addBtn').onclick = () => openModal();
 $('#cancelBtn').onclick = closeModal;
 $('#closeModal').onclick = closeModal;

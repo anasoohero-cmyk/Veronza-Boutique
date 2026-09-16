@@ -801,6 +801,19 @@ function copyProductLink(id) {
     prompt('انسخ رابط المنتج:', link);
   }
 }
+function shareSite() {
+  const link = `${location.origin}/`;
+  if (navigator.share) {
+    navigator.share({ url: link, title: 'Veronza Boutique' }).catch(() => {});
+  } else if (navigator.clipboard) {
+    navigator.clipboard
+      .writeText(link)
+      .then(() => veronzaToast('تم نسخ رابط الموقع ✓'))
+      .catch(() => veronzaToast(link));
+  } else {
+    prompt('انسخ رابط الموقع:', link);
+  }
+}
 window.addEventListener('popstate', () => {
   const id = Number(new URLSearchParams(location.search).get('p'));
   if (id && products.find((x) => x.id === id)) {
@@ -821,6 +834,13 @@ window.addEventListener(
 );
 $('[data-menu]').onclick = () => openLayer($('[data-mobile-menu]'));
 $('[data-menu-close]').onclick = closeLayers;
+$$('[data-menu-share]').forEach(
+  (el) =>
+    (el.onclick = (e) => {
+      e.preventDefault();
+      shareSite();
+    }),
+);
 $('[data-overlay]').onclick = closeLayers;
 $('[data-cart]').onclick = openCart;
 $('[data-cart-close]').onclick = closeLayers;
