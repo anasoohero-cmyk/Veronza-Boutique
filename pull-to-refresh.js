@@ -109,6 +109,10 @@
       if (!pulling || refreshing) return;
       if (document.scrollingElement.scrollTop !== 0) {
         pulling = false;
+        if (dragging) {
+          resetVisual(0.2);
+          dragging = false;
+        }
         return;
       }
       const distance = e.touches[0].clientY - startY;
@@ -138,9 +142,9 @@
   document.addEventListener(
     'touchend',
     () => {
-      if (!pulling) return;
+      const wasDragging = dragging;
       pulling = false;
-      if (!dragging) return;
+      if (!wasDragging) return;
       const match = /translateY\(([\d.]+)px\)/.exec(document.body.style.transform || '');
       const pulled = match ? parseFloat(match[1]) : 0;
       const heldLongEnough = Date.now() - startTime >= minHoldMs;
