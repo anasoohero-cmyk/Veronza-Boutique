@@ -142,7 +142,8 @@ function anyModalOpen() {
   return (
     !$('#orderModal').classList.contains('hidden') ||
     !$('#statusModal').classList.contains('hidden') ||
-    !$('#manualOrderModal').classList.contains('hidden')
+    !$('#manualOrderModal').classList.contains('hidden') ||
+    !!document.querySelector('.vz-chatw-panel.open')
   );
 }
 function syncBodyScrollLock() {

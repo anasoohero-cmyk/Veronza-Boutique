@@ -388,16 +388,27 @@ function renderCart() {
       }),
   );
 }
+// Covers every overlay on the site regardless of which script manages it, so
+// closing one doesn't unlock scrolling while another is still open (e.g. the
+// image lightbox inside the still-open product modal, or the chat panel
+// opened from a page that owns other modals). Re-run after any open/close.
+function syncBodyScrollLock() {
+  const anyOpen = !!document.querySelector(
+    '.cart-drawer.open,.search-panel.open,.mobile-menu.open,.product-details-modal.open,.veronza-lightbox.open,[data-checkout-modal].open,.auth-modal.open,.order-ready.open,.vz-chat-panel.open',
+  );
+  document.body.style.overflow = anyOpen ? 'hidden' : '';
+}
+window.syncBodyScrollLock = syncBodyScrollLock;
 function openLayer(el) {
   if (!el) return;
   el.classList.add('open');
   $('.overlay')?.classList.add('show');
-  document.body.style.overflow = 'hidden';
+  syncBodyScrollLock();
 }
 function closeLayers() {
   $$('.mobile-menu,.search-panel,.cart-drawer').forEach((x) => x.classList.remove('open'));
   $('.overlay')?.classList.remove('show');
-  document.body.style.overflow = '';
+  syncBodyScrollLock();
 }
 function openCart() {
   closeLayers();
@@ -447,11 +458,11 @@ function openOrderReadySheet(customer, items) {
     )
     .join('');
   $('[data-order-ready]').classList.add('open');
-  document.body.style.overflow = 'hidden';
+  syncBodyScrollLock();
 }
 function closeOrderReadySheet() {
   $('[data-order-ready]')?.classList.remove('open');
-  document.body.style.overflow = '';
+  syncBodyScrollLock();
 }
 async function sendOrderToCloudAPI(customer, items = cart) {
   const total = items.reduce((s, x) => s + x.price * x.qty, 0);
@@ -512,10 +523,12 @@ function openCheckout(isQuickBuy = false) {
   }
   const modal = $('[data-checkout-modal]');
   if (modal) modal.classList.add('open');
+  syncBodyScrollLock();
 }
 function closeCheckout() {
   $('[data-checkout-modal]')?.classList.remove('open');
   quickBuyItem = null;
+  syncBodyScrollLock();
 }
 // Swipe-down-to-close for a bottom sheet / dialog card. Works whether the
 // card is positioned with plain flexbox (no base transform) or already uses
@@ -680,11 +693,14 @@ function ensureProductModal() {
     if (!galleryState.images.length) return;
     setTrackPos(lbTrack, galleryState.index, false);
     lightbox.classList.add('open');
-    document.body.style.overflow = 'hidden';
+    // No separate lock/unlock here — the lightbox only ever opens from
+    // inside the already-open (and already-locked) product details modal,
+    // so scroll should stay locked as long as that modal is still open.
+    syncBodyScrollLock();
   };
   const closeLightbox = () => {
     lightbox.classList.remove('open');
-    document.body.style.overflow = '';
+    syncBodyScrollLock();
   };
   lightbox.querySelector('[data-lb-close]').onclick = closeLightbox;
   lightbox.querySelector('[data-lb-prev]').onclick = () => moveGallery(-1);
@@ -852,7 +868,7 @@ function openProductDetails(id, updateUrl = true) {
   addBtn.textContent = outOfStock ? 'نفذت الكمية' : 'أضف إلى السلة';
   buyBtn.textContent = outOfStock ? 'نفذت الكمية' : 'اطلب الآن (شراء مباشر)';
   modal.classList.add('open');
-  document.body.style.overflow = 'hidden';
+  syncBodyScrollLock();
   if (updateUrl) {
     const url = new URL(location.href);
     url.searchParams.set('p', id);
@@ -863,7 +879,7 @@ function closeProductDetails() {
   const modal = $('#productDetailsModal');
   if (modal) modal.classList.remove('open');
   document.querySelector('.veronza-lightbox')?.classList.remove('open');
-  document.body.style.overflow = '';
+  syncBodyScrollLock();
   if (new URLSearchParams(location.search).has('p')) {
     const url = new URL(location.href);
     url.searchParams.delete('p');
@@ -918,7 +934,7 @@ window.addEventListener('popstate', () => {
   } else {
     const modal = $('#productDetailsModal');
     if (modal) modal.classList.remove('open');
-    document.body.style.overflow = '';
+    syncBodyScrollLock();
   }
 });
 window.addEventListener(

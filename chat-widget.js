@@ -242,6 +242,7 @@
   async function openPanel() {
     panelOpen = true;
     panel.classList.add('open');
+    window.syncBodyScrollLock?.();
     unreadCount = 0;
     updateUnreadBadge();
     stopIdlePolling();
@@ -266,6 +267,7 @@
   function closePanel() {
     panelOpen = false;
     panel.classList.remove('open');
+    window.syncBodyScrollLock?.();
     stopPolling();
     if (session?.conversation_id) startIdlePolling();
   }

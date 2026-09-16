@@ -149,6 +149,7 @@
         window.renderCart?.();
         window.openCart?.();
         modal.classList.remove('open');
+        window.syncBodyScrollLock?.();
       } else alert('تعذر إعادة الطلب — المنتجات القديمة قد تكون غير متوفرة حالياً.');
     };
 
@@ -364,20 +365,23 @@
           setStatus('');
         }),
     );
+    const closeAuthModal = () => {
+      modal.classList.remove('open');
+      window.syncBodyScrollLock?.();
+    };
     button.onclick = async () => {
       modal.classList.add('open');
+      window.syncBodyScrollLock?.();
       const {
         data: { session },
       } = await client.auth.getSession();
       await showAccount(session);
     };
-    modal.querySelector('.auth-close').onclick = () => modal.classList.remove('open');
+    modal.querySelector('.auth-close').onclick = closeAuthModal;
     modal.onclick = (e) => {
-      if (e.target === modal) modal.classList.remove('open');
+      if (e.target === modal) closeAuthModal();
     };
-    window.attachSwipeDownToClose?.(modal.querySelector('.auth-card'), () =>
-      modal.classList.remove('open'),
-    );
+    window.attachSwipeDownToClose?.(modal.querySelector('.auth-card'), closeAuthModal);
     modal.querySelector('[data-auth-logout]').onclick = async () => {
       await client.auth.signOut();
       await showAccount(null);
@@ -385,7 +389,7 @@
       form.reset();
     };
     modal.querySelector('[data-open-chat]').onclick = () => {
-      modal.classList.remove('open');
+      closeAuthModal();
       window.veronzaOpenChat?.();
     };
 
@@ -416,7 +420,7 @@
           if (error) throw error;
           await showAccount(data.session);
           setStatus('تم تسجيل الدخول.');
-          modal.classList.remove('open');
+          closeAuthModal();
         }
       } catch (err) {
         setStatus(err?.message || 'حدث خطأ، حاول مرة أخرى.');
