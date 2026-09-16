@@ -76,15 +76,8 @@
         localStorage.setItem(VERSION_KEY, version);
       } catch (_) {}
     }
-    const attemptReload = () => {
-      if (document.visibilityState !== 'visible') {
-        document.addEventListener('visibilitychange', attemptReload, { once: true });
-        return;
-      }
-      saveRestoreState();
-      window.location.reload();
-    };
-    attemptReload();
+    saveRestoreState();
+    window.location.reload();
   };
 
   if ('serviceWorker' in navigator) {
