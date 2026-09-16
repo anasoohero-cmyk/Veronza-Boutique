@@ -68,10 +68,16 @@ async function requireAdmin(req) {
   });
   if (!u.ok || !u.data?.id) return null;
   const a = await sbFetch(
-    `/rest/v1/admin_users?select=user_id&user_id=eq.${encodeURIComponent(u.data.id)}&limit=1`,
+    `/rest/v1/admin_users?select=user_id,role,permissions&user_id=eq.${encodeURIComponent(u.data.id)}&limit=1`,
   );
   if (!a.ok || !Array.isArray(a.data) || !a.data.length) return null;
-  return u.data;
+  const admin = a.data[0];
+  return {
+    id: admin.user_id,
+    role: admin.role,
+    canView: admin.role === 'owner' || !!admin.permissions?.orders?.view,
+    canEdit: admin.role === 'owner' || !!admin.permissions?.orders?.edit,
+  };
 }
 function normalizeLibyanPhone(raw) {
   let p = String(raw || '').replace(/[^\d+]/g, '');
@@ -130,6 +136,7 @@ module.exports = async (req, res) => {
     return json(req, res, 500, { error: 'Server configuration is incomplete' });
   const user = await requireAdmin(req);
   if (!user) return json(req, res, 401, { error: 'Unauthorized' });
+  if (!user.canView) return json(req, res, 403, { error: 'لا تملك صلاحية الوصول لقسم الطلبات' });
   if (req.method === 'GET') {
     const q = new URL(req.url, 'http://veronza.local').searchParams;
     const id = q.get('order_id');
@@ -147,6 +154,7 @@ module.exports = async (req, res) => {
     return json(req, res, 200, { orders: r.data });
   }
   if (req.method === 'PATCH') {
+    if (!user.canEdit) return json(req, res, 403, { error: 'لا تملك صلاحية تعديل الطلبات' });
     let body = req.body || {};
     if (typeof body === 'string') {
       try {

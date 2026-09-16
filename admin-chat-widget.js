@@ -15,10 +15,13 @@
     if (!session) return;
     const { data: admin } = await client
       .from('admin_users')
-      .select('user_id')
+      .select('user_id,role,permissions')
       .eq('user_id', session.user.id)
       .maybeSingle();
     if (!admin) return;
+    const canViewChat = admin.role === 'owner' || !!admin.permissions?.chat?.view;
+    const canEditChat = admin.role === 'owner' || !!admin.permissions?.chat?.edit;
+    if (!canViewChat) return;
 
     if (!document.getElementById('vz-chatw-style')) {
       const s = document.createElement('style');
@@ -104,6 +107,11 @@
     const titleEl = panel.querySelector('[data-title]');
     const replyForm = panel.querySelector('[data-reply]');
     const replyInput = panel.querySelector('[data-reply-input]');
+    if (!canEditChat) {
+      replyInput.disabled = true;
+      replyInput.placeholder = 'للعرض فقط — لا تملك صلاحية الرد';
+      replyForm.querySelector('button')?.setAttribute('disabled', 'true');
+    }
 
     let conversations = [],
       activeId = null,

@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#111111">
+  <title>VERONZA ADMIN — المستخدمين</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&family=Playfair+Display:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="admin.css">
+  <link rel="stylesheet" href="admin-users.css">
+</head>
+<body>
+  <div id="loginView" class="screen hidden">
+    <div class="login-card">
+      <div class="logo">VERONZA<small>ADMIN · USERS</small></div>
+      <h1>دخول إدارة المستخدمين</h1>
+      <p>هذه الصفحة مخصصة لحساب الأدمن المسجل في Veronza.</p>
+      <form id="loginForm">
+        <label>البريد الإلكتروني<input id="email" type="email" autocomplete="username" required></label>
+        <label>كلمة المرور<input id="password" type="password" autocomplete="current-password" required></label>
+        <button class="primary" type="submit">دخول</button>
+        <div id="loginError" class="error" role="alert"></div>
+      </form>
+    </div>
+  </div>
+
+  <div id="appView" class="app hidden">
+    <header class="topbar">
+      <div><span class="eyebrow">VERONZA BOUTIQUE</span><h1>المستخدمون والصلاحيات</h1></div>
+      <div class="top-actions"><div class="admin-menu-wrap"><button id="menuToggle" class="icon-btn" type="button" aria-label="القائمة"><span class="icon-circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg></span><span class="icon-label">القائمة</span></button><div id="adminMenu" class="admin-menu"><div class="admin-menu-email" id="adminEmail"></div><a href="/" target="_blank" rel="noopener">الموقع</a><a href="/admin.html">الطلبات</a><a href="/admin-products.html">المنتجات</a><button id="logoutBtn" type="button">تسجيل الخروج</button></div></div></div>
+    </header>
+    <main>
+      <div id="notOwnerNotice" class="notice hidden">هذا القسم متاح فقط لحساب الأدمن الرئيسي.</div>
+      <section id="usersSection">
+        <div class="card">
+          <h2>إضافة مستخدم جديد</h2>
+          <p class="hint">أنشئ حساب دخول لموظف جديد وحدد الأقسام التي يقدر يشوفها أو يعدّل فيها.</p>
+          <form id="createForm" class="stack-form">
+            <div class="two-col">
+              <label>البريد الإلكتروني *<input id="newEmail" type="email" required></label>
+              <label>كلمة المرور *<input id="newPassword" type="password" minlength="8" required placeholder="8 أحرف على الأقل"></label>
+            </div>
+            <label>الاسم (اختياري)<input id="newDisplayName" placeholder="مثال: سارة"></label>
+            <div class="permissions-grid" id="createPermissions"></div>
+            <button class="primary" type="submit">إنشاء المستخدم</button>
+            <div id="createError" class="error" role="alert"></div>
+          </form>
+        </div>
+        <div class="card">
+          <h2>المستخدمون الحاليون</h2>
+          <div id="usersList" class="users-list"></div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="admin-users.js"></script>
+  <script src="admin-chat-widget.js"></script>
+  <script src="admin-menu.js"></script>
+</body>
+</html>

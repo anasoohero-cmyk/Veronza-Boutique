@@ -19,6 +19,7 @@ function toast(t) {
   x.classList.add('show');
   setTimeout(() => x.classList.remove('show'), 2600);
 }
+let currentPermissions = { view: false, edit: false };
 function showApp(session) {
   $('#loginView').classList.add('hidden');
   $('#appView').classList.remove('hidden');
@@ -29,13 +30,26 @@ function showLogin() {
   $('#loginView').classList.remove('hidden');
 }
 
+function applyChatPermissions(adminCheck) {
+  currentPermissions = adminCheck.permissions?.chat || { view: false, edit: false };
+  $('#usersMenuLink')?.toggleAttribute('hidden', adminCheck.role !== 'owner');
+  $('#replyInput').disabled = !currentPermissions.edit;
+  $('#replyForm').querySelector('button')?.toggleAttribute('disabled', !currentPermissions.edit);
+  $('#closeConversationBtn').hidden = !currentPermissions.edit;
+  if (!currentPermissions.view) {
+    document.querySelector('main.chat-main').innerHTML =
+      '<p style="text-align:center;color:#888;padding:40px 16px;grid-column:1/-1">ماعندك صلاحية الوصول لقسم الرسائل.</p>';
+  }
+}
+
 async function checkAdmin(token) {
   const r = await fetch('/api/admin-auth', { headers: { Authorization: `Bearer ${token}` } });
   let data = {};
   try {
     data = await r.json();
   } catch (_) {}
-  return r.ok && data.ok === true;
+  if (!r.ok || data.ok !== true) return { ok: false };
+  return { ok: true, role: data.role, permissions: data.permissions || {} };
 }
 
 function fmtTime(d) {
@@ -151,13 +165,15 @@ $('#loginForm').addEventListener('submit', async (e) => {
     $('#loginError').textContent = error.message;
     return;
   }
-  if (!(await checkAdmin(data.session.access_token))) {
+  const adminCheck = await checkAdmin(data.session.access_token);
+  if (!adminCheck.ok) {
     await sb.auth.signOut();
     $('#loginError').textContent = 'هذا الحساب غير مصرح له بالدخول.';
     return;
   }
   showApp(data.session);
-  loadConversations();
+  applyChatPermissions(adminCheck);
+  if (currentPermissions.view) loadConversations();
 });
 $('#logoutBtn').onclick = async () => {
   await sb.auth.signOut();
@@ -229,9 +245,11 @@ sb.channel('veronza-admin-chat')
     data: { session },
   } = await sb.auth.getSession();
   if (session) {
-    if (await checkAdmin(session.access_token)) {
+    const adminCheck = await checkAdmin(session.access_token);
+    if (adminCheck.ok) {
       showApp(session);
-      loadConversations();
+      applyChatPermissions(adminCheck);
+      if (currentPermissions.view) loadConversations();
     } else {
       await sb.auth.signOut();
       showLogin();

@@ -51,7 +51,16 @@ async function checkAdmin(token) {
       debug: JSON.stringify(data),
     };
   }
-  return { ok: true };
+  return { ok: true, role: data.role, permissions: data.permissions || {} };
+}
+let currentPermissions = { view: false, edit: false };
+function applyOrdersPermissions(adminCheck) {
+  currentPermissions = adminCheck.permissions?.orders || { view: false, edit: false };
+  $('#usersMenuLink')?.toggleAttribute('hidden', adminCheck.role !== 'owner');
+  if (!currentPermissions.view) {
+    $('main').innerHTML =
+      '<p style="text-align:center;color:#888;padding:40px 16px">ماعندك صلاحية الوصول لقسم الطلبات.</p>';
+  }
 }
 async function api(path, options = {}) {
   const {
@@ -161,7 +170,10 @@ function renderOrderDetails(itemsHtml) {
       )
       .join(
         '',
-      )}</select><div></div><textarea id="adminNote" placeholder="ملاحظات الأدمن">${esc(selected.admin_notes || '')}</textarea><button class="save-status" id="saveOrder">حفظ حالة الطلب</button></div></div>`;
+      )}</select><div></div><textarea id="adminNote" placeholder="ملاحظات الأدمن">${esc(selected.admin_notes || '')}</textarea><button class="save-status" id="saveOrder">حفظ حالة الطلب</button>${currentPermissions.edit ? '' : '<p style="color:#888;font-size:13px">ماعندك صلاحية تعديل الطلبات — للعرض فقط.</p>'}</div></div>`;
+  $('#orderStatus').disabled = !currentPermissions.edit;
+  $('#adminNote').disabled = !currentPermissions.edit;
+  $('#saveOrder').hidden = !currentPermissions.edit;
   $('#saveOrder').onclick = saveOrder;
 }
 function openOrder(id) {
@@ -280,6 +292,7 @@ $('#loginForm').addEventListener('submit', async (e) => {
     return;
   }
   showApp(data.session);
+  applyOrdersPermissions(adminCheck);
   load();
 });
 $('#logoutBtn').onclick = async () => {
@@ -344,6 +357,7 @@ enableSwipeToClose('#statusModal', closeStatusList);
     const adminCheck = await checkAdmin(session.access_token);
     if (adminCheck.ok) {
       showApp(session);
+      applyOrdersPermissions(adminCheck);
       load();
     } else if (adminCheck.status === 401 || adminCheck.status === 403) {
       await sb.auth.signOut();

@@ -26,17 +26,34 @@ async function checkAdmin(token) {
     try {
       data = await r.json();
     } catch (_) {}
-    return { ok: r.ok && data.ok === true, status: r.status };
+    return {
+      ok: r.ok && data.ok === true,
+      status: r.status,
+      role: data.role,
+      permissions: data.permissions || {},
+    };
   } catch (e) {
     return { ok: false, status: 0 };
   }
 }
 
-function showApp(session) {
+let currentPermissions = { view: false, edit: false };
+function applyProductsPermissions(adminCheck) {
+  currentPermissions = adminCheck.permissions?.products || { view: false, edit: false };
+  $('#usersMenuLink')?.toggleAttribute('hidden', adminCheck.role !== 'owner');
+  $('#addBtn').hidden = !currentPermissions.edit;
+  if (!currentPermissions.view) {
+    $('main').innerHTML =
+      '<p style="text-align:center;color:#888;padding:40px 16px">ماعندك صلاحية الوصول لقسم المنتجات.</p>';
+  }
+}
+
+function showApp(session, adminCheck) {
   $('#loginView').classList.add('hidden');
   $('#appView').classList.remove('hidden');
   $('#adminEmail').textContent = session.user.email || '';
-  load();
+  if (adminCheck) applyProductsPermissions(adminCheck);
+  if (currentPermissions.view) load();
 }
 
 function showLogin() {
@@ -73,7 +90,7 @@ function render() {
       const priceHtml = hasDiscount
         ? `<div class="price"><s>${Number(p.price || 0).toLocaleString('ar-LY')} د.ل</s><br>${Number(p.discount_price).toLocaleString('ar-LY')} د.ل</div>`
         : `<div class="price">${Number(p.price || 0).toLocaleString('ar-LY')} د.ل</div>`;
-      return `<div class="product-row"><img class="thumb" src="${esc(p.img)}" alt=""><div class="product-main"><h3>${esc(p.name)}${hasDiscount ? ' <span class="badge off" style="background:#c0392b;color:#fff">خصم</span>' : ''}</h3><div class="meta">الكود: ${esc(p.code)} · النوع: ${typeNames[p.type] || esc(p.type)} · الكمية: ${Number(p.quantity || 0)}<br>الألوان: ${esc((p.colors || []).join('، ') || '—')} · المقاسات: ${esc((p.sizes || []).join('، ') || '—')}</div></div>${priceHtml}<span class="badge ${p.is_active ? 'on' : 'off'}">${p.is_active ? 'متوفر' : 'غير متوفر'}</span><div class="row-actions"><button data-edit="${p.id}">تعديل</button><button class="danger" data-delete="${p.id}">حذف</button></div></div>`;
+      return `<div class="product-row"><img class="thumb" src="${esc(p.img)}" alt=""><div class="product-main"><h3>${esc(p.name)}${hasDiscount ? ' <span class="badge off" style="background:#c0392b;color:#fff">خصم</span>' : ''}</h3><div class="meta">الكود: ${esc(p.code)} · النوع: ${typeNames[p.type] || esc(p.type)} · الكمية: ${Number(p.quantity || 0)}<br>الألوان: ${esc((p.colors || []).join('، ') || '—')} · المقاسات: ${esc((p.sizes || []).join('، ') || '—')}</div></div>${priceHtml}<span class="badge ${p.is_active ? 'on' : 'off'}">${p.is_active ? 'متوفر' : 'غير متوفر'}</span>${currentPermissions.edit ? `<div class="row-actions"><button data-edit="${p.id}">تعديل</button><button class="danger" data-delete="${p.id}">حذف</button></div>` : ''}</div>`;
     })
     .join('');
 }
@@ -467,7 +484,7 @@ $('#loginForm').addEventListener('submit', async (e) => {
   } = await sb.auth.getSession();
   if (!session) return;
   const check = await checkAdmin(session.access_token);
-  if (check.ok) showApp(session);
+  if (check.ok) showApp(session, check);
   else {
     await sb.auth.signOut();
     $('#loginError').textContent = 'أنت لا تملك صلاحيات الإدارة.';
@@ -483,7 +500,7 @@ $('#loginForm').addEventListener('submit', async (e) => {
     return;
   }
   const check = await checkAdmin(session.access_token);
-  if (check.ok) showApp(session);
+  if (check.ok) showApp(session, check);
   else if (check.status === 401 || check.status === 403) {
     await sb.auth.signOut();
     $('#loginView').classList.remove('hidden');
