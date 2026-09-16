@@ -167,9 +167,35 @@ module.exports = async (req, res) => {
     if (!body.id || !allowed.includes(body.status))
       return json(req, res, 400, { error: 'Invalid order or status' });
     const existing = await sbFetch(
-      `/rest/v1/orders?select=id,order_number,customer_name,customer_phone,status&id=eq.${encodeURIComponent(body.id)}&limit=1`,
+      `/rest/v1/orders?select=id,order_number,customer_name,customer_phone,status,stock_decremented&id=eq.${encodeURIComponent(body.id)}&limit=1`,
     );
     const previousOrder = existing.ok && Array.isArray(existing.data) ? existing.data[0] : null;
+    if (!previousOrder) return json(req, res, 404, { error: 'الطلب غير موجود' });
+
+    const isShippedOrDelivered = ['shipped', 'delivered'].includes(body.status);
+    const isCancelledOrReturned = ['cancelled', 'returned'].includes(body.status);
+
+    if (isShippedOrDelivered && !previousOrder.stock_decremented) {
+      const dec = await sbFetch('/rest/v1/rpc/decrement_stock_for_order', {
+        method: 'POST',
+        body: JSON.stringify({ p_order_id: body.id }),
+      });
+      if (!dec.ok) {
+        const detail = typeof dec.data === 'string' ? dec.data : JSON.stringify(dec.data || '');
+        if (detail.includes('INSUFFICIENT_STOCK'))
+          return json(req, res, 409, {
+            error: 'الكمية غير متوفرة في المخزون لإتمام هذا الطلب — راجع الكميات المتاحة.',
+          });
+        return json(req, res, 502, { error: 'تعذر خصم الكمية من المخزون' });
+      }
+    } else if (isCancelledOrReturned && previousOrder.stock_decremented) {
+      const rest = await sbFetch('/rest/v1/rpc/restore_stock_for_order', {
+        method: 'POST',
+        body: JSON.stringify({ p_order_id: body.id }),
+      });
+      if (!rest.ok) return json(req, res, 502, { error: 'تعذر إرجاع الكمية إلى المخزون' });
+    }
+
     const adminNotes = body.admin_notes == null ? null : String(body.admin_notes);
     const r = await sbFetch(`/rest/v1/orders?id=eq.${encodeURIComponent(body.id)}`, {
       method: 'PATCH',
