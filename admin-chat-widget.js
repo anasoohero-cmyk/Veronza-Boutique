@@ -203,21 +203,18 @@
       const text = replyInput.value.trim();
       if (!text || !activeId) return;
       replyInput.disabled = true;
-      const { data, error } = await client
-        .from('chat_messages')
-        .insert({ conversation_id: activeId, sender: 'admin', body: text })
-        .select()
-        .single();
-      if (!error) {
-        await client
-          .from('chat_conversations')
-          .update({
-            customer_unread: true,
-            last_message_at: new Date().toISOString(),
-            status: 'open',
-          })
-          .eq('id', activeId);
-        activeMessages.push(data);
+      const result = await fetch('/api/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ action: 'reply', conversation_id: activeId, body: text }),
+      })
+        .then((r) => r.json())
+        .catch(() => null);
+      if (result?.ok) {
+        activeMessages.push(result.message);
         renderMessages();
         loadConversations();
       }

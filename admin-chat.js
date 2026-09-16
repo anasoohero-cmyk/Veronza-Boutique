@@ -172,21 +172,30 @@ $('#replyForm').addEventListener('submit', async (e) => {
   const text = input.value.trim();
   if (!text || !activeId) return;
   input.disabled = true;
-  const { data, error } = await sb
-    .from('chat_messages')
-    .insert({ conversation_id: activeId, sender: 'admin', body: text })
-    .select()
-    .single();
-  if (error) {
-    toast(error.message);
+  const {
+    data: { session },
+  } = await sb.auth.getSession();
+  let result;
+  try {
+    result = await fetch('/api/chat', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({ action: 'reply', conversation_id: activeId, body: text }),
+    }).then((r) => r.json());
+  } catch (e) {
+    toast('تعذر إرسال الرسالة');
     input.disabled = false;
     return;
   }
-  await sb
-    .from('chat_conversations')
-    .update({ customer_unread: true, last_message_at: new Date().toISOString(), status: 'open' })
-    .eq('id', activeId);
-  activeMessages.push(data);
+  if (!result?.ok) {
+    toast(result?.error || 'تعذر إرسال الرسالة');
+    input.disabled = false;
+    return;
+  }
+  activeMessages.push(result.message);
   renderMessages();
   input.value = '';
   input.disabled = false;

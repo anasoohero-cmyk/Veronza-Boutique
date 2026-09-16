@@ -13,7 +13,7 @@ function allowedOrigin(req) {
 function corsHeaders(req) {
   const h = {
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     Vary: 'Origin',
   };
   const origin = allowedOrigin(req);
@@ -57,6 +57,40 @@ function isUuid(v) {
     typeof v === 'string' &&
     /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v)
   );
+}
+
+function normalizeLibyanPhone(raw) {
+  let p = String(raw || '').replace(/[^\d+]/g, '');
+  if (p.startsWith('+')) p = p.slice(1);
+  if (p.startsWith('00')) p = p.slice(2);
+  if (p.startsWith('0')) p = '218' + p.slice(1);
+  if (!p.startsWith('218') && p.length === 9) p = '218' + p;
+  return p;
+}
+
+async function requireAdmin(req, supabaseUrl, serviceKey) {
+  const auth = req.headers.authorization || '';
+  if (!/^Bearer\s+/i.test(auth)) return null;
+  const token = auth.replace(/^Bearer\s+/i, '').trim();
+  try {
+    const r = await fetch(`${supabaseUrl}/auth/v1/user`, {
+      headers: {
+        apikey: process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_PUBLISHABLE_KEY || serviceKey,
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    if (!r.ok) return null;
+    const user = await r.json();
+    const adminCheck = await sbFetch(
+      supabaseUrl,
+      serviceKey,
+      `/rest/v1/admin_users?select=user_id&user_id=eq.${encodeURIComponent(user.id)}&limit=1`,
+    );
+    if (!adminCheck.ok || !adminCheck.data?.length) return null;
+    return user;
+  } catch (_) {
+    return null;
+  }
 }
 
 module.exports = async (req, res) => {
@@ -212,6 +246,84 @@ module.exports = async (req, res) => {
 
     const message = Array.isArray(insertMsg.data) ? insertMsg.data[0] : insertMsg.data;
     return json(req, res, 200, { ok: true, message });
+  }
+
+  if (action === 'reply') {
+    const admin = await requireAdmin(req, supabaseUrl, serviceKey);
+    if (!admin) return json(req, res, 401, { ok: false, error: 'Admin authentication required' });
+
+    const conversationId = String(body.conversation_id || '').trim();
+    const text = String(body.body || '')
+      .trim()
+      .slice(0, 2000);
+    if (!isUuid(conversationId))
+      return json(req, res, 400, { ok: false, error: 'Invalid conversation' });
+    if (!text) return json(req, res, 400, { ok: false, error: 'Message body required' });
+
+    const convResp = await sbFetch(
+      supabaseUrl,
+      serviceKey,
+      `/rest/v1/chat_conversations?select=id,customer_phone,customer_name&id=eq.${encodeURIComponent(conversationId)}&limit=1`,
+    );
+    const conversation = convResp.ok && Array.isArray(convResp.data) ? convResp.data[0] : null;
+    if (!conversation) return json(req, res, 404, { ok: false, error: 'Conversation not found' });
+
+    const insertMsg = await sbFetch(supabaseUrl, serviceKey, `/rest/v1/chat_messages`, {
+      method: 'POST',
+      headers: { Prefer: 'return=representation' },
+      body: JSON.stringify({ conversation_id: conversationId, sender: 'admin', body: text }),
+    });
+    if (!insertMsg.ok) return json(req, res, 502, { ok: false, error: 'Could not send message' });
+
+    await sbFetch(
+      supabaseUrl,
+      serviceKey,
+      `/rest/v1/chat_conversations?id=eq.${encodeURIComponent(conversationId)}`,
+      {
+        method: 'PATCH',
+        headers: { Prefer: 'return=minimal' },
+        body: JSON.stringify({
+          customer_unread: true,
+          last_message_at: new Date().toISOString(),
+          status: 'open',
+        }),
+      },
+    );
+
+    const metaToken = process.env.META_ACCESS_TOKEN;
+    const phoneNumberId = process.env.META_PHONE_NUMBER_ID;
+    let whatsappNotified = false;
+    if (metaToken && phoneNumberId && conversation.customer_phone) {
+      const to = normalizeLibyanPhone(conversation.customer_phone);
+      if (to) {
+        try {
+          const waResp = await fetch(
+            `https://graph.facebook.com/v23.0/${encodeURIComponent(phoneNumberId)}/messages`,
+            {
+              method: 'POST',
+              headers: {
+                Authorization: `Bearer ${metaToken}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                messaging_product: 'whatsapp',
+                to,
+                type: 'text',
+                text: { body: `رسالة من فيرونزا:\n${text}` },
+              }),
+            },
+          );
+          whatsappNotified = waResp.ok;
+          if (!waResp.ok)
+            console.error('Chat reply WhatsApp notify failed:', (await waResp.text()).slice(0, 500));
+        } catch (e) {
+          console.error('Chat reply WhatsApp notify error:', e?.message || e);
+        }
+      }
+    }
+
+    const message = Array.isArray(insertMsg.data) ? insertMsg.data[0] : insertMsg.data;
+    return json(req, res, 200, { ok: true, message, whatsapp_notified: whatsappNotified });
   }
 
   return json(req, res, 400, { ok: false, error: 'Unknown action' });
