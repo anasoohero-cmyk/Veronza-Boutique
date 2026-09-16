@@ -48,7 +48,7 @@ async function load() {
   const { data, error } = await sb
     .from('products')
     .select(
-      'id,code,name,price,discount_price,type,img,extra_img,rating,reviews,colors,sizes,size_quantities,is_active,quantity,created_at,updated_at',
+      'id,code,name,description,price,discount_price,type,img,extra_img,rating,reviews,colors,sizes,size_quantities,is_active,quantity,created_at,updated_at',
     )
     .order('id', { ascending: false });
   if (error) {
@@ -79,7 +79,7 @@ function render() {
 }
 
 function resetForm() {
-  ['productId', 'name', 'code', 'price', 'discountPrice', 'img', 'colors', 'sizes'].forEach(
+  ['productId', 'name', 'description', 'code', 'price', 'discountPrice', 'img', 'colors', 'sizes'].forEach(
     (id) => ($('#' + id).value = ''),
   );
   $('#code').readOnly = true;
@@ -102,6 +102,7 @@ function openModal(p) {
   } else {
     $('#productId').value = p.id;
     $('#name').value = p.name || '';
+    $('#description').value = p.description || '';
     $('#code').value = p.code || '';
     $('#code').readOnly = true;
     $('#code').required = false;
@@ -385,6 +386,7 @@ async function save(e) {
 
   const payload = {
     name: $('#name').value.trim(),
+    description: $('#description').value.trim() || null,
     code: $('#code').value.trim(),
     price,
     discount_price: discountPrice,
