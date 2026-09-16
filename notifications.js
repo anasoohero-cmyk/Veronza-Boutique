@@ -81,7 +81,7 @@
     if (!document.getElementById('vz-notify-style')) {
       const s = document.createElement('style');
       s.id = 'vz-notify-style';
-      s.textContent = `#vz-notify{position:relative}.vz-badge{position:absolute;top:1px;right:1px;background:#b21f2d;color:#fff;border-radius:99px;min-width:17px;height:17px;font:700 10px/17px Arial;text-align:center}.vz-panel{position:fixed;inset:0 0 0 auto;width:min(94vw,390px);background:#fff;z-index:180;box-shadow:-10px 0 35px #0002;transform:translateX(105%);transition:.25s;display:flex;flex-direction:column}.vz-panel.open{transform:none}.vz-nhead{display:flex;align-items:center;justify-content:space-between;padding:16px 18px;padding-top:max(16px,calc(env(safe-area-inset-top) + 10px));border-bottom:1px solid #eee;background:#faf9f7}.vz-nhead h3{margin:0;font-size:17px;font-family:'Playfair Display',serif}.vz-nhead button{border:0;background:#f4f1ec;color:#111;width:34px;height:34px;border-radius:50%;font:inherit;font-size:18px;display:grid;place-items:center;flex-shrink:0}.vz-list{overflow:auto;overscroll-behavior:contain;padding:12px;flex:1}.vz-item{border:1px solid #e8e3dc;border-radius:13px;padding:12px;margin-bottom:10px;cursor:pointer}.vz-item.unread{border-color:#111;background:#faf9f7}.vz-item strong{display:block}.vz-item small{display:block;color:#777;margin-top:5px}.vz-empty{padding:30px 12px;text-align:center;color:#777}.vz-shade{position:fixed;inset:0;background:#0006;z-index:175;display:none}.vz-shade.open{display:block}@media(min-width:700px){.vz-shade.open{display:none}}`;
+      s.textContent = `.vz-badge{position:absolute;top:-4px;right:-4px;background:#b21f2d;color:#fff;border-radius:99px;min-width:17px;height:17px;font:700 10px/17px Arial;text-align:center}.vz-panel{position:fixed;inset:0 0 0 auto;width:min(94vw,390px);background:#fff;z-index:180;box-shadow:-10px 0 35px #0002;transform:translateX(105%);transition:.25s;display:flex;flex-direction:column}.vz-panel.open{transform:none}.vz-nhead{display:flex;align-items:center;justify-content:space-between;padding:16px 18px;padding-top:max(16px,calc(env(safe-area-inset-top) + 10px));border-bottom:1px solid #eee;background:#faf9f7}.vz-nhead h3{margin:0;font-size:17px;font-family:'Playfair Display',serif}.vz-nhead button{border:0;background:#f4f1ec;color:#111;width:34px;height:34px;border-radius:50%;font:inherit;font-size:18px;display:grid;place-items:center;flex-shrink:0}.vz-list{overflow:auto;overscroll-behavior:contain;padding:12px;flex:1}.vz-item{border:1px solid #e8e3dc;border-radius:13px;padding:12px;margin-bottom:10px;cursor:pointer}.vz-item.unread{border-color:#111;background:#faf9f7}.vz-item strong{display:block}.vz-item small{display:block;color:#777;margin-top:5px}.vz-empty{padding:30px 12px;text-align:center;color:#777}.vz-shade{position:fixed;inset:0;background:#0006;z-index:175;display:none}.vz-shade.open{display:block}@media(min-width:700px){.vz-shade.open{display:none}}`;
       document.head.appendChild(s);
     }
     const btn = document.createElement('button');
@@ -90,7 +90,7 @@
     btn.type = 'button';
     btn.setAttribute('aria-label', 'الإشعارات');
     btn.innerHTML =
-      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>';
+      '<span class="icon-circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></span><span class="icon-label">الإشعارات</span>';
     (
       document.querySelector('.top-actions') || document.querySelector('.header-actions')
     )?.appendChild(btn);
@@ -98,7 +98,7 @@
     const badge = document.createElement('span');
     badge.className = 'vz-badge';
     badge.hidden = true;
-    btn.appendChild(badge);
+    btn.querySelector('.icon-circle').appendChild(badge);
     const shade = document.createElement('div');
     shade.className = 'vz-shade';
     document.body.appendChild(shade);

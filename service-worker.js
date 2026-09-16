@@ -1,4 +1,4 @@
-const CACHE = 'veronza-v8';
+const CACHE = 'veronza-v9';
 const CORE_ASSETS = [
   '/',
   '/index.html',
@@ -19,6 +19,8 @@ const CORE_ASSETS = [
   '/admin.html',
   '/admin.js',
   '/admin.css',
+  '/admin-menu.js',
+  '/admin-chat-widget.js',
   '/admin-products.html',
   '/admin-products.js',
   '/admin-products.css',
