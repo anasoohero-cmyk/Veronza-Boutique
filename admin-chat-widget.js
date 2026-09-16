@@ -15,10 +15,13 @@
     if (!session) return;
     const { data: admin } = await client
       .from('admin_users')
-      .select('user_id')
+      .select('user_id,role,permissions')
       .eq('user_id', session.user.id)
       .maybeSingle();
     if (!admin) return;
+    const canViewChat = admin.role === 'owner' || !!admin.permissions?.chat?.view;
+    const canEditChat = admin.role === 'owner' || !!admin.permissions?.chat?.edit;
+    if (!canViewChat) return;
 
     if (!document.getElementById('vz-chatw-style')) {
       const s = document.createElement('style');
@@ -86,6 +89,7 @@
       <div class="vz-chatw-head">
         <button type="button" class="vz-chatw-back" data-back aria-label="رجوع">→</button>
         <h3 data-title>المحادثات</h3>
+        <button type="button" class="vz-chatw-call" data-call aria-label="مكالمة صوتية" hidden>📞</button>
         <button type="button" class="vz-chatw-close-list" data-close aria-label="إغلاق">×</button>
       </div>
       <div class="vz-chatw-list" data-list></div>
@@ -104,10 +108,25 @@
     const titleEl = panel.querySelector('[data-title]');
     const replyForm = panel.querySelector('[data-reply]');
     const replyInput = panel.querySelector('[data-reply-input]');
+    if (!canEditChat) {
+      replyInput.disabled = true;
+      replyInput.placeholder = 'للعرض فقط — لا تملك صلاحية الرد';
+      replyForm.querySelector('button')?.setAttribute('disabled', 'true');
+    }
 
     let conversations = [],
       activeId = null,
-      activeMessages = [];
+      activeMessages = [],
+      activeCall = null,
+      activeCallUI = null;
+    const callBtn = panel.querySelector('[data-call]');
+    const teardownCall = () => {
+      activeCallUI?.destroy();
+      activeCall?.destroy();
+      activeCall = null;
+      activeCallUI = null;
+      callBtn.hidden = true;
+    };
 
     const initials = (name) => {
       const n = (name || '؟').trim();
@@ -189,11 +208,21 @@
         conv.admin_unread = false;
         renderList();
       }
+      teardownCall();
+      if (canEditChat && window.VeronzaCall) {
+        activeCall = new window.VeronzaCall(client, id);
+        activeCallUI = window.VeronzaCall.mountUI(activeCall, {
+          calleeLabel: conv?.customer_name || 'الزبون',
+        });
+        callBtn.hidden = false;
+        callBtn.onclick = () => activeCall.startCall();
+      }
       setTimeout(() => replyInput.focus(), 200);
     };
 
     const backToList = () => {
       activeId = null;
+      teardownCall();
       panel.classList.remove('thread');
       titleEl.textContent = 'المحادثات';
     };

@@ -51,7 +51,17 @@ async function checkAdmin(token) {
       debug: JSON.stringify(data),
     };
   }
-  return { ok: true };
+  return { ok: true, role: data.role, permissions: data.permissions || {} };
+}
+let currentPermissions = { view: false, edit: false };
+function applyOrdersPermissions(adminCheck) {
+  currentPermissions = adminCheck.permissions?.orders || { view: false, edit: false };
+  $('#usersMenuLink')?.toggleAttribute('hidden', adminCheck.role !== 'owner');
+  $('#manualOrderBtn').hidden = !currentPermissions.edit;
+  if (!currentPermissions.view) {
+    $('main').innerHTML =
+      '<p style="text-align:center;color:#888;padding:40px 16px">ماعندك صلاحية الوصول لقسم الطلبات.</p>';
+  }
 }
 async function api(path, options = {}) {
   const {
@@ -131,7 +141,8 @@ function render() {
 function anyModalOpen() {
   return (
     !$('#orderModal').classList.contains('hidden') ||
-    !$('#statusModal').classList.contains('hidden')
+    !$('#statusModal').classList.contains('hidden') ||
+    !$('#manualOrderModal').classList.contains('hidden')
   );
 }
 function syncBodyScrollLock() {
@@ -161,7 +172,10 @@ function renderOrderDetails(itemsHtml) {
       )
       .join(
         '',
-      )}</select><div></div><textarea id="adminNote" placeholder="ملاحظات الأدمن">${esc(selected.admin_notes || '')}</textarea><button class="save-status" id="saveOrder">حفظ حالة الطلب</button></div></div>`;
+      )}</select><div></div><textarea id="adminNote" placeholder="ملاحظات الأدمن">${esc(selected.admin_notes || '')}</textarea><button class="save-status" id="saveOrder">حفظ حالة الطلب</button>${currentPermissions.edit ? '' : '<p style="color:#888;font-size:13px">ماعندك صلاحية تعديل الطلبات — للعرض فقط.</p>'}</div></div>`;
+  $('#orderStatus').disabled = !currentPermissions.edit;
+  $('#adminNote').disabled = !currentPermissions.edit;
+  $('#saveOrder').hidden = !currentPermissions.edit;
   $('#saveOrder').onclick = saveOrder;
 }
 function openOrder(id) {
@@ -280,6 +294,7 @@ $('#loginForm').addEventListener('submit', async (e) => {
     return;
   }
   showApp(data.session);
+  applyOrdersPermissions(adminCheck);
   load();
 });
 $('#logoutBtn').onclick = async () => {
@@ -332,6 +347,170 @@ $('#orderModal').addEventListener('click', (e) => {
 });
 enableSwipeToClose('#orderModal', closeOrderModal);
 enableSwipeToClose('#statusModal', closeStatusList);
+
+let manualOrderProducts = null;
+async function loadManualOrderProducts() {
+  if (manualOrderProducts) return manualOrderProducts;
+  const { data, error } = await sb
+    .from('products')
+    .select('id,code,name,price,discount_price,type,colors,sizes,size_quantities,quantity')
+    .eq('is_active', true)
+    .order('name', { ascending: true });
+  if (error) {
+    manualOrderProducts = [];
+    return manualOrderProducts;
+  }
+  manualOrderProducts = data || [];
+  return manualOrderProducts;
+}
+function moEffectivePrice(p) {
+  return p.discount_price != null && Number(p.discount_price) < Number(p.price)
+    ? Number(p.discount_price)
+    : Number(p.price);
+}
+function moIsSizeRequired(p) {
+  return p?.type === 'shoes' || p?.type === 'set';
+}
+function moSizeStock(p, size) {
+  if (!moIsSizeRequired(p)) return Number(p?.quantity || 0);
+  const sq = p?.size_quantities;
+  if (sq && Object.prototype.hasOwnProperty.call(sq, size)) return Number(sq[size] || 0);
+  return Number(p?.quantity || 0);
+}
+function moItemRowHtml(products) {
+  const options = products
+    .map((p) => `<option value="${p.code}">${esc(p.name)} — ${esc(p.code)}</option>`)
+    .join('');
+  return `<div class="manual-order-item"><div class="item-grid"><label>المنتج<select data-mo-product><option value="">اختار منتج</option>${options}</select></label><label>اللون<select data-mo-color></select></label><label>المقاس<select data-mo-size></select></label><label>الكمية<input data-mo-qty type="number" min="1" step="1" value="1"></label></div><button type="button" class="remove-item" data-mo-remove>حذف</button></div>`;
+}
+function moUpdateItemRow(row, products) {
+  const productSelect = row.querySelector('[data-mo-product]');
+  const colorSelect = row.querySelector('[data-mo-color]');
+  const sizeSelect = row.querySelector('[data-mo-size]');
+  const p = products.find((x) => x.code === productSelect.value);
+  if (!p) {
+    colorSelect.innerHTML = '';
+    sizeSelect.innerHTML = '';
+    colorSelect.disabled = true;
+    sizeSelect.disabled = true;
+    return;
+  }
+  colorSelect.disabled = false;
+  colorSelect.innerHTML = (p.colors || [])
+    .map((c) => `<option value="${esc(c)}">${esc(c)}</option>`)
+    .join('') || '<option value="">موحد</option>';
+  if (moIsSizeRequired(p)) {
+    sizeSelect.disabled = false;
+    sizeSelect.innerHTML =
+      '<option value="">اختار المقاس</option>' +
+      (p.sizes || [])
+        .map((s) => {
+          const out = moSizeStock(p, s) <= 0;
+          return `<option value="${esc(s)}" ${out ? 'disabled' : ''}>${esc(s)}${out ? ' (نفذت)' : ''}</option>`;
+        })
+        .join('');
+  } else {
+    sizeSelect.disabled = true;
+    sizeSelect.innerHTML = '<option value="">—</option>';
+  }
+  moUpdateTotal();
+}
+function moUpdateTotal() {
+  let total = 0;
+  $('#moItems')
+    .querySelectorAll('.manual-order-item')
+    .forEach((row) => {
+      const code = row.querySelector('[data-mo-product]').value;
+      const qty = Math.max(1, Number(row.querySelector('[data-mo-qty]').value) || 1);
+      const p = manualOrderProducts?.find((x) => x.code === code);
+      if (p) total += moEffectivePrice(p) * qty;
+    });
+  $('#moTotal').textContent = total.toLocaleString('ar-LY');
+}
+function moAddItemRow() {
+  const products = manualOrderProducts || [];
+  const wrap = document.createElement('div');
+  wrap.innerHTML = moItemRowHtml(products);
+  const row = wrap.firstElementChild;
+  $('#moItems').appendChild(row);
+  row.querySelector('[data-mo-product]').addEventListener('change', () => moUpdateItemRow(row, products));
+  row.querySelector('[data-mo-qty]').addEventListener('input', moUpdateTotal);
+  row.querySelector('[data-mo-remove]').addEventListener('click', () => {
+    row.remove();
+    moUpdateTotal();
+  });
+  moUpdateItemRow(row, products);
+}
+async function openManualOrderModal() {
+  $('#moError').textContent = '';
+  $('#manualOrderForm').reset();
+  $('#moItems').innerHTML = '';
+  await loadManualOrderProducts();
+  moAddItemRow();
+  moUpdateTotal();
+  $('#manualOrderModal').classList.remove('hidden');
+  syncBodyScrollLock();
+}
+function closeManualOrderModal() {
+  $('#manualOrderModal').classList.add('hidden');
+  syncBodyScrollLock();
+}
+$('#manualOrderBtn').onclick = openManualOrderModal;
+$('#closeManualOrderModal').onclick = closeManualOrderModal;
+$('#manualOrderModal').addEventListener('click', (e) => {
+  if (e.target.id === 'manualOrderModal') closeManualOrderModal();
+});
+$('#moAddItem').onclick = moAddItemRow;
+enableSwipeToClose('#manualOrderModal', closeManualOrderModal);
+
+$('#manualOrderForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  $('#moError').textContent = '';
+  const items = [];
+  let invalid = false;
+  $('#moItems')
+    .querySelectorAll('.manual-order-item')
+    .forEach((row) => {
+      const code = row.querySelector('[data-mo-product]').value;
+      const color = row.querySelector('[data-mo-color]').value || null;
+      const size = row.querySelector('[data-mo-size]').value || null;
+      const qty = Math.max(1, Number(row.querySelector('[data-mo-qty]').value) || 1);
+      const p = manualOrderProducts?.find((x) => x.code === code);
+      if (!code || !p) {
+        invalid = true;
+        return;
+      }
+      if (moIsSizeRequired(p) && !size) {
+        invalid = true;
+        return;
+      }
+      items.push({ product_code: code, color, size, quantity: qty });
+    });
+  if (invalid || !items.length) {
+    $('#moError').textContent = 'حدد منتج ومقاس صحيح لكل عنصر في الطلب.';
+    return;
+  }
+  const submitBtn = e.target.querySelector('button[type=submit]');
+  submitBtn.disabled = true;
+  try {
+    const result = await api('/api/admin-manual-order', {
+      method: 'POST',
+      body: JSON.stringify({
+        customer_name: $('#moCustomerName').value.trim(),
+        customer_phone: $('#moCustomerPhone').value.trim(),
+        customer_address: $('#moCustomerAddress').value.trim(),
+        items,
+      }),
+    });
+    toast(`تم إنشاء الطلب ${result.order_number} ✓`);
+    closeManualOrderModal();
+    load();
+  } catch (err) {
+    $('#moError').textContent = err.message;
+  }
+  submitBtn.disabled = false;
+});
+
 (async () => {
   const {
     data: { session },
@@ -344,6 +523,7 @@ enableSwipeToClose('#statusModal', closeStatusList);
     const adminCheck = await checkAdmin(session.access_token);
     if (adminCheck.ok) {
       showApp(session);
+      applyOrdersPermissions(adminCheck);
       load();
     } else if (adminCheck.status === 401 || adminCheck.status === 403) {
       await sb.auth.signOut();

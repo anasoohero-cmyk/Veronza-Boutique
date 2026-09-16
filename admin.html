@@ -34,7 +34,7 @@
   <div id="appView" class="app hidden">
     <header class="topbar">
       <div><span class="eyebrow">VERONZA BOUTIQUE</span><h1>الطلبات</h1></div>
-      <div class="top-actions"><div class="admin-menu-wrap"><button id="menuToggle" class="icon-btn" type="button" aria-label="القائمة"><span class="icon-circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg></span><span class="icon-label">القائمة</span></button><div id="adminMenu" class="admin-menu"><div class="admin-menu-email" id="adminEmail"></div><a href="/" target="_blank" rel="noopener">الموقع</a><a href="/admin.html">الطلبات</a><a href="/admin-products.html">المنتجات</a><button id="refreshBtn" type="button">تحديث</button><button id="logoutBtn" type="button">تسجيل الخروج</button><button id="copySiteLinkBtn" type="button">نسخ رابط الموقع</button></div></div><a href="/admin-products.html" id="productsLinkBtn" class="icon-btn" aria-label="المنتجات"><span class="icon-circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8 12 3 3 8l9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/></svg></span><span class="icon-label">المنتجات</span></a></div>
+      <div class="top-actions"><div class="admin-menu-wrap"><button id="menuToggle" class="icon-btn" type="button" aria-label="القائمة"><span class="icon-circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg></span><span class="icon-label">القائمة</span></button><div id="adminMenu" class="admin-menu"><div class="admin-menu-email" id="adminEmail"></div><a href="/" target="_blank" rel="noopener">الموقع</a><a href="/admin.html">الطلبات</a><a href="/admin-products.html">المنتجات</a><a href="/admin-users.html" id="usersMenuLink" hidden>المستخدمين</a><button id="refreshBtn" type="button">تحديث</button><button id="logoutBtn" type="button">تسجيل الخروج</button><button id="copySiteLinkBtn" type="button">نسخ رابط الموقع</button></div></div><a href="/admin-products.html" id="productsLinkBtn" class="icon-btn" aria-label="المنتجات"><span class="icon-circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8 12 3 3 8l9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/></svg></span><span class="icon-label">المنتجات</span></a></div>
     </header>
     <main>
       <section class="filters">
@@ -49,10 +49,29 @@
       </section>
       <section class="stats" id="stats"></section>
       <section class="orders-card">
-        <div class="table-head"><h2>قائمة الطلبات</h2><span id="lastUpdated"></span></div>
+        <div class="table-head"><h2>قائمة الطلبات</h2><button id="manualOrderBtn" class="primary" type="button" style="padding:8px 16px;font-size:13px">+ طلب يدوي</button><span id="lastUpdated"></span></div>
         <div id="orders" class="orders"></div>
       </section>
     </main>
+  </div>
+
+  <div id="manualOrderModal" class="modal hidden">
+    <div class="modal-card">
+      <div class="sheet-head"><span class="sheet-drag"></span><h2>إنشاء طلب يدوي</h2><button id="closeManualOrderModal" class="close">×</button></div>
+      <div class="sheet-body">
+        <p style="color:#888;font-size:13px;margin-top:0">لزبون اتصل بيك تليفونياً — يُنشئ طلب حقيقي مربوط بالمخزون ويأخذ رقم طلب حقيقي بالتسلسل.</p>
+        <form id="manualOrderForm" class="manual-order-form">
+          <label>اسم الزبون *<input id="moCustomerName" required></label>
+          <label>رقم الهاتف *<input id="moCustomerPhone" required></label>
+          <label>العنوان *<input id="moCustomerAddress" required></label>
+          <div id="moItems" class="manual-order-items"></div>
+          <button type="button" id="moAddItem" class="ghost" style="align-self:flex-start">+ إضافة منتج آخر</button>
+          <div class="manual-order-total">الإجمالي: <span id="moTotal">0</span> د.ل</div>
+          <button class="primary" type="submit">إنشاء الطلب</button>
+          <div id="moError" class="error" role="alert"></div>
+        </form>
+      </div>
+    </div>
   </div>
 
   <div id="orderModal" class="modal hidden">
@@ -75,6 +94,7 @@
   <script src="admin-pull-refresh.js"></script>
   <script src="app-update.js"></script>
   <script src="notifications.js"></script>
+  <script src="webrtc-call.js"></script>
   <script src="admin-chat-widget.js"></script>
   <script src="admin-menu.js"></script>
 </body>

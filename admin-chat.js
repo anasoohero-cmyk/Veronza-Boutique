@@ -19,6 +19,7 @@ function toast(t) {
   x.classList.add('show');
   setTimeout(() => x.classList.remove('show'), 2600);
 }
+let currentPermissions = { view: false, edit: false };
 function showApp(session) {
   $('#loginView').classList.add('hidden');
   $('#appView').classList.remove('hidden');
@@ -29,13 +30,27 @@ function showLogin() {
   $('#loginView').classList.remove('hidden');
 }
 
+function applyChatPermissions(adminCheck) {
+  currentPermissions = adminCheck.permissions?.chat || { view: false, edit: false };
+  $('#usersMenuLink')?.toggleAttribute('hidden', adminCheck.role !== 'owner');
+  $('#replyInput').disabled = !currentPermissions.edit;
+  $('#replyForm').querySelector('button')?.toggleAttribute('disabled', !currentPermissions.edit);
+  $('#closeConversationBtn').hidden = !currentPermissions.edit;
+  $('#callBtn').hidden = !currentPermissions.edit;
+  if (!currentPermissions.view) {
+    document.querySelector('main.chat-main').innerHTML =
+      '<p style="text-align:center;color:#888;padding:40px 16px;grid-column:1/-1">ماعندك صلاحية الوصول لقسم الرسائل.</p>';
+  }
+}
+
 async function checkAdmin(token) {
   const r = await fetch('/api/admin-auth', { headers: { Authorization: `Bearer ${token}` } });
   let data = {};
   try {
     data = await r.json();
   } catch (_) {}
-  return r.ok && data.ok === true;
+  if (!r.ok || data.ok !== true) return { ok: false };
+  return { ok: true, role: data.role, permissions: data.permissions || {} };
 }
 
 function fmtTime(d) {
@@ -106,6 +121,22 @@ function renderMessages() {
   box.scrollTop = box.scrollHeight;
 }
 
+let activeCall = null;
+let activeCallUI = null;
+function teardownCall() {
+  activeCallUI?.destroy();
+  activeCall?.destroy();
+  activeCall = null;
+  activeCallUI = null;
+}
+function setupCallFor(id, customerName) {
+  teardownCall();
+  if (!currentPermissions.edit) return;
+  activeCall = new window.VeronzaCall(sb, id);
+  activeCallUI = window.VeronzaCall.mountUI(activeCall, { calleeLabel: customerName || 'الزبون' });
+  $('#callBtn').onclick = () => activeCall.startCall();
+}
+
 async function openConversation(id) {
   activeId = id;
   renderConversationList();
@@ -115,6 +146,7 @@ async function openConversation(id) {
   const conv = conversations.find((c) => c.id === id);
   $('#threadName').textContent = conv?.customer_name || 'زائر';
   $('#threadPhone').textContent = conv?.customer_phone || '';
+  setupCallFor(id, conv?.customer_name);
   const { data, error } = await sb
     .from('chat_messages')
     .select('id,sender,body,created_at')
@@ -135,6 +167,7 @@ async function openConversation(id) {
 
 function closeThread() {
   activeId = null;
+  teardownCall();
   document.querySelector('main.chat-main').classList.remove('thread-open');
   $('#threadEmpty').hidden = false;
   $('#threadView').hidden = true;
@@ -151,13 +184,18 @@ $('#loginForm').addEventListener('submit', async (e) => {
     $('#loginError').textContent = error.message;
     return;
   }
-  if (!(await checkAdmin(data.session.access_token))) {
+  const adminCheck = await checkAdmin(data.session.access_token);
+  if (!adminCheck.ok) {
     await sb.auth.signOut();
     $('#loginError').textContent = 'هذا الحساب غير مصرح له بالدخول.';
     return;
   }
   showApp(data.session);
-  loadConversations();
+  applyChatPermissions(adminCheck);
+  if (currentPermissions.view) {
+    await loadConversations();
+    openDeepLinkedConversation();
+  }
 });
 $('#logoutBtn').onclick = async () => {
   await sb.auth.signOut();
@@ -224,14 +262,28 @@ sb.channel('veronza-admin-chat')
   )
   .subscribe();
 
+let deepLinkOpened = false;
+async function openDeepLinkedConversation() {
+  if (deepLinkOpened) return;
+  const id = new URLSearchParams(location.search).get('c');
+  if (!id) return;
+  deepLinkOpened = true;
+  await openConversation(id);
+}
+
 (async () => {
   const {
     data: { session },
   } = await sb.auth.getSession();
   if (session) {
-    if (await checkAdmin(session.access_token)) {
+    const adminCheck = await checkAdmin(session.access_token);
+    if (adminCheck.ok) {
       showApp(session);
-      loadConversations();
+      applyChatPermissions(adminCheck);
+      if (currentPermissions.view) {
+        await loadConversations();
+        openDeepLinkedConversation();
+      }
     } else {
       await sb.auth.signOut();
       showLogin();

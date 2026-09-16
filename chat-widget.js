@@ -1,4 +1,7 @@
 (() => {
+  const SUPABASE_URL = 'https://kahbxvbirsjmednkybse.supabase.co';
+  const SUPABASE_KEY = 'sb_publishable_L1TY-QEyFsWDeDRy_saOUQ_GP8TjADm';
+  const sb = window.supabase?.createClient(SUPABASE_URL, SUPABASE_KEY) || null;
   const STORAGE_KEY = 'veronza-chat-session';
   let session = null;
   try {
@@ -46,6 +49,7 @@
       .vz-chat-head small{display:flex;align-items:center;gap:5px;color:#c9c2b4;font-size:11px;margin-top:2px}
       .vz-chat-online-dot{width:7px;height:7px;border-radius:50%;background:#3ecf6a;display:inline-block;flex-shrink:0}
       .vz-chat-close{border:0;background:rgba(255,255,255,.12);color:#fff;width:32px;height:32px;border-radius:50%;font-size:18px;flex-shrink:0}
+      .vz-chat-call{border:0;background:rgba(255,255,255,.12);color:#fff;width:32px;height:32px;border-radius:50%;font-size:15px;flex-shrink:0}
       .vz-chat-body{flex:1;overflow:auto;padding:16px;display:flex;flex-direction:column;gap:10px;overscroll-behavior:contain}
       .vz-chat-msg{max-width:78%;padding:10px 14px;border-radius:16px;font-size:13px;line-height:1.6;word-break:break-word}
       .vz-chat-msg.customer{align-self:flex-end;background:#111;color:#fff;border-bottom-right-radius:4px}
@@ -72,7 +76,7 @@
   const panel = document.createElement('div');
   panel.className = 'vz-chat-panel';
   panel.innerHTML = `
-    <div class="vz-chat-head"><span class="vz-chat-avatar">V</span><div class="vz-chat-head-info"><strong>تواصل مع Veronza</strong><small><span class="vz-chat-online-dot"></span>عادة نرد خلال دقائق</small></div><button type="button" class="vz-chat-close" aria-label="إغلاق">×</button></div>
+    <div class="vz-chat-head"><span class="vz-chat-avatar">V</span><div class="vz-chat-head-info"><strong>تواصل مع Veronza</strong><small><span class="vz-chat-online-dot"></span>عادة نرد خلال دقائق</small></div><button type="button" class="vz-chat-call" data-call aria-label="مكالمة صوتية" hidden>📞</button><button type="button" class="vz-chat-close" aria-label="إغلاق">×</button></div>
     <div class="vz-chat-name-row" data-name-row hidden><input type="text" data-name-input placeholder="اسمك (اختياري)"></div>
     <div class="vz-chat-body" data-body><div class="vz-chat-welcome">أهلاً 👋 اكتب لنا أي سؤال عن المنتجات أو الطلب وبنرد عليك بأقرب وقت.</div></div>
     <form class="vz-chat-foot" data-form><input type="text" data-input placeholder="اكتب رسالتك..." autocomplete="off" required><button type="submit">إرسال</button></form>
@@ -84,6 +88,29 @@
   const inputEl = panel.querySelector('[data-input]');
   const nameRow = panel.querySelector('[data-name-row]');
   const nameInput = panel.querySelector('[data-name-input]');
+  const callBtn = panel.querySelector('[data-call]');
+
+  let activeCall = null,
+    activeCallUI = null,
+    callConversationId = null;
+  function ensureCallFor(conversationId) {
+    if (!sb || !window.VeronzaCall || !conversationId) return;
+    if (activeCall && callConversationId === conversationId) return;
+    activeCallUI?.destroy();
+    activeCall?.destroy();
+    activeCall = new window.VeronzaCall(sb, conversationId);
+    activeCallUI = window.VeronzaCall.mountUI(activeCall, { calleeLabel: 'المتجر' });
+    callConversationId = conversationId;
+    callBtn.hidden = false;
+    callBtn.onclick = () => {
+      activeCall.startCall();
+      fetch('/api/call-notify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ conversation_id: conversationId }),
+      }).catch(() => {});
+    };
+  }
 
   function renderMessages(messages) {
     if (!messages.length) return;
@@ -122,6 +149,7 @@
     if (!r.ok) throw new Error('تعذر بدء المحادثة');
     const data = await r.json();
     saveSession({ conversation_id: data.conversation_id, guest_token: data.guest_token });
+    ensureCallFor(data.conversation_id);
     return session;
   }
 
@@ -284,5 +312,8 @@
   window.veronzaOpenChat = openPanel;
   window.veronzaHasChatSession = () => !!session?.conversation_id;
 
-  if (session?.conversation_id) startIdlePolling();
+  if (session?.conversation_id) {
+    startIdlePolling();
+    ensureCallFor(session.conversation_id);
+  }
 })();
