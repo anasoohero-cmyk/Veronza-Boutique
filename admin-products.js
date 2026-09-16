@@ -20,10 +20,27 @@ function toast(t) {
 }
 // Covers this page's own modal plus the floating chat widget it also loads,
 // so closing one doesn't unlock scrolling while the other is still open.
+// overflow:hidden alone doesn't reliably block touch-driven scrolling on
+// some mobile browsers - pin the body with position:fixed at its current
+// scroll offset, which actually holds there too.
+let vzScrollLockY = 0;
 function syncBodyScrollLock() {
   const anyOpen =
     !$('#modal').classList.contains('hidden') || !!document.querySelector('.vz-chatw-panel.open');
-  document.body.style.overflow = anyOpen ? 'hidden' : '';
+  const isLocked = document.body.style.position === 'fixed';
+  if (anyOpen && !isLocked) {
+    vzScrollLockY = window.scrollY;
+    Object.assign(document.body.style, {
+      position: 'fixed',
+      top: `-${vzScrollLockY}px`,
+      left: '0',
+      right: '0',
+      width: '100%',
+    });
+  } else if (!anyOpen && isLocked) {
+    Object.assign(document.body.style, { position: '', top: '', left: '', right: '', width: '' });
+    window.scrollTo(0, vzScrollLockY);
+  }
 }
 window.syncBodyScrollLock = syncBodyScrollLock;
 

@@ -180,6 +180,10 @@
       const r = await fetch('/api/chat?' + params.toString());
       if (!r.ok) return;
       const data = await r.json();
+      // A send that started after this fetch went out will reconcile
+      // seenIds/lastMessageAt itself once it resolves - applying this
+      // batch too could re-render the same message the send just added.
+      if (sending) return;
       const newMsgs = data.messages || [];
       if (newMsgs.length) {
         if (panelOpen) newMsgs.forEach(appendMessage);
