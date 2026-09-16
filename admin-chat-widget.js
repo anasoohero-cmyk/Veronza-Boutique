@@ -89,6 +89,7 @@
       <div class="vz-chatw-head">
         <button type="button" class="vz-chatw-back" data-back aria-label="رجوع">→</button>
         <h3 data-title>المحادثات</h3>
+        <button type="button" class="vz-chatw-call" data-call aria-label="مكالمة صوتية" hidden>📞</button>
         <button type="button" class="vz-chatw-close-list" data-close aria-label="إغلاق">×</button>
       </div>
       <div class="vz-chatw-list" data-list></div>
@@ -115,7 +116,17 @@
 
     let conversations = [],
       activeId = null,
-      activeMessages = [];
+      activeMessages = [],
+      activeCall = null,
+      activeCallUI = null;
+    const callBtn = panel.querySelector('[data-call]');
+    const teardownCall = () => {
+      activeCallUI?.destroy();
+      activeCall?.destroy();
+      activeCall = null;
+      activeCallUI = null;
+      callBtn.hidden = true;
+    };
 
     const initials = (name) => {
       const n = (name || '؟').trim();
@@ -197,11 +208,21 @@
         conv.admin_unread = false;
         renderList();
       }
+      teardownCall();
+      if (canEditChat && window.VeronzaCall) {
+        activeCall = new window.VeronzaCall(client, id);
+        activeCallUI = window.VeronzaCall.mountUI(activeCall, {
+          calleeLabel: conv?.customer_name || 'الزبون',
+        });
+        callBtn.hidden = false;
+        callBtn.onclick = () => activeCall.startCall();
+      }
       setTimeout(() => replyInput.focus(), 200);
     };
 
     const backToList = () => {
       activeId = null;
+      teardownCall();
       panel.classList.remove('thread');
       titleEl.textContent = 'المحادثات';
     };

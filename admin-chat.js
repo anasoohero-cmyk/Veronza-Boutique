@@ -36,6 +36,7 @@ function applyChatPermissions(adminCheck) {
   $('#replyInput').disabled = !currentPermissions.edit;
   $('#replyForm').querySelector('button')?.toggleAttribute('disabled', !currentPermissions.edit);
   $('#closeConversationBtn').hidden = !currentPermissions.edit;
+  $('#callBtn').hidden = !currentPermissions.edit;
   if (!currentPermissions.view) {
     document.querySelector('main.chat-main').innerHTML =
       '<p style="text-align:center;color:#888;padding:40px 16px;grid-column:1/-1">ماعندك صلاحية الوصول لقسم الرسائل.</p>';
@@ -120,6 +121,22 @@ function renderMessages() {
   box.scrollTop = box.scrollHeight;
 }
 
+let activeCall = null;
+let activeCallUI = null;
+function teardownCall() {
+  activeCallUI?.destroy();
+  activeCall?.destroy();
+  activeCall = null;
+  activeCallUI = null;
+}
+function setupCallFor(id, customerName) {
+  teardownCall();
+  if (!currentPermissions.edit) return;
+  activeCall = new window.VeronzaCall(sb, id);
+  activeCallUI = window.VeronzaCall.mountUI(activeCall, { calleeLabel: customerName || 'الزبون' });
+  $('#callBtn').onclick = () => activeCall.startCall();
+}
+
 async function openConversation(id) {
   activeId = id;
   renderConversationList();
@@ -129,6 +146,7 @@ async function openConversation(id) {
   const conv = conversations.find((c) => c.id === id);
   $('#threadName').textContent = conv?.customer_name || 'زائر';
   $('#threadPhone').textContent = conv?.customer_phone || '';
+  setupCallFor(id, conv?.customer_name);
   const { data, error } = await sb
     .from('chat_messages')
     .select('id,sender,body,created_at')
@@ -149,6 +167,7 @@ async function openConversation(id) {
 
 function closeThread() {
   activeId = null;
+  teardownCall();
   document.querySelector('main.chat-main').classList.remove('thread-open');
   $('#threadEmpty').hidden = false;
   $('#threadView').hidden = true;
