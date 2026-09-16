@@ -1,4 +1,4 @@
-const CACHE = 'veronza-v9';
+const CACHE = 'veronza-v10';
 const CORE_ASSETS = [
   '/',
   '/index.html',
@@ -93,7 +93,7 @@ self.addEventListener('push', (e) => {
   try {
     data = { ...data, ...(e.data?.json() || {}) };
   } catch (_) {}
-  e.waitUntil(
+  const tasks = [
     self.registration.showNotification(data.title, {
       body: data.body,
       icon: '/icons/veronza-icon.svg',
@@ -105,7 +105,15 @@ self.addEventListener('push', (e) => {
       tag: data.url || 'veronza-order',
       renotify: true,
     }),
-  );
+  ];
+  if (typeof data.badgeCount === 'number' && 'setAppBadge' in navigator) {
+    tasks.push(
+      data.badgeCount > 0
+        ? navigator.setAppBadge(data.badgeCount).catch(() => {})
+        : navigator.clearAppBadge().catch(() => {}),
+    );
+  }
+  e.waitUntil(Promise.all(tasks));
 });
 self.addEventListener('notificationclick', (e) => {
   e.notification.close();

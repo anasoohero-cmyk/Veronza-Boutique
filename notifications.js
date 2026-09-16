@@ -113,6 +113,9 @@
       badge.hidden = !rows.some((x) => !x.read_at);
       const unread = rows.filter((x) => !x.read_at).length;
       badge.textContent = unread > 99 ? '99+' : unread;
+      if ('setAppBadge' in navigator) {
+        (unread > 0 ? navigator.setAppBadge(unread) : navigator.clearAppBadge()).catch(() => {});
+      }
       list.innerHTML = rows.length
         ? rows
             .map(

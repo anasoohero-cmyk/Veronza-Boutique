@@ -1,4 +1,4 @@
-const webpush = require('web-push');
+const { notifyAdmins } = require('./_push');
 
 function allowedOrigin(req) {
   const o = req.headers.origin;
@@ -152,92 +152,13 @@ module.exports = async (req, res) => {
     return res.status(502).json({ ok: false, error: 'Order not found after reservation' });
   const finalOrderNumber = existingOrder.order_number || orderNumber;
 
-  const adminResp = await fetch(`${supabaseUrl}/rest/v1/admin_users?select=user_id`, { headers });
-  if (adminResp.ok) {
-    const admins = await adminResp.json();
-    const notificationRows = admins.map((a) => ({
-      admin_user_id: a.user_id,
-      type: 'order',
-      title: 'طلب جديد',
-      body: `${finalOrderNumber} · ${name} · ${serverTotal.toLocaleString('ar-LY')} د.ل`,
-      order_id: orderId,
-    }));
-    if (notificationRows.length)
-      await fetch(`${supabaseUrl}/rest/v1/notifications`, {
-        method: 'POST',
-        headers: { ...headers, Prefer: 'resolution=ignore-duplicates,return=minimal' },
-        body: JSON.stringify(notificationRows),
-      }).catch(() => {});
-
-    try {
-      const cfgResp = await fetch(
-        `${supabaseUrl}/rest/v1/push_config?select=vapid_public_key,vapid_private_key&id=eq.true&limit=1`,
-        { headers },
-      );
-      const cfg = cfgResp.ok ? (await cfgResp.json())[0] : null;
-      const subsResp = await fetch(
-        `${supabaseUrl}/rest/v1/push_subscriptions?select=id,admin_user_id,endpoint,subscription`,
-        { headers },
-      );
-      const subscriptions = subsResp.ok ? await subsResp.json() : [];
-      if (cfg && subscriptions.length) {
-        const vapidSubject =
-          process.env.SITE_URL ||
-          (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'https://veronza.vercel.app');
-        webpush.setVapidDetails(vapidSubject, cfg.vapid_public_key, cfg.vapid_private_key);
-        await Promise.all(
-          subscriptions.map(async (sub) => {
-            try {
-              await webpush.sendNotification(
-                sub.subscription,
-                JSON.stringify({
-                  title: 'طلب جديد في VERONZA',
-                  body: `${finalOrderNumber} · ${name} · ${serverTotal.toLocaleString('ar-LY')} د.ل`,
-                  url: '/',
-                }),
-              );
-              await fetch(
-                `${supabaseUrl}/rest/v1/push_subscriptions?id=eq.${encodeURIComponent(sub.id)}`,
-                {
-                  method: 'PATCH',
-                  headers: { ...headers, Prefer: 'return=minimal' },
-                  body: JSON.stringify({
-                    last_sent_at: new Date().toISOString(),
-                    last_error: null,
-                    last_error_at: null,
-                  }),
-                },
-              ).catch(() => {});
-            } catch (e) {
-              const errorDetail = `${e?.statusCode || ''} ${e?.body || e?.message || e}`.slice(
-                0,
-                500,
-              );
-              console.error('Push notification failed:', errorDetail);
-              await fetch(
-                `${supabaseUrl}/rest/v1/push_subscriptions?id=eq.${encodeURIComponent(sub.id)}`,
-                {
-                  method: 'PATCH',
-                  headers: { ...headers, Prefer: 'return=minimal' },
-                  body: JSON.stringify({
-                    last_error: errorDetail,
-                    last_error_at: new Date().toISOString(),
-                  }),
-                },
-              ).catch(() => {});
-              if (e?.statusCode === 404 || e?.statusCode === 410)
-                await fetch(
-                  `${supabaseUrl}/rest/v1/push_subscriptions?id=eq.${encodeURIComponent(sub.id)}`,
-                  { method: 'DELETE', headers },
-                ).catch(() => {});
-            }
-          }),
-        );
-      }
-    } catch (e) {
-      console.error('Push notification failed:', e?.message || e);
-    }
-  }
+  await notifyAdmins(supabaseUrl, serviceKey, {
+    type: 'order',
+    title: 'طلب جديد',
+    body: `${finalOrderNumber} · ${name} · ${serverTotal.toLocaleString('ar-LY')} د.ل`,
+    orderId,
+    url: '/',
+  });
 
   if (idempotencyKey && existingOrder.whatsapp_status === 'sent')
     return res
