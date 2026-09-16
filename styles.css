@@ -973,9 +973,16 @@ a,
   }
   .tabs {
     justify-content: flex-start;
-    overflow: auto;
+    overflow-x: auto;
     gap: 25px;
     white-space: nowrap;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+  }
+  .tabs::-webkit-scrollbar {
+    display: none;
   }
   .product-grid {
     grid-template-columns: repeat(2, 1fr);
