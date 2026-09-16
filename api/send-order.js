@@ -72,7 +72,7 @@ module.exports = async (req, res) => {
     if (!code || !Number.isInteger(qty) || qty < 1)
       return res.status(400).json({ ok: false, error: 'Invalid order item' });
     const productResp = await fetch(
-      `${supabaseUrl}/rest/v1/products?select=id,code,name,price,img,type,colors,sizes&code=eq.${encodeURIComponent(code)}&is_active=eq.true&limit=1`,
+      `${supabaseUrl}/rest/v1/products?select=id,code,name,price,discount_price,img,type,colors,sizes&code=eq.${encodeURIComponent(code)}&is_active=eq.true&limit=1`,
       { headers },
     );
     if (!productResp.ok) return res.status(502).json({ ok: false, error: 'Product lookup failed' });
@@ -95,6 +95,9 @@ module.exports = async (req, res) => {
       !product.sizes.includes(size)
     )
       return res.status(400).json({ ok: false, error: `Invalid size for ${code}` });
+    const basePrice = Number(product.price) || 0;
+    const discountPrice = product.discount_price != null ? Number(product.discount_price) : null;
+    const unitPrice = discountPrice != null && discountPrice < basePrice ? discountPrice : basePrice;
     normalizedItems.push({
       product_id: product.id,
       product_code: product.code,
@@ -102,7 +105,7 @@ module.exports = async (req, res) => {
       color,
       size,
       quantity: qty,
-      unit_price: Number(product.price) || 0,
+      unit_price: unitPrice,
       image_url: product.img || null,
       type: product.type || null,
     });

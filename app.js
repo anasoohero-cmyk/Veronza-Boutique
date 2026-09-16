@@ -65,7 +65,7 @@ async function fetchProductsDirect() {
     timer = setTimeout(() => controller.abort(), SUPABASE_LOAD_TIMEOUT);
   try {
     const response = await fetch(
-      `${SUPABASE_URL}/rest/v1/products?select=id,code,name,price,type,img,extra_img,rating,reviews,colors,sizes,quantity&is_active=eq.true&order=id.asc`,
+      `${SUPABASE_URL}/rest/v1/products?select=id,code,name,description,price,discount_price,type,img,extra_img,rating,reviews,colors,sizes,quantity&is_active=eq.true&order=id.asc`,
       {
         headers: { apikey: SUPABASE_PUBLISHABLE_KEY },
         signal: controller.signal,
@@ -97,7 +97,9 @@ function loadProductsFromSupabase() {
         const client = await loadSupabaseClient();
         const result = await client
           .from('products')
-          .select('id,code,name,price,type,img,extra_img,rating,reviews,colors,sizes,quantity')
+          .select(
+            'id,code,name,description,price,discount_price,type,img,extra_img,rating,reviews,colors,sizes,quantity',
+          )
           .eq('is_active', true)
           .order('id', { ascending: true });
         if (result.error) throw result.error;
@@ -118,7 +120,9 @@ function loadProductsFromSupabase() {
             id: Number(row.id),
             code: row.code,
             name: row.name,
+            description: row.description || '',
             price: Number(row.price || 0),
+            discountPrice: row.discount_price != null ? Number(row.discount_price) : null,
             type: row.type,
             img: row.img,
             extraImg: extras[0] || undefined,
@@ -163,6 +167,12 @@ const $ = (s) => document.querySelector(s),
 function money(n) {
   return `${Number(n || 0).toLocaleString('ar-LY')} د.ل`;
 }
+function hasDiscount(p) {
+  return p.discountPrice != null && Number(p.discountPrice) < Number(p.price);
+}
+function effectivePrice(p) {
+  return hasDiscount(p) ? Number(p.discountPrice) : Number(p.price || 0);
+}
 function esc(v) {
   return String(v ?? '').replace(
     /[&<>"']/g,
@@ -197,13 +207,32 @@ function renderProducts(list = products) {
   currentList = list;
   const grid = $('#productGrid');
   if (!grid) return;
+  if (!list.length) {
+    grid.innerHTML =
+      '<p style="grid-column:1/-1;text-align:center;color:#888;padding:24px 0">لا توجد منتجات هنا حالياً.</p>';
+    return;
+  }
   grid.innerHTML = list
     .map((p) => {
       const fav = wishlist.includes(p.id);
       const rating = Math.min(5, Math.max(0, Math.round(Number(p.rating) || 0)));
       const stars = '★'.repeat(rating) + '☆'.repeat(5 - rating);
       const outOfStock = Number(p.quantity || 0) <= 0;
-      return `<article class="product${outOfStock ? ' out-of-stock' : ''}"><div class="product-img" data-product-view="${p.id}" role="button" tabindex="0" aria-label="عرض تفاصيل ${esc(p.name)}">${productVisual(p)}<button class="heart ${fav ? 'is-fav' : ''}" data-fav="${p.id}" aria-label="${fav ? 'إزالة من المفضلة' : 'إضافة للمفضلة'}">${fav ? '♥' : '♡'}</button>${outOfStock ? '<span class="soldout-badge">نفذت الكمية</span>' : p.type === 'set' ? '<span class="set-badge">سيت كامل</span>' : ''}</div><div class="product-info"><button class="product-name product-name-button" data-product-view="${p.id}">${esc(p.name)}</button><div class="price">${money(p.price)}</div><div class="stars">${stars} <span>(${p.reviews})</span></div>${optionMarkup(p)}<button class="add" data-add="${p.id}"${outOfStock ? ' disabled' : ''}>${outOfStock ? 'نفذت الكمية' : 'أضف إلى السلة　♧'}</button></div></article>`;
+      const discounted = hasDiscount(p);
+      const priceHtml = discounted
+        ? `<div class="price"><s class="price-original">${money(p.price)}</s><span class="price-discounted">${money(p.discountPrice)}</span></div>`
+        : `<div class="price">${money(p.price)}</div>`;
+      const badgeHtml = outOfStock
+        ? '<span class="soldout-badge">نفذت الكمية</span>'
+        : discounted
+          ? '<span class="discount-badge">خصم</span>'
+          : p.type === 'set'
+            ? '<span class="set-badge">سيت كامل</span>'
+            : '';
+      const descHtml = p.description
+        ? `<div class="product-desc">${esc(p.description)}</div>`
+        : '';
+      return `<article class="product${outOfStock ? ' out-of-stock' : ''}"><div class="product-img" data-product-view="${p.id}" role="button" tabindex="0" aria-label="عرض تفاصيل ${esc(p.name)}">${productVisual(p)}<button class="heart ${fav ? 'is-fav' : ''}" data-fav="${p.id}" aria-label="${fav ? 'إزالة من المفضلة' : 'إضافة للمفضلة'}">${fav ? '♥' : '♡'}</button>${badgeHtml}</div><div class="product-info"><button class="product-name product-name-button" data-product-view="${p.id}">${esc(p.name)}</button>${descHtml}${priceHtml}<div class="stars">${stars} <span>(${p.reviews})</span></div>${optionMarkup(p)}<button class="add" data-add="${p.id}"${outOfStock ? ' disabled' : ''}>${outOfStock ? 'نفذت الكمية' : 'أضف إلى السلة　♧'}</button></div></article>`;
     })
     .join('');
   $$('[data-add]').forEach(
@@ -301,7 +330,7 @@ function addToCartCore(id, color, size, qty = 1) {
   if (existing) {
     existing.qty = currentQty + q;
   } else {
-    cart.push({ ...p, qty: q, color, size });
+    cart.push({ ...p, price: effectivePrice(p), qty: q, color, size });
   }
   save();
   renderCart();
@@ -479,13 +508,13 @@ function ensureProductModal() {
   if ($('#productDetailsModal')) return;
   const style = document.createElement('style');
   style.textContent =
-    '.product-name-button{display:block;width:100%;padding:0;border:0;background:none;text-align:right;cursor:pointer}.product-details-modal{position:fixed;inset:0;background:rgba(0,0,0,.58);display:none;align-items:flex-end;justify-content:center;z-index:90}.product-details-modal.open{display:flex}.product-details-card{width:min(100%,680px);max-height:94vh;overflow:auto;overscroll-behavior:contain;background:#fff;border-radius:24px 24px 0 0;padding:18px}.product-details-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}.product-details-close{border:0;background:#f4f1ec;width:40px;height:40px;border-radius:50%;font-size:25px}.product-details-media{aspect-ratio:1/1;background:#f5f2ed;overflow:hidden}.product-details-media img{width:100%;height:100%;object-fit:cover}.product-details-media.set{display:grid;grid-template-columns:1fr 1fr;gap:2px}.product-details-info h2{font-size:22px;margin:14px 0 4px}.product-details-code{color:#888;font-size:11px}.product-details-price{font-family:"Playfair Display",serif;font-size:24px;font-weight:700;margin:8px 0}.product-details-rating{color:#b58a3b;font-size:12px}.detail-options{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:16px 0}.detail-options label{display:grid;gap:6px;font-size:12px;font-weight:700}.detail-options select{padding:11px;border:1px solid #ddd8d0;border-radius:10px;background:#fff}.detail-qty{display:flex;align-items:center;justify-content:space-between;border:1px solid #ddd8d0;border-radius:10px;padding:5px 10px;margin-bottom:12px}.detail-qty button{border:0;background:#f4f1ec;width:34px;height:34px;border-radius:8px;font-size:20px}.detail-qty span{font-weight:700}.detail-add{width:100%;border:0;background:#111;color:#fff;padding:14px;border-radius:12px;font-weight:800}.detail-add:hover{background:#b58a3b}.detail-buy-now{width:100%;border:2px solid #111;background:#fff;color:#111;padding:13px;border-radius:12px;font-weight:800;margin-top:10px}.detail-buy-now:hover{background:#111;color:#fff}.product-gallery{position:relative}.gallery-main{aspect-ratio:1/1;background:#f5f2ed;overflow:hidden;position:relative;cursor:zoom-in;direction:ltr}.gallery-track{display:flex;height:100%;width:100%;touch-action:pan-y}.gallery-track img{width:100%;height:100%;object-fit:cover;display:block;flex-shrink:0;user-select:none;-webkit-user-drag:none;pointer-events:none}.gallery-counter{position:absolute;bottom:10px;left:10px;background:rgba(0,0,0,.55);color:#fff;font-size:12px;padding:4px 11px;border-radius:20px;pointer-events:none}.gallery-nav{position:absolute;top:0;bottom:0;width:34%;background:none;border:0}.gallery-nav.prev{left:0}.gallery-nav.next{right:0}.gallery-dots{display:flex;gap:6px;justify-content:center;margin-top:10px}.gallery-dots button{width:7px;height:7px;padding:0;border-radius:50%;background:#ddd8d0;border:0}.gallery-dots button.active{background:#111;width:18px;border-radius:5px}.veronza-lightbox{position:fixed;inset:0;background:#000;display:flex;align-items:center;justify-content:center;z-index:200;opacity:0;pointer-events:none;transition:opacity .22s ease}.veronza-lightbox.open{opacity:1;pointer-events:auto}.lightbox-track{display:flex;height:85vh;width:100%;touch-action:pan-y;direction:ltr}.lightbox-track img{width:100%;height:100%;object-fit:contain;flex-shrink:0;user-select:none;-webkit-user-drag:none;pointer-events:none}.lightbox-close{position:absolute;top:18px;inset-inline-start:18px;width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,.15);color:#fff;border:0;font-size:24px;line-height:1;z-index:2}.lightbox-counter{position:absolute;bottom:22px;left:50%;transform:translateX(-50%);color:#fff;font-size:13px;background:rgba(255,255,255,.15);padding:5px 14px;border-radius:20px;z-index:2}.lightbox-nav{position:absolute;top:0;bottom:0;width:40%;background:none;border:0;z-index:1}.lightbox-nav.prev{left:0}.lightbox-nav.next{right:0}.product-details-share{border:0;background:#f4f1ec;width:40px;height:40px;border-radius:50%;display:grid;place-items:center;margin-inline-end:8px}@media(min-width:901px){.product-details-modal{align-items:center}.product-details-card{border-radius:24px}}';
+    '.product-name-button{display:block;width:100%;padding:0;border:0;background:none;text-align:right;cursor:pointer}.product-details-modal{position:fixed;inset:0;background:rgba(0,0,0,.58);display:none;align-items:flex-end;justify-content:center;z-index:90}.product-details-modal.open{display:flex}.product-details-card{width:min(100%,680px);max-height:94vh;overflow:auto;overscroll-behavior:contain;background:#fff;border-radius:24px 24px 0 0;padding:18px}.product-details-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}.product-details-close{border:0;background:#f4f1ec;width:40px;height:40px;border-radius:50%;font-size:25px}.product-details-media{aspect-ratio:1/1;background:#f5f2ed;overflow:hidden}.product-details-media img{width:100%;height:100%;object-fit:cover}.product-details-media.set{display:grid;grid-template-columns:1fr 1fr;gap:2px}.product-details-info h2{font-size:22px;margin:14px 0 4px}.product-details-code{color:#888;font-size:11px}.product-details-description{color:#555;font-size:13px;line-height:1.7;margin:8px 0}.product-details-price{font-family:"Playfair Display",serif;font-size:24px;font-weight:700;margin:8px 0}.product-details-rating{color:#b58a3b;font-size:12px}.detail-options{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:16px 0}.detail-options label{display:grid;gap:6px;font-size:12px;font-weight:700}.detail-options select{padding:11px;border:1px solid #ddd8d0;border-radius:10px;background:#fff}.detail-qty{display:flex;align-items:center;justify-content:space-between;border:1px solid #ddd8d0;border-radius:10px;padding:5px 10px;margin-bottom:12px}.detail-qty button{border:0;background:#f4f1ec;width:34px;height:34px;border-radius:8px;font-size:20px}.detail-qty span{font-weight:700}.detail-add{width:100%;border:0;background:#111;color:#fff;padding:14px;border-radius:12px;font-weight:800}.detail-add:hover{background:#b58a3b}.detail-buy-now{width:100%;border:2px solid #111;background:#fff;color:#111;padding:13px;border-radius:12px;font-weight:800;margin-top:10px}.detail-buy-now:hover{background:#111;color:#fff}.product-gallery{position:relative}.gallery-main{aspect-ratio:1/1;background:#f5f2ed;overflow:hidden;position:relative;cursor:zoom-in;direction:ltr}.gallery-track{display:flex;height:100%;width:100%;touch-action:pan-y}.gallery-track img{width:100%;height:100%;object-fit:cover;display:block;flex-shrink:0;user-select:none;-webkit-user-drag:none;pointer-events:none}.gallery-counter{position:absolute;bottom:10px;left:10px;background:rgba(0,0,0,.55);color:#fff;font-size:12px;padding:4px 11px;border-radius:20px;pointer-events:none}.gallery-nav{position:absolute;top:0;bottom:0;width:34%;background:none;border:0}.gallery-nav.prev{left:0}.gallery-nav.next{right:0}.gallery-dots{display:flex;gap:6px;justify-content:center;margin-top:10px}.gallery-dots button{width:7px;height:7px;padding:0;border-radius:50%;background:#ddd8d0;border:0}.gallery-dots button.active{background:#111;width:18px;border-radius:5px}.veronza-lightbox{position:fixed;inset:0;background:#000;display:flex;align-items:center;justify-content:center;z-index:200;opacity:0;pointer-events:none;transition:opacity .22s ease}.veronza-lightbox.open{opacity:1;pointer-events:auto}.lightbox-track{display:flex;height:85vh;width:100%;touch-action:pan-y;direction:ltr}.lightbox-track img{width:100%;height:100%;object-fit:contain;flex-shrink:0;user-select:none;-webkit-user-drag:none;pointer-events:none}.lightbox-close{position:absolute;top:18px;inset-inline-start:18px;width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,.15);color:#fff;border:0;font-size:24px;line-height:1;z-index:2}.lightbox-counter{position:absolute;bottom:22px;left:50%;transform:translateX(-50%);color:#fff;font-size:13px;background:rgba(255,255,255,.15);padding:5px 14px;border-radius:20px;z-index:2}.lightbox-nav{position:absolute;top:0;bottom:0;width:40%;background:none;border:0;z-index:1}.lightbox-nav.prev{left:0}.lightbox-nav.next{right:0}.product-details-share{border:0;background:#f4f1ec;width:40px;height:40px;border-radius:50%;display:grid;place-items:center;margin-inline-end:8px}@media(min-width:901px){.product-details-modal{align-items:center}.product-details-card{border-radius:24px}}';
   document.head.appendChild(style);
   const modal = document.createElement('div');
   modal.id = 'productDetailsModal';
   modal.className = 'product-details-modal';
   modal.innerHTML =
-    '<div class="product-details-card"><div class="product-details-head"><strong>تفاصيل المنتج</strong><div style="display:flex;align-items:center"><button type="button" class="product-details-share" data-detail-share aria-label="نسخ رابط المنتج"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="2.4"/><circle cx="6" cy="12" r="2.4"/><circle cx="18" cy="19" r="2.4"/><path d="M8.1 10.7l7.8-4.4M8.1 13.3l7.8 4.4"/></svg></button><button type="button" class="product-details-close" aria-label="إغلاق">×</button></div></div><div class="product-gallery" data-gallery><div class="gallery-main" data-gallery-main><div class="gallery-track" data-gallery-track></div><span class="gallery-counter" data-gallery-counter hidden></span><button type="button" class="gallery-nav prev" data-gallery-prev aria-label="السابق" hidden></button><button type="button" class="gallery-nav next" data-gallery-next aria-label="التالي" hidden></button></div><div class="gallery-dots" data-gallery-dots></div></div><div class="product-details-info"><h2 data-detail-name></h2><div class="product-details-code" data-detail-code></div><div class="product-details-price" data-detail-price></div><div class="product-details-rating" data-detail-rating></div><div class="detail-options"><label>اللون<select data-detail-color></select></label><label>المقاس<select data-detail-size></select></label></div><div class="detail-qty"><button type="button" data-detail-minus>−</button><span data-detail-qty>1</span><button type="button" data-detail-plus>+</button></div><button type="button" class="detail-add" data-detail-add>أضف إلى السلة</button><button type="button" class="detail-buy-now" data-detail-buy>اطلب الآن (شراء مباشر)</button></div></div>';
+    '<div class="product-details-card"><div class="product-details-head"><strong>تفاصيل المنتج</strong><div style="display:flex;align-items:center"><button type="button" class="product-details-share" data-detail-share aria-label="نسخ رابط المنتج"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="2.4"/><circle cx="6" cy="12" r="2.4"/><circle cx="18" cy="19" r="2.4"/><path d="M8.1 10.7l7.8-4.4M8.1 13.3l7.8 4.4"/></svg></button><button type="button" class="product-details-close" aria-label="إغلاق">×</button></div></div><div class="product-gallery" data-gallery><div class="gallery-main" data-gallery-main><div class="gallery-track" data-gallery-track></div><span class="gallery-counter" data-gallery-counter hidden></span><button type="button" class="gallery-nav prev" data-gallery-prev aria-label="السابق" hidden></button><button type="button" class="gallery-nav next" data-gallery-next aria-label="التالي" hidden></button></div><div class="gallery-dots" data-gallery-dots></div></div><div class="product-details-info"><h2 data-detail-name></h2><div class="product-details-description" data-detail-description hidden></div><div class="product-details-code" data-detail-code></div><div class="product-details-price" data-detail-price></div><div class="product-details-rating" data-detail-rating></div><div class="detail-options"><label>اللون<select data-detail-color></select></label><label>المقاس<select data-detail-size></select></label></div><div class="detail-qty"><button type="button" data-detail-minus>−</button><span data-detail-qty>1</span><button type="button" data-detail-plus>+</button></div><button type="button" class="detail-add" data-detail-add>أضف إلى السلة</button><button type="button" class="detail-buy-now" data-detail-buy>اطلب الآن (شراء مباشر)</button></div></div>';
   document.body.appendChild(modal);
   const lightbox = document.createElement('div');
   lightbox.className = 'veronza-lightbox';
@@ -685,7 +714,7 @@ function ensureProductModal() {
       alert(stock <= 0 ? 'عذراً، هذا المنتج نفذ من المخزون حالياً.' : `الكمية المتوفرة: ${stock}.`);
       return;
     }
-    quickBuyItem = { ...p, qty: q, color, size };
+    quickBuyItem = { ...p, price: effectivePrice(p), qty: q, color, size };
     closeProductDetails();
     openCheckout(true);
   };
@@ -700,8 +729,13 @@ function openProductDetails(id, updateUrl = true) {
   modal._galleryState.images = (p.images && p.images.length ? p.images : [p.img]).filter(Boolean);
   modal._galleryState.index = 0;
   modal._renderGallery();
+  const descEl = modal.querySelector('[data-detail-description]');
+  descEl.textContent = p.description || '';
+  descEl.hidden = !p.description;
   modal.querySelector('[data-detail-code]').textContent = `كود المنتج: ${p.code}`;
-  modal.querySelector('[data-detail-price]').textContent = money(p.price);
+  modal.querySelector('[data-detail-price]').innerHTML = hasDiscount(p)
+    ? `<s class="price-original">${money(p.price)}</s><span class="price-discounted">${money(p.discountPrice)}</span>`
+    : money(p.price);
   const dr = Math.min(5, Math.max(0, Math.round(Number(p.rating) || 0)));
   modal.querySelector('[data-detail-rating]').textContent =
     `${'★'.repeat(dr)}${'☆'.repeat(5 - dr)} ${p.rating} · ${p.reviews} تقييم`;

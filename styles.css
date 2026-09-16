@@ -480,6 +480,17 @@ a,
   padding: 5px 9px;
   z-index: 2;
 }
+.discount-badge {
+  position: absolute;
+  bottom: 9px;
+  right: 9px;
+  background: #c0392b;
+  color: #fff;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 5px 9px;
+  z-index: 2;
+}
 .soldout-badge {
   position: absolute;
   bottom: 9px;
@@ -512,11 +523,32 @@ a,
   overflow: hidden;
   text-overflow: ellipsis;
 }
+.product-desc {
+  font-size: 11px;
+  color: #888;
+  margin-top: 2px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
 .price {
   font-family: 'Playfair Display', serif;
   font-size: 16px;
   font-weight: 700;
   margin: 5px 0;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.price-original {
+  font-size: 12px;
+  font-weight: 400;
+  color: #999;
+  margin-inline-end: 8px;
+}
+.price-discounted {
+  color: #c0392b;
 }
 .stars {
   font-size: 10px;
