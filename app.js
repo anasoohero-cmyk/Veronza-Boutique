@@ -65,7 +65,7 @@ async function fetchProductsDirect() {
     timer = setTimeout(() => controller.abort(), SUPABASE_LOAD_TIMEOUT);
   try {
     const response = await fetch(
-      `${SUPABASE_URL}/rest/v1/products?select=id,code,name,description,price,discount_price,type,img,extra_img,rating,reviews,colors,sizes,quantity&is_active=eq.true&order=id.asc`,
+      `${SUPABASE_URL}/rest/v1/products?select=id,code,name,description,price,discount_price,type,img,extra_img,rating,reviews,colors,sizes,size_quantities,quantity&is_active=eq.true&order=id.asc`,
       {
         headers: { apikey: SUPABASE_PUBLISHABLE_KEY },
         signal: controller.signal,
@@ -98,7 +98,7 @@ function loadProductsFromSupabase() {
         const result = await client
           .from('products')
           .select(
-            'id,code,name,description,price,discount_price,type,img,extra_img,rating,reviews,colors,sizes,quantity',
+            'id,code,name,description,price,discount_price,type,img,extra_img,rating,reviews,colors,sizes,size_quantities,quantity',
           )
           .eq('is_active', true)
           .order('id', { ascending: true });
@@ -131,6 +131,7 @@ function loadProductsFromSupabase() {
             reviews: Number(row.reviews || 0),
             colors: Array.isArray(row.colors) ? row.colors : [],
             sizes: Array.isArray(row.sizes) ? row.sizes : [],
+            sizeQuantities: row.size_quantities || {},
             quantity: Number(row.quantity || 0),
           };
         }),
@@ -187,9 +188,20 @@ function productVisual(p) {
 function isSizeRequired(p) {
   return p?.type === 'shoes' || p?.type === 'set';
 }
+function sizeStock(p, size) {
+  if (!isSizeRequired(p)) return Number(p?.quantity || 0);
+  const sq = p?.sizeQuantities;
+  if (sq && Object.prototype.hasOwnProperty.call(sq, size)) return Number(sq[size] || 0);
+  return Number(p?.quantity || 0);
+}
 function optionMarkup(p) {
   const sizeOptions = isSizeRequired(p)
-    ? `<option value="" selected disabled>اختار المقاس</option>${p.sizes.map((s) => `<option value="${esc(s)}">${esc(s)}</option>`).join('')}`
+    ? `<option value="" selected disabled>اختار المقاس</option>${p.sizes
+        .map((s) => {
+          const outOfStock = sizeStock(p, s) <= 0;
+          return `<option value="${esc(s)}"${outOfStock ? ' disabled' : ''}>${esc(s)}${outOfStock ? ' (نفذت)' : ''}</option>`;
+        })
+        .join('')}`
     : `<option value="موحد" selected>موحد</option>`;
   return `<div class="product-options"><label>اللون<select data-color="${p.id}">${p.colors.map((c, i) => `<option value="${esc(c)}"${i === 0 ? ' selected' : ''}>${esc(c)}</option>`).join('')}</select></label><label>المقاس<select data-size="${p.id}"${isSizeRequired(p) ? ' required' : ''}>${sizeOptions}</select></label></div>`;
 }
@@ -322,7 +334,7 @@ function addToCartCore(id, color, size, qty = 1) {
   const q = Math.max(1, Number(qty) || 1);
   const existing = cart.find((x) => x.id === id && x.color === color && x.size === size);
   const currentQty = existing ? existing.qty : 0;
-  const stock = Number(p.quantity || 0);
+  const stock = sizeStock(p, size);
   if (currentQty + q > stock) {
     alert(stock <= 0 ? 'عذراً، هذا المنتج نفذ من المخزون حالياً.' : `الكمية المتوفرة: ${stock}.`);
     return false;
@@ -709,7 +721,7 @@ function ensureProductModal() {
     if (size === null) return;
     const p = products.find((x) => x.id === id);
     if (!p) return;
-    const stock = Number(p.quantity || 0);
+    const stock = sizeStock(p, size);
     if (q > stock) {
       alert(stock <= 0 ? 'عذراً، هذا المنتج نفذ من المخزون حالياً.' : `الكمية المتوفرة: ${stock}.`);
       return;
@@ -744,7 +756,12 @@ function openProductDetails(id, updateUrl = true) {
     .join('');
   const sizeSelect = modal.querySelector('[data-detail-size]');
   sizeSelect.innerHTML = isSizeRequired(p)
-    ? `<option value="" selected disabled>اختار المقاس</option>${p.sizes.map((x) => `<option value="${esc(x)}">${esc(x)}</option>`).join('')}`
+    ? `<option value="" selected disabled>اختار المقاس</option>${p.sizes
+        .map((x) => {
+          const outOfStock = sizeStock(p, x) <= 0;
+          return `<option value="${esc(x)}"${outOfStock ? ' disabled' : ''}>${esc(x)}${outOfStock ? ' (نفذت)' : ''}</option>`;
+        })
+        .join('')}`
     : `<option value="موحد" selected>موحد</option>`;
   modal.querySelector('[data-detail-qty]').textContent = '1';
   const outOfStock = Number(p.quantity || 0) <= 0;
