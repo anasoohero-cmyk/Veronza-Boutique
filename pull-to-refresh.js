@@ -120,7 +120,6 @@
         return;
       }
       if (distance < deadzone) return;
-      if (e.cancelable) e.preventDefault();
       if (!dragging) {
         dragging = true;
         document.body.style.willChange = 'transform';
@@ -133,7 +132,7 @@
       if (wa) wa.style.opacity = '0';
       setBarState(pulled / threshold, false);
     },
-    { passive: false },
+    { passive: true },
   );
 
   document.addEventListener(
