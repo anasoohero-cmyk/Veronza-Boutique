@@ -435,6 +435,7 @@ function ensureOrderReadySheet() {
     openWhatsApp(orderReadyMessage);
     closeOrderReadySheet();
   };
+  attachSwipeDownToClose(sheet.querySelector('.order-ready-card'), closeOrderReadySheet);
 }
 function openOrderReadySheet(customer, items) {
   ensureOrderReadySheet();
@@ -516,19 +517,31 @@ function closeCheckout() {
   $('[data-checkout-modal]')?.classList.remove('open');
   quickBuyItem = null;
 }
-function attachSwipeDownToClose(card, closeFn) {
+// Swipe-down-to-close for a bottom sheet / dialog card. Works whether the
+// card is positioned with plain flexbox (no base transform) or already uses
+// a transform for its own open/closed state (e.g. translateX(-50%) sheets) —
+// it reads whatever transform is in effect when the drag starts and layers
+// the drag offset on top of it, instead of overwriting it.
+function attachSwipeDownToClose(card, closeFn, { scrollEl } = {}) {
+  const scroller = scrollEl || card;
   let startX = 0,
     startY = 0,
     dragging = false,
     moved = false,
-    scrollTopAtStart = 0;
+    scrollTopAtStart = 0,
+    baseTransform = '';
+  const setOffset = (dy) => {
+    card.style.transform = baseTransform ? `${baseTransform} translateY(${dy}px)` : `translateY(${dy}px)`;
+  };
   const start = (e) => {
     const p = e.touches[0];
     startX = p.clientX;
     startY = p.clientY;
-    scrollTopAtStart = card.scrollTop;
+    scrollTopAtStart = scroller.scrollTop;
     dragging = true;
     moved = false;
+    const computed = getComputedStyle(card).transform;
+    baseTransform = computed && computed !== 'none' ? computed : '';
     card.style.transition = 'none';
   };
   const move = (e) => {
@@ -546,7 +559,7 @@ function attachSwipeDownToClose(card, closeFn) {
     }
     moved = true;
     if (e.cancelable) e.preventDefault();
-    card.style.transform = `translateY(${dy}px)`;
+    setOffset(dy);
   };
   const end = (e) => {
     if (!dragging) return;
@@ -556,14 +569,17 @@ function attachSwipeDownToClose(card, closeFn) {
     const dy = p.clientY - startY;
     card.style.transition = 'transform .2s ease';
     if (dy > 90) {
-      card.style.transform = `translateY(${window.innerHeight}px)`;
+      setOffset(window.innerHeight);
       setTimeout(() => {
         closeFn();
-        card.style.transition = 'none';
+        card.style.transition = '';
         card.style.transform = '';
       }, 180);
     } else {
       card.style.transform = '';
+      setTimeout(() => {
+        card.style.transition = '';
+      }, 200);
     }
   };
   card.addEventListener('touchstart', start, { passive: true });
@@ -968,6 +984,11 @@ $('[data-newsletter]').onsubmit = (e) => {
 };
 $('[data-checkout]').onclick = () => openCheckout();
 $('[data-checkout-close]').onclick = closeCheckout;
+attachSwipeDownToClose($('.checkout-card'), closeCheckout);
+attachSwipeDownToClose($('[data-cart-drawer]'), closeLayers, {
+  scrollEl: $('[data-cart-items]'),
+});
+attachSwipeDownToClose($('[data-mobile-menu]'), closeLayers);
 $('[data-checkout-form]').onsubmit = async (e) => {
   e.preventDefault();
   const form = e.currentTarget;

@@ -278,6 +278,7 @@
     }),
   );
   panel.querySelector('.vz-chat-close').onclick = closePanel;
+  window.attachSwipeDownToClose?.(panel, closePanel, { scrollEl: bodyEl });
 
   formEl.addEventListener('submit', async (e) => {
     e.preventDefault();

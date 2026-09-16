@@ -375,6 +375,9 @@
     modal.onclick = (e) => {
       if (e.target === modal) modal.classList.remove('open');
     };
+    window.attachSwipeDownToClose?.(modal.querySelector('.auth-card'), () =>
+      modal.classList.remove('open'),
+    );
     modal.querySelector('[data-auth-logout]').onclick = async () => {
       await client.auth.signOut();
       await showAccount(null);
