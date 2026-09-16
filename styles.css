@@ -650,8 +650,34 @@ a,
   gap: 8px;
   color: var(--ink);
 }
-.social-row svg {
-  color: var(--gold);
+.icon-badge {
+  width: 44px;
+  height: 44px;
+  border-radius: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+}
+.icon-badge svg {
+  width: 24px;
+  height: 24px;
+  color: #fff;
+}
+.badge-tiktok {
+  background: #000;
+}
+.badge-facebook {
+  background: #0866ff;
+}
+.badge-snapchat {
+  background: #fffc00;
+}
+.badge-instagram {
+  background: linear-gradient(135deg, #4f5bd5, #962fbf, #d62976, #fa7e1e, #feda75);
+}
+.badge-messenger {
+  background: linear-gradient(135deg, #00c6ff, #0078ff, #a033ff, #ff5280);
 }
 .social-row strong {
   font-size: 12px;
