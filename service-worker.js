@@ -51,21 +51,20 @@ self.addEventListener('fetch', (e) => {
   const isAppShell = e.request.mode === 'navigate' || CORE_ASSETS.includes(url.pathname);
   if (isAppShell) {
     e.respondWith(
-      caches.match(e.request).then((cached) => {
-        const network = fetch(e.request)
-          .then((response) => {
-            if (response && response.status === 200) {
-              const clone = response.clone();
-              caches
-                .open(CACHE)
-                .then((c) => c.put(e.request, clone))
-                .catch(() => {});
-            }
-            return response;
-          })
-          .catch(() => cached || caches.match('/index.html'));
-        return cached || network;
-      }),
+      fetch(e.request)
+        .then((response) => {
+          if (response && response.status === 200) {
+            const clone = response.clone();
+            caches
+              .open(CACHE)
+              .then((c) => c.put(e.request, clone))
+              .catch(() => {});
+          }
+          return response;
+        })
+        .catch(() =>
+          caches.match(e.request).then((cached) => cached || caches.match('/index.html')),
+        ),
     );
     return;
   }
