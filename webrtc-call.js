@@ -376,7 +376,7 @@
     };
   }
 
-  function mountCallUI(call, { calleeLabel = 'الطرف الآخر' } = {}) {
+  function mountCallUI(call, { calleeLabel = 'الطرف الآخر', onMissedCall = null } = {}) {
     if (!document.getElementById('vz-call-style')) {
       const style = document.createElement('style');
       style.id = 'vz-call-style';
@@ -546,7 +546,10 @@
         signalEl.classList.add('good');
       }
     };
-    call.onNoAnswer = () => showToast('لا يوجد رد — الطرف الآخر غير متصل بالشات حالياً.');
+    call.onNoAnswer = () => {
+      showToast('لا يوجد رد — الطرف الآخر غير متصل بالشات حالياً.');
+      onMissedCall?.();
+    };
     call.onBusy = () => showToast('الطرف الآخر مشغول بمكالمة أخرى.');
     call.onConnectFailed = () =>
       showToast('تعذر إكمال المكالمة — تأكد من قوة الاتصال بالإنترنت وحاول مرة أخرى.');
