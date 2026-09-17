@@ -91,6 +91,13 @@
       if (!el) return;
       if (document.scrollingElement.scrollTop !== 0) {
         pulling = false;
+        if (dragging) {
+          el.style.transition = 'transform .2s ease';
+          el.style.transform = '';
+          setBarState(0, false);
+          bar.style.pointerEvents = 'none';
+          dragging = false;
+        }
         return;
       }
       const distance = e.touches[0].clientY - startY;
@@ -103,7 +110,6 @@
         }
         return;
       }
-      if (e.cancelable) e.preventDefault();
       if (distance < deadzone) {
         if (dragging) {
           el.style.transition = 'transform .2s ease';
@@ -121,16 +127,20 @@
       bar.style.pointerEvents = 'auto';
       setBarState(pulled / threshold, false);
     },
-    { passive: false },
+    { passive: true },
   );
 
   document.addEventListener(
     'touchend',
     () => {
-      if (!pulling) return;
+      const wasDragging = dragging;
       pulling = false;
+      if (!wasDragging) return;
       const el = container();
-      if (!el || !dragging) return;
+      if (!el) {
+        dragging = false;
+        return;
+      }
       const currentTransform = el.style.transform;
       const match = /translateY\(([\d.]+)px\)/.exec(currentTransform || '');
       const pulled = match ? parseFloat(match[1]) : 0;
