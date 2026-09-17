@@ -79,6 +79,15 @@ main {
 .permissions-row:last-child {
   border-bottom: none;
 }
+.permissions-group-title {
+  padding: 10px 14px 4px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  color: #9a825e;
+  background: #faf8f4;
+  border-bottom: 1px solid #eee;
+}
 .permissions-row .section-name {
   font-weight: 700;
   font-size: 14px;
