@@ -283,7 +283,7 @@ function renderProducts(list = products) {
       const descHtml = p.description
         ? `<div class="product-desc">${esc(p.description)}</div>`
         : '';
-      return `<article class="product${outOfStock ? ' out-of-stock' : ''}"><div class="product-img" data-product-view="${p.id}" role="button" tabindex="0" aria-label="عرض تفاصيل ${esc(p.name)}">${productVisual(p)}<button class="heart ${fav ? 'is-fav' : ''}" data-fav="${p.id}" aria-label="${fav ? 'إزالة من المفضلة' : 'إضافة للمفضلة'}">${fav ? '♥' : '♡'}</button>${badgeHtml}</div><div class="product-info"><button class="product-name product-name-button" data-product-view="${p.id}">${esc(p.name)}</button>${descHtml}${priceHtml}<div class="stars">${stars} <span>(${p.reviews})</span></div>${optionMarkup(p)}<button class="add" data-add="${p.id}"${outOfStock ? ' disabled' : ''}>${outOfStock ? 'نفذت الكمية' : 'أضف إلى السلة　♧'}</button></div></article>`;
+      return `<article class="product${outOfStock ? ' out-of-stock' : ''}"><div class="product-img" data-product-view="${p.id}" role="button" tabindex="0" aria-label="عرض تفاصيل ${esc(p.name)}">${productVisual(p)}<button class="heart ${fav ? 'is-fav' : ''}" data-fav="${p.id}" aria-label="${fav ? 'إزالة من المفضلة' : 'إضافة للمفضلة'}">${fav ? '♥' : '♡'}</button>${badgeHtml}</div><div class="product-info"><button class="product-name product-name-button" data-product-view="${p.id}">${esc(p.name)}</button>${descHtml}${priceHtml}<div class="stars">${stars} <span>(${p.reviews})</span></div>${optionMarkup(p)}<button class="add" data-add="${p.id}"${outOfStock ? ' disabled' : ''}>${outOfStock ? 'نفذت الكمية' : '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8h12l-1 12H7L6 8z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg> أضف إلى السلة'}</button></div></article>`;
     })
     .join('');
   $$('[data-add]').forEach(
@@ -380,8 +380,9 @@ function addToCartCore(id, color, size, qty = 1) {
   }
   if (existing) {
     existing.qty = currentQty + q;
+    existing.selected = true;
   } else {
-    cart.push({ ...p, price: effectivePrice(p), qty: q, color, size });
+    cart.push({ ...p, price: effectivePrice(p), qty: q, color, size, selected: true });
   }
   save();
   renderCart();
@@ -393,20 +394,34 @@ function addToCart(id, color, size, qty = 1) {
 function renderCart() {
   const box = $('[data-cart-items]');
   if (!box) return;
+  const selected = cart.filter((x) => x.selected !== false);
   const count = cart.reduce((s, x) => s + x.qty, 0),
-    total = cart.reduce((s, x) => s + x.price * x.qty, 0);
+    total = selected.reduce((s, x) => s + x.price * x.qty, 0);
   const totalEl = $('[data-cart-total]');
   if (totalEl) totalEl.textContent = money(total);
   const bagCount = $('.bag span');
   if (bagCount) bagCount.textContent = count;
+  const selectAllRow = $('[data-select-all-row]');
+  const selectAllBox = $('[data-select-all]');
+  if (selectAllRow) selectAllRow.hidden = cart.length < 2;
+  if (selectAllBox) selectAllBox.checked = cart.length > 0 && selected.length === cart.length;
   box.innerHTML = cart.length
     ? cart
         .map(
           (x, i) =>
-            `<div class="cart-row"><img src="${esc(x.img)}" alt="${esc(x.name)}" class="cart-thumb"><div class="cart-row-info"><strong>${esc(x.name)}</strong><div>الكود: ${esc(x.code)}</div><div>اللون: ${esc(x.color)}${isSizeRequired(x) ? ' · المقاس: ' + esc(x.size) : ''}</div><div>${money(x.price * x.qty)}</div><div class="qty-controls"><button type="button" data-qty="${i}" data-dir="-1" aria-label="تقليل الكمية">−</button><span>${x.qty}</span><button type="button" data-qty="${i}" data-dir="1" aria-label="زيادة الكمية">+</button></div></div><button type="button" data-remove="${i}" class="cart-remove" aria-label="حذف المنتج">×</button></div>`,
+            `<div class="cart-row"><label class="cart-row-select"><input type="checkbox" data-select="${i}" ${x.selected !== false ? 'checked' : ''} aria-label="اختيار ${esc(x.name)} للشراء الآن"></label><img src="${esc(x.img)}" alt="${esc(x.name)}" class="cart-thumb"><div class="cart-row-info"><strong>${esc(x.name)}</strong><div>الكود: ${esc(x.code)}</div><div>اللون: ${esc(x.color)}${isSizeRequired(x) ? ' · المقاس: ' + esc(x.size) : ''}</div><div>${money(x.price * x.qty)}</div><div class="qty-controls"><button type="button" data-qty="${i}" data-dir="-1" aria-label="تقليل الكمية">−</button><span>${x.qty}</span><button type="button" data-qty="${i}" data-dir="1" aria-label="زيادة الكمية">+</button></div></div><button type="button" data-remove="${i}" class="cart-remove" aria-label="حذف المنتج">×</button></div>`,
         )
         .join('')
     : '<p style="color:#888;text-align:center">السلة فارغة حالياً.</p>';
+  $$('[data-select]').forEach(
+    (cb) =>
+      (cb.onchange = () => {
+        const i = Number(cb.dataset.select);
+        if (cart[i]) cart[i].selected = cb.checked;
+        save();
+        renderCart();
+      }),
+  );
   $$('[data-remove]').forEach(
     (b) =>
       (b.onclick = () => {
@@ -576,6 +591,10 @@ function openCheckout(isQuickBuy = false) {
     quickBuyItem = null;
     if (!cart.length) {
       alert('أضف منتجاً إلى السلة أولاً.');
+      return;
+    }
+    if (!cart.some((x) => x.selected !== false)) {
+      alert('اختار منتجاً واحداً على الأقل من السلة لشرائه.');
       return;
     }
   }
@@ -1045,6 +1064,11 @@ $$('[data-menu-share]').forEach(
 $('[data-overlay]').onclick = closeLayers;
 $('[data-cart]').onclick = openCart;
 $('[data-cart-close]').onclick = closeLayers;
+$('[data-select-all]')?.addEventListener('change', (e) => {
+  cart.forEach((x) => (x.selected = e.target.checked));
+  save();
+  renderCart();
+});
 $('[data-search]').onclick = () => {
   openLayer($('[data-search-panel]'));
   setTimeout(() => $('#searchInput')?.focus(), 250);
@@ -1097,9 +1121,9 @@ $('[data-checkout-form]').onsubmit = async (e) => {
   e.preventDefault();
   const form = e.currentTarget;
   const isQuickBuy = !!quickBuyItem;
-  const orderItems = isQuickBuy ? [quickBuyItem] : cart;
+  const orderItems = isQuickBuy ? [quickBuyItem] : cart.filter((x) => x.selected !== false);
   if (!orderItems.length) {
-    veronzaToast('السلة فارغة.');
+    veronzaToast(isQuickBuy ? 'السلة فارغة.' : 'اختار منتجاً واحداً على الأقل من السلة.');
     return;
   }
   for (const item of orderItems) {
@@ -1159,7 +1183,9 @@ $('[data-checkout-form]').onsubmit = async (e) => {
       4500,
     );
     if (!isQuickBuy) {
-      cart = [];
+      // Only the items that were actually part of this order — anything
+      // the customer left unchecked stays in the cart for a later order.
+      cart = cart.filter((x) => x.selected === false);
       window.cart = cart;
       save();
       renderCart();
