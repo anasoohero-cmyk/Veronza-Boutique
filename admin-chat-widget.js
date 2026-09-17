@@ -214,6 +214,29 @@
         activeCallUI = window.VeronzaCall.mountUI(activeCall, {
           calleeLabel: conv?.customer_name || 'الزبون',
         });
+        activeCall.onCallEnded = async (durationSec) => {
+          const mm = String(Math.floor(durationSec / 60)).padStart(2, '0');
+          const ss = String(durationSec % 60).padStart(2, '0');
+          const { data, error } = await client
+            .from('chat_messages')
+            .insert({
+              conversation_id: id,
+              sender: 'admin',
+              body: `📞 مكالمة صوتية — المدة: ${mm}:${ss}`,
+            })
+            .select()
+            .single();
+          if (error) return;
+          await client
+            .from('chat_conversations')
+            .update({ customer_unread: true, last_message_at: new Date().toISOString() })
+            .eq('id', id);
+          if (id === activeId) {
+            activeMessages.push(data);
+            renderMessages();
+          }
+          loadConversations();
+        };
         callBtn.hidden = false;
         callBtn.onclick = () => activeCall.startCall();
       }
