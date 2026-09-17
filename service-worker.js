@@ -29,6 +29,9 @@ const CORE_ASSETS = [
   '/admin-chat.html',
   '/admin-chat.js',
   '/admin-chat.css',
+  '/admin-users.html',
+  '/admin-users.js',
+  '/admin-users.css',
   '/manifest-admin.webmanifest',
 ];
 self.addEventListener('install', (e) => {
