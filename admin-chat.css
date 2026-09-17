@@ -94,6 +94,17 @@ main.chat-main {
   border-radius: 50%;
   background: #b21f2d;
 }
+.conversation-missed-call {
+  display: inline-block;
+  background: #f9e8e5;
+  color: #a3372c;
+  font-size: 10px;
+  font-weight: 800;
+  padding: 1px 6px;
+  border-radius: 99px;
+  margin-inline-start: 4px;
+  vertical-align: middle;
+}
 .chat-thread-empty {
   flex: 1;
   display: grid;

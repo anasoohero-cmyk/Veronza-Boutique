@@ -28,6 +28,17 @@
       s.id = 'vz-chatw-style';
       s.textContent = `
         .vz-chatw-badge{position:absolute;top:-4px;right:-4px;background:#b21f2d;color:#fff;border-radius:99px;min-width:17px;height:17px;font:700 10px/17px Arial;text-align:center}
+        .vz-chatw-call{position:relative}
+        .vz-chatw-call-badge{position:absolute;top:-2px;right:-2px;background:#b21f2d;color:#fff;border-radius:99px;min-width:16px;height:16px;font:700 9px/16px Arial;text-align:center}
+        .vz-chatw-missed{position:absolute;top:56px;left:16px;width:min(88vw,300px);background:#fff;border-radius:14px;box-shadow:0 14px 34px #0002;border:1px solid #eee;z-index:190;display:none;max-height:340px;overflow:auto}
+        .vz-chatw-missed.open{display:block}
+        .vz-chatw-missed-head{padding:12px 14px;font-weight:800;font-size:12px;border-bottom:1px solid #eee;color:#777}
+        .vz-chatw-missed-row{display:flex;align-items:center;gap:10px;padding:11px 14px;border-bottom:1px solid #f3f0ea;cursor:pointer}
+        .vz-chatw-missed-row:last-child{border-bottom:0}
+        .vz-chatw-missed-row:hover{background:#faf9f7}
+        .vz-chatw-missed-name{flex:1;font-size:12px;font-weight:700}
+        .vz-chatw-missed-count{background:#f9e8e5;color:#a3372c;font-size:10px;font-weight:800;padding:2px 7px;border-radius:99px}
+        .vz-chatw-missed-empty{padding:22px 14px;text-align:center;color:#999;font-size:12px}
         .vz-chatw-panel{position:fixed;inset:0 0 0 auto;width:min(94vw,400px);background:#fff;z-index:180;box-shadow:-10px 0 35px #0002;transform:translateX(105%);transition:.25s;display:flex;flex-direction:column}
         .vz-chatw-panel.open{transform:none}
         .vz-chatw-head{display:flex;align-items:center;justify-content:space-between;padding:16px 18px;padding-top:max(16px,calc(env(safe-area-inset-top) + 10px));border-bottom:1px solid #eee;background:#faf9f7}
@@ -89,8 +100,12 @@
       <div class="vz-chatw-head">
         <button type="button" class="vz-chatw-back" data-back aria-label="رجوع">→</button>
         <h3 data-title>المحادثات</h3>
-        <button type="button" class="vz-chatw-call" data-call aria-label="مكالمة صوتية" hidden>📞</button>
+        <button type="button" class="vz-chatw-call" data-call aria-label="المكالمات الفائتة">📞<span class="vz-chatw-call-badge" data-call-badge hidden>0</span></button>
         <button type="button" class="vz-chatw-close-list" data-close aria-label="إغلاق">×</button>
+      </div>
+      <div class="vz-chatw-missed" data-missed>
+        <div class="vz-chatw-missed-head">مكالمات فائتة</div>
+        <div data-missed-list></div>
       </div>
       <div class="vz-chatw-list" data-list></div>
       <div class="vz-chatw-thread">
@@ -120,12 +135,14 @@
       activeCall = null,
       activeCallUI = null;
     const callBtn = panel.querySelector('[data-call]');
+    const callBadge = panel.querySelector('[data-call-badge]');
+    const missedPanel = panel.querySelector('[data-missed]');
+    const missedListEl = panel.querySelector('[data-missed-list]');
     const teardownCall = () => {
       activeCallUI?.destroy();
       activeCall?.destroy();
       activeCall = null;
       activeCallUI = null;
-      callBtn.hidden = true;
     };
 
     const initials = (name) => {
@@ -155,7 +172,7 @@
     const loadConversations = async () => {
       const { data, error } = await client
         .from('chat_conversations')
-        .select('id,customer_name,customer_phone,status,admin_unread,last_message_at')
+        .select('id,customer_name,customer_phone,status,admin_unread,last_message_at,missed_calls_count')
         .order('last_message_at', { ascending: false })
         .limit(200);
       if (error) return;
@@ -176,6 +193,28 @@
       );
       conversations = withPreview;
       renderList();
+      renderMissed();
+    };
+
+    const renderMissed = () => {
+      const missed = conversations.filter((c) => c.missed_calls_count > 0);
+      const total = missed.reduce((sum, c) => sum + c.missed_calls_count, 0);
+      callBadge.hidden = !total;
+      callBadge.textContent = total > 99 ? '99+' : total;
+      missedListEl.innerHTML = missed.length
+        ? missed
+            .map(
+              (c) =>
+                `<div class="vz-chatw-missed-row" data-missed-id="${c.id}"><div class="vz-chatw-missed-name">${esc(c.customer_name || 'زائر')}</div><span class="vz-chatw-missed-count">${c.missed_calls_count}</span></div>`,
+            )
+            .join('')
+        : '<div class="vz-chatw-missed-empty">ما فيه مكالمات فائتة.</div>';
+      missedListEl.querySelectorAll('[data-missed-id]').forEach((el) => {
+        el.onclick = () => {
+          missedPanel.classList.remove('open');
+          openThread(el.dataset.missedId);
+        };
+      });
     };
 
     const renderMessages = () => {
@@ -208,6 +247,11 @@
         conv.admin_unread = false;
         renderList();
       }
+      if (conv && conv.missed_calls_count > 0) {
+        await client.from('chat_conversations').update({ missed_calls_count: 0 }).eq('id', id);
+        conv.missed_calls_count = 0;
+        renderMissed();
+      }
       teardownCall();
       if (canEditChat && window.VeronzaCall) {
         activeCall = new window.VeronzaCall(client, id);
@@ -237,8 +281,6 @@
           }
           loadConversations();
         };
-        callBtn.hidden = false;
-        callBtn.onclick = () => activeCall.startCall();
       }
       setTimeout(() => replyInput.focus(), 200);
     };
@@ -248,6 +290,7 @@
       teardownCall();
       panel.classList.remove('thread');
       titleEl.textContent = 'المحادثات';
+      missedPanel.classList.remove('open');
     };
 
     replyForm.addEventListener('submit', async (e) => {
@@ -279,6 +322,7 @@
     });
 
     panel.querySelector('[data-back]').onclick = backToList;
+    callBtn.onclick = () => missedPanel.classList.toggle('open');
     const open = () => {
       panel.classList.add('open');
       shade.classList.add('open');

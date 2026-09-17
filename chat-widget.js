@@ -101,6 +101,13 @@
       body: JSON.stringify({ conversation_id: conversationId }),
     }).catch(() => {});
   }
+  function notifyCallMissed(conversationId) {
+    fetch('/api/call-missed', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ conversation_id: conversationId }),
+    }).catch(() => {});
+  }
   function beginInSiteCall(conversationId) {
     activeCall.startCall();
     notifyCallStarted(conversationId);
@@ -111,7 +118,10 @@
     activeCallUI?.destroy();
     activeCall?.destroy();
     activeCall = new window.VeronzaCall(sb, conversationId);
-    activeCallUI = window.VeronzaCall.mountUI(activeCall, { calleeLabel: 'المتجر' });
+    activeCallUI = window.VeronzaCall.mountUI(activeCall, {
+      calleeLabel: 'المتجر',
+      onMissedCall: () => notifyCallMissed(conversationId),
+    });
     callConversationId = conversationId;
     callBtn.hidden = false;
     callBtn.onclick = () => {

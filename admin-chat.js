@@ -70,7 +70,7 @@ function renderConversationList() {
   box.innerHTML = conversations
     .map(
       (c) =>
-        `<div class="conversation-row${c.id === activeId ? ' active' : ''}" data-id="${c.id}">${c.admin_unread ? '<span class="conversation-unread"></span>' : ''}<div class="conversation-avatar">${esc(initials(c.customer_name))}</div><div class="conversation-info"><div class="conversation-name">${esc(c.customer_name || 'زائر')}${c.status === 'closed' ? ' · منتهية' : ''}</div><div class="conversation-preview">${esc(c.last_message_preview || '')}</div></div><div class="conversation-time">${fmtTime(c.last_message_at)}</div></div>`,
+        `<div class="conversation-row${c.id === activeId ? ' active' : ''}" data-id="${c.id}">${c.admin_unread ? '<span class="conversation-unread"></span>' : ''}<div class="conversation-avatar">${esc(initials(c.customer_name))}</div><div class="conversation-info"><div class="conversation-name">${esc(c.customer_name || 'زائر')}${c.status === 'closed' ? ' · منتهية' : ''}${c.missed_calls_count > 0 ? ` <span class="conversation-missed-call">📞 ${c.missed_calls_count}</span>` : ''}</div><div class="conversation-preview">${esc(c.last_message_preview || '')}</div></div><div class="conversation-time">${fmtTime(c.last_message_at)}</div></div>`,
     )
     .join('');
   box
@@ -81,7 +81,7 @@ function renderConversationList() {
 async function loadConversations() {
   const { data, error } = await sb
     .from('chat_conversations')
-    .select('id,customer_name,customer_phone,status,admin_unread,last_message_at')
+    .select('id,customer_name,customer_phone,status,admin_unread,last_message_at,missed_calls_count')
     .order('last_message_at', { ascending: false })
     .limit(200);
   if (error) {
@@ -182,6 +182,11 @@ async function openConversation(id) {
   if (conv && conv.admin_unread) {
     await sb.from('chat_conversations').update({ admin_unread: false }).eq('id', id);
     conv.admin_unread = false;
+    renderConversationList();
+  }
+  if (conv && conv.missed_calls_count > 0) {
+    await sb.from('chat_conversations').update({ missed_calls_count: 0 }).eq('id', id);
+    conv.missed_calls_count = 0;
     renderConversationList();
   }
 }
