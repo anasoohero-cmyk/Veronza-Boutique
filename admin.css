@@ -213,6 +213,9 @@ body {
 #productsLinkBtn {
   order: 4;
 }
+#ordersLinkBtn {
+  order: 5;
+}
 .admin-menu {
   position: absolute;
   top: calc(100% + 10px);
