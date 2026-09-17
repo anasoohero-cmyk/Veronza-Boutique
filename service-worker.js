@@ -1,4 +1,4 @@
-const CACHE = 'veronza-v12';
+const CACHE = 'veronza-v13';
 const CORE_ASSETS = [
   '/',
   '/index.html',
@@ -11,6 +11,7 @@ const CORE_ASSETS = [
   '/app-update.js',
   '/notifications.js',
   '/chat-widget.js',
+  '/webrtc-call.js',
   '/manifest.webmanifest',
   '/icons/veronza-icon.svg',
   '/icons/veronza-icon-192.png',
