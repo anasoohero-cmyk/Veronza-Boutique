@@ -3,9 +3,25 @@
 // chat open at the same time — there is no push-triggered ringing when the site/app
 // is closed (that needs a native app + a paid telephony service).
 (() => {
-  const ICE_SERVERS = [{ urls: 'stun:stun.l.google.com:19302' }];
+  const STUN_ONLY = [{ urls: 'stun:stun.l.google.com:19302' }];
   const CALL_TIMEOUT_MS = 30000;
   const AUDIO_CONSTRAINTS = { echoCancellation: true, noiseSuppression: true, autoGainControl: true };
+
+  // A TURN relay is what actually makes calls work reliably between two
+  // mobile-network connections (STUN alone frequently can't punch through
+  // carrier-grade NAT on both ends). Fetched once per page load and cached;
+  // a fetch failure or missing server-side config just falls back to
+  // STUN-only rather than breaking calling entirely.
+  let iceServersPromise = null;
+  function getIceServers() {
+    if (!iceServersPromise) {
+      iceServersPromise = fetch('/api/turn-credentials')
+        .then((r) => r.json())
+        .then((data) => STUN_ONLY.concat(Array.isArray(data?.iceServers) ? data.iceServers : []))
+        .catch(() => STUN_ONLY);
+    }
+    return iceServersPromise;
+  }
 
   class VeronzaCall {
     constructor(supabaseClient, conversationId) {
@@ -53,9 +69,10 @@
       this.state = s;
       this.onStateChange?.(s);
     }
-    _ensurePc() {
+    async _ensurePc() {
       if (this.pc) return this.pc;
-      const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
+      const iceServers = await getIceServers();
+      const pc = new RTCPeerConnection({ iceServers });
       pc.onicecandidate = (e) => {
         if (e.candidate) this._send({ type: 'ice', candidate: e.candidate.toJSON() });
       };
@@ -80,7 +97,7 @@
       try {
         this._setState('calling');
         this.localStream = await navigator.mediaDevices.getUserMedia({ audio: AUDIO_CONSTRAINTS });
-        const pc = this._ensurePc();
+        const pc = await this._ensurePc();
         this.localStream.getTracks().forEach((t) => pc.addTrack(t, this.localStream));
         const offer = await pc.createOffer();
         await pc.setLocalDescription(offer);
@@ -138,7 +155,7 @@
       try {
         this._setState('calling');
         this.localStream = await navigator.mediaDevices.getUserMedia({ audio: AUDIO_CONSTRAINTS });
-        const pc = this._ensurePc();
+        const pc = await this._ensurePc();
         this.localStream.getTracks().forEach((t) => pc.addTrack(t, this.localStream));
         await pc.setRemoteDescription(this._pendingOfferSdp);
         await this._flushPendingIce();
