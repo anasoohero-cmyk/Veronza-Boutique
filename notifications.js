@@ -141,13 +141,41 @@
         /[&<>"']/g,
         (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' })[c],
       );
-    const load = async () => {
-      const { data } = await client
+    let hasLoadedOnce = false;
+    const fetchNotifications = () =>
+      client
         .from('notifications')
         .select('id,title,body,read_at,created_at,order_id')
         .eq('admin_user_id', session.user.id)
         .order('created_at', { ascending: false })
         .limit(100);
+    const renderLoadError = () => {
+      // Only replace the list with an error state on the very first load —
+      // a background refresh (e.g. triggered by the realtime channel) that
+      // fails transiently shouldn't wipe out a list that already loaded fine.
+      if (hasLoadedOnce) return;
+      list.innerHTML =
+        '<div class="vz-empty">تعذر تحميل الإشعارات.<br><a href="#" data-retry>إعادة المحاولة</a></div>';
+      list.querySelector('[data-retry]')?.addEventListener('click', (e) => {
+        e.preventDefault();
+        load();
+      });
+    };
+    const load = async () => {
+      let { data, error } = await fetchNotifications();
+      if (error) {
+        // A single quick retry absorbs most transient network blips before
+        // falling back to a visible error state instead of silently
+        // rendering "no notifications" for a fetch that actually failed.
+        await new Promise((r) => setTimeout(r, 1500));
+        ({ data, error } = await fetchNotifications());
+      }
+      if (error) {
+        console.warn('Veronza notifications load failed:', error.message || error);
+        renderLoadError();
+        return;
+      }
+      hasLoadedOnce = true;
       render(data || []);
     };
     const open = () => {
