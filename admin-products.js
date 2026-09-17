@@ -250,7 +250,7 @@ function imageFileToDataUrl(file) {
 // on a slow connection, where it can time out and show as a broken image
 // entirely. Downscale and re-encode before upload so a product photo stays
 // a few hundred KB regardless of what the admin's camera produced.
-function resizeImageFile(file, maxDim = 1600, quality = 0.82) {
+function resizeImageFile(file, maxDim = 2200, quality = 0.9) {
   return new Promise((resolve, reject) => {
     const img = new Image();
     const url = URL.createObjectURL(file);
