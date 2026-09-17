@@ -245,12 +245,61 @@ function imageFileToDataUrl(file) {
   });
 }
 
+// Phone camera photos routinely come in at several MB, which is fine to
+// capture but far too heavy to serve as-is to every customer - especially
+// on a slow connection, where it can time out and show as a broken image
+// entirely. Downscale and re-encode before upload so a product photo stays
+// a few hundred KB regardless of what the admin's camera produced.
+function resizeImageFile(file, maxDim = 2200, quality = 0.9) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      let { width, height } = img;
+      if (width > maxDim || height > maxDim) {
+        if (width > height) {
+          height = Math.round((height * maxDim) / width);
+          width = maxDim;
+        } else {
+          width = Math.round((width * maxDim) / height);
+          height = maxDim;
+        }
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+      canvas.toBlob(
+        (blob) => {
+          if (!blob) return reject(new Error('تعذر ضغط الصورة'));
+          resolve(new File([blob], file.name.replace(/\.\w+$/, '.jpg'), { type: 'image/jpeg' }));
+        },
+        'image/jpeg',
+        quality,
+      );
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error('تعذر قراءة الصورة'));
+    };
+    img.src = url;
+  });
+}
+
 async function uploadImageFile(file) {
-  const ext = (file.type.split('/')[1] || 'jpg').replace('jpeg', 'jpg');
+  let uploadFile = file;
+  try {
+    uploadFile = await resizeImageFile(file);
+  } catch (_) {
+    // Resizing failed for some reason - upload the original rather than
+    // block the admin from adding the photo at all.
+  }
+  const ext = (uploadFile.type.split('/')[1] || 'jpg').replace('jpeg', 'jpg');
   const path = `img-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
   const { error } = await sb.storage
     .from('product-images')
-    .upload(path, file, { upsert: true, contentType: file.type || 'image/jpeg' });
+    .upload(path, uploadFile, { upsert: true, contentType: uploadFile.type || 'image/jpeg' });
   if (error) throw new Error('تعذر رفع الصورة: ' + error.message);
   const { data } = sb.storage.from('product-images').getPublicUrl(path);
   return data.publicUrl;
