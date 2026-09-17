@@ -129,11 +129,32 @@ function teardownCall() {
   activeCall = null;
   activeCallUI = null;
 }
+async function logCallToConversation(conversationId, durationSec) {
+  const mm = String(Math.floor(durationSec / 60)).padStart(2, '0');
+  const ss = String(durationSec % 60).padStart(2, '0');
+  const { data, error } = await sb
+    .from('chat_messages')
+    .insert({ conversation_id: conversationId, sender: 'admin', body: `📞 مكالمة صوتية — المدة: ${mm}:${ss}` })
+    .select()
+    .single();
+  if (error) return;
+  await sb
+    .from('chat_conversations')
+    .update({ customer_unread: true, last_message_at: new Date().toISOString() })
+    .eq('id', conversationId);
+  if (conversationId === activeId) {
+    activeMessages.push(data);
+    renderMessages();
+  }
+  loadConversations();
+}
+
 function setupCallFor(id, customerName) {
   teardownCall();
   if (!currentPermissions.edit) return;
   activeCall = new window.VeronzaCall(sb, id);
   activeCallUI = window.VeronzaCall.mountUI(activeCall, { calleeLabel: customerName || 'الزبون' });
+  activeCall.onCallEnded = (durationSec) => logCallToConversation(id, durationSec);
   $('#callBtn').onclick = () => activeCall.startCall();
 }
 
