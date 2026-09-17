@@ -830,7 +830,8 @@ function ensureProductModal() {
     onTap: openLightbox,
     axisLock: true,
   });
-  attachSwipe(lightbox, lbTrack, { axisLock: false });
+  attachSwipe(lightbox, lbTrack, { axisLock: true });
+  attachSwipeDownToClose(lightbox, closeLightbox);
   modal._galleryState = galleryState;
   modal._renderGallery = renderGallery;
   modal.querySelector('[data-detail-share]').onclick = () =>
