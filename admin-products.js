@@ -62,12 +62,47 @@ async function checkAdmin(token) {
   }
 }
 
-let currentPermissions = { view: false, edit: false };
+// Permissions are per product category (see product-categories.js) rather
+// than one flat products.view/edit — an admin can be given access to, say,
+// discounts without also getting shoes. The owner bypasses all of this the
+// same way the database's RLS policies do (role === 'owner'), so its own
+// permissions JSON never needs to enumerate every category.
+let isOwner = false;
+let currentPermissions = { products: {} };
+function canViewType(type) {
+  return isOwner || !!currentPermissions.products?.[type]?.view;
+}
+function canEditType(type) {
+  return isOwner || !!currentPermissions.products?.[type]?.edit;
+}
+function canViewDiscount() {
+  return isOwner || !!currentPermissions.products?.discount?.view;
+}
+function canEditDiscount() {
+  return isOwner || !!currentPermissions.products?.discount?.edit;
+}
+function restrictTypeOptions() {
+  [...($('#type')?.options || [])].forEach((opt) => {
+    opt.disabled = !canEditType(opt.value);
+  });
+}
+function toggleDiscountField() {
+  const label = $('#discountPriceLabel');
+  if (!label) return;
+  label.hidden = !canViewDiscount();
+  $('#discountPrice').disabled = !canEditDiscount();
+}
 function applyProductsPermissions(adminCheck) {
-  currentPermissions = adminCheck.permissions?.products || { view: false, edit: false };
+  isOwner = adminCheck.role === 'owner';
+  currentPermissions = { products: adminCheck.permissions?.products || {} };
   $('#usersMenuLink')?.toggleAttribute('hidden', adminCheck.role !== 'owner');
-  $('#addBtn').hidden = !currentPermissions.edit;
-  if (!currentPermissions.view) {
+  const types = Object.keys(typeNames);
+  const canEditAnyType = types.some(canEditType);
+  const canViewAnyType = types.some(canViewType);
+  $('#addBtn').hidden = !canEditAnyType;
+  restrictTypeOptions();
+  toggleDiscountField();
+  if (!canViewAnyType) {
     $('main').innerHTML =
       '<p style="text-align:center;color:#888;padding:40px 16px">ماعندك صلاحية الوصول لقسم المنتجات.</p>';
   }
@@ -124,17 +159,19 @@ function render() {
   const q = $('#search').value.trim().toLowerCase();
   const list = products.filter(
     (p) =>
-      !q || String(p.name).toLowerCase().includes(q) || String(p.code).toLowerCase().includes(q),
+      canViewType(p.type) &&
+      (!q || String(p.name).toLowerCase().includes(q) || String(p.code).toLowerCase().includes(q)),
   );
   const box = $('#products');
   if (!box) return;
   box.innerHTML = list
     .map((p) => {
-      const hasDiscount = p.discount_price != null && Number(p.discount_price) < Number(p.price);
+      const hasDiscount =
+        canViewDiscount() && p.discount_price != null && Number(p.discount_price) < Number(p.price);
       const priceHtml = hasDiscount
         ? `<div class="price"><s>${Number(p.price || 0).toLocaleString('ar-LY')} د.ل</s><br>${Number(p.discount_price).toLocaleString('ar-LY')} د.ل</div>`
         : `<div class="price">${Number(p.price || 0).toLocaleString('ar-LY')} د.ل</div>`;
-      return `<div class="product-row"><img class="thumb" src="${esc(p.img)}" alt=""><div class="product-main"><h3>${esc(p.name)}${hasDiscount ? ' <span class="badge off" style="background:#c0392b;color:#fff">خصم</span>' : ''}</h3><div class="meta">الكود: ${esc(p.code)} · النوع: ${typeNames[p.type] || esc(p.type)} · الكمية: ${Number(p.quantity || 0)}<br>الألوان: ${esc((p.colors || []).join('، ') || '—')} · المقاسات: ${esc((p.sizes || []).join('، ') || '—')}</div></div>${priceHtml}<span class="badge ${p.is_active ? 'on' : 'off'}">${p.is_active ? 'متوفر' : 'غير متوفر'}</span>${currentPermissions.edit ? `<div class="row-actions"><button data-edit="${p.id}">تعديل</button><button class="danger" data-delete="${p.id}">حذف</button></div>` : ''}</div>`;
+      return `<div class="product-row"><img class="thumb" src="${esc(p.img)}" alt=""><div class="product-main"><h3>${esc(p.name)}${hasDiscount ? ' <span class="badge off" style="background:#c0392b;color:#fff">خصم</span>' : ''}</h3><div class="meta">الكود: ${esc(p.code)} · النوع: ${typeNames[p.type] || esc(p.type)} · الكمية: ${Number(p.quantity || 0)}<br>الألوان: ${esc((p.colors || []).join('، ') || '—')} · المقاسات: ${esc((p.sizes || []).join('، ') || '—')}</div></div>${priceHtml}<span class="badge ${p.is_active ? 'on' : 'off'}">${p.is_active ? 'متوفر' : 'غير متوفر'}</span>${canEditType(p.type) ? `<div class="row-actions"><button data-edit="${p.id}">تعديل</button><button class="danger" data-delete="${p.id}">حذف</button></div>` : ''}</div>`;
     })
     .join('');
 }
@@ -146,16 +183,18 @@ function resetForm() {
   $('#code').readOnly = true;
   $('#code').required = false;
   $('#quantity').value = '0';
-  $('#type').value = 'shoes';
+  $('#type').value = Object.keys(typeNames).find(canEditType) || 'shoes';
   $('#extraImgs').value = '';
   $('#isActive').value = 'true';
   $('#sizeOptions').innerHTML = '';
   $('#sizeQuantities').innerHTML = '';
   currentImages = [];
   renderPreview();
+  toggleDiscountField();
 }
 
 function openModal(p) {
+  if (p && !canEditType(p.type)) return;
   if (!p) {
     resetForm();
     renderSizeOptions();
@@ -465,7 +504,13 @@ async function save(e) {
   $('#formError').textContent = '';
   const id = $('#productId').value;
   const sizes = csv($('#sizes').value);
-  const isSized = $('#type').value === 'shoes' || $('#type').value === 'set';
+  const type = $('#type').value;
+  const isSized = type === 'shoes' || type === 'set';
+
+  if (!canEditType(type)) {
+    $('#formError').textContent = 'ماعندكش صلاحية تعديل هذا القسم.';
+    return;
+  }
 
   if (isSized && !sizes.length) {
     $('#formError').textContent = 'المقاسات مطلوبة للحذاء والـ Set.';
@@ -504,6 +549,14 @@ async function save(e) {
     return;
   }
 
+  const original = id ? products.find((p) => String(p.id) === String(id)) : null;
+  const originalDiscountPrice = original?.discount_price ?? null;
+  const discountChanged = discountPrice !== originalDiscountPrice;
+  if (discountChanged && !canEditDiscount()) {
+    $('#formError').textContent = 'ماعندكش صلاحية تعديل التخفيضات.';
+    return;
+  }
+
   const sizeQuantities = isSized ? getSizeQuantities() : {};
 
   const payload = {
@@ -512,7 +565,7 @@ async function save(e) {
     code: $('#code').value.trim(),
     price,
     discount_price: discountPrice,
-    type: $('#type').value,
+    type,
     img: $('#img').value.trim(),
     extra_img:
       $('#extraImgs')
@@ -551,6 +604,10 @@ async function save(e) {
 async function remove(id) {
   const p = products.find((x) => Number(x.id) === Number(id));
   if (!p) return;
+  if (!canEditType(p.type)) {
+    toast('ماعندكش صلاحية حذف هذا القسم.');
+    return;
+  }
   if (!confirm(`حذف المنتج «${p.name}» نهائياً؟\nإذا كنت تبي توقف ظهوره فقط، عدّله وأطفل الحالة.`))
     return;
   try {

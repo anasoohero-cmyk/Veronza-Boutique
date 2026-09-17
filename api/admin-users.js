@@ -1,6 +1,7 @@
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const SECTIONS = ['orders', 'products', 'chat'];
+const FLAT_SECTIONS = ['orders', 'chat'];
+const CATEGORY_KEY_RE = /^[a-z0-9_]{1,40}$/;
 
 function allowedOrigin(req) {
   const o = req.headers.origin;
@@ -52,13 +53,25 @@ async function sbFetch(path, options = {}) {
 }
 function normalizePermissions(raw) {
   const out = {};
-  for (const section of SECTIONS) {
+  for (const section of FLAT_SECTIONS) {
     out[section] = {
       view: !!raw?.[section]?.view,
       edit: !!raw?.[section]?.edit,
     };
     // Edit implies view — an editor who can't see the section is a dead end.
     if (out[section].edit) out[section].view = true;
+  }
+  // Product categories are open-ended (a new one can be added to
+  // product-categories.js later without any server change), so accept
+  // whatever category keys the client sends instead of hardcoding a list —
+  // just validate their shape before it lands in the JSON column.
+  out.products = {};
+  const rawProducts = raw?.products && typeof raw.products === 'object' ? raw.products : {};
+  for (const [key, val] of Object.entries(rawProducts)) {
+    if (!CATEGORY_KEY_RE.test(key)) continue;
+    const view = !!val?.view;
+    const edit = !!val?.edit;
+    out.products[key] = { view: view || edit, edit };
   }
   return out;
 }

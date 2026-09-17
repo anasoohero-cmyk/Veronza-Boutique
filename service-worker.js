@@ -1,4 +1,4 @@
-const CACHE = 'veronza-v13';
+const CACHE = 'veronza-v14';
 const CORE_ASSETS = [
   '/',
   '/index.html',
@@ -32,6 +32,7 @@ const CORE_ASSETS = [
   '/admin-users.html',
   '/admin-users.js',
   '/admin-users.css',
+  '/product-categories.js',
   '/manifest-admin.webmanifest',
 ];
 self.addEventListener('install', (e) => {

@@ -8,11 +8,13 @@ const esc = (v) =>
     /[&<>"']/g,
     (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' })[c],
   );
-const SECTIONS = [
+const FLAT_SECTIONS = [
   { key: 'orders', label: 'الطلبات' },
-  { key: 'products', label: 'المنتجات والتخفيضات' },
   { key: 'chat', label: 'الرسائل' },
 ];
+// One row per product category, kept in sync with product-categories.js —
+// add a category there and a row for it appears here automatically.
+const PRODUCT_CATEGORIES = window.VERONZA_PERMISSION_CATEGORIES || [];
 // This page has no modal of its own, but the floating chat widget it loads
 // needs somewhere to lock/unlock background scroll.
 //
@@ -96,18 +98,41 @@ async function api(path, options = {}) {
   return body;
 }
 
+function permissionRowHtml(idPrefix, permKey, label, checkedView, checkedEdit) {
+  return `<div class="permissions-row"><span class="section-name">${label}</span><label><input type="checkbox" data-perm="${permKey}" data-kind="view" id="${idPrefix}-${permKey}-view" ${checkedView ? 'checked' : ''}> عرض</label><label><input type="checkbox" data-perm="${permKey}" data-kind="edit" id="${idPrefix}-${permKey}-edit" ${checkedEdit ? 'checked' : ''}> تعديل</label></div>`;
+}
 function permissionsGridHtml(idPrefix, permissions = {}) {
-  return SECTIONS.map(
-    (s) =>
-      `<div class="permissions-row"><span class="section-name">${s.label}</span><label><input type="checkbox" data-perm="${s.key}" data-kind="view" id="${idPrefix}-${s.key}-view" ${permissions?.[s.key]?.view ? 'checked' : ''}> عرض</label><label><input type="checkbox" data-perm="${s.key}" data-kind="edit" id="${idPrefix}-${s.key}-edit" ${permissions?.[s.key]?.edit ? 'checked' : ''}> تعديل</label></div>`,
+  const flatRows = FLAT_SECTIONS.map((s) =>
+    permissionRowHtml(idPrefix, s.key, s.label, permissions?.[s.key]?.view, permissions?.[s.key]?.edit),
   ).join('');
+  const productRows = PRODUCT_CATEGORIES.map((c) =>
+    permissionRowHtml(
+      idPrefix,
+      `products.${c.key}`,
+      c.label,
+      permissions?.products?.[c.key]?.view,
+      permissions?.products?.[c.key]?.edit,
+    ),
+  ).join('');
+  const productsBlock = productRows
+    ? `<div class="permissions-group-title">المنتجات</div>${productRows}`
+    : '';
+  return flatRows + productsBlock;
 }
 function readPermissionsGrid(container) {
   const permissions = {};
-  SECTIONS.forEach((s) => {
+  FLAT_SECTIONS.forEach((s) => {
     permissions[s.key] = {
       view: !!container.querySelector(`[data-perm="${s.key}"][data-kind="view"]`)?.checked,
       edit: !!container.querySelector(`[data-perm="${s.key}"][data-kind="edit"]`)?.checked,
+    };
+  });
+  permissions.products = {};
+  PRODUCT_CATEGORIES.forEach((c) => {
+    const permKey = `products.${c.key}`;
+    permissions.products[c.key] = {
+      view: !!container.querySelector(`[data-perm="${permKey}"][data-kind="view"]`)?.checked,
+      edit: !!container.querySelector(`[data-perm="${permKey}"][data-kind="edit"]`)?.checked,
     };
   });
   return permissions;

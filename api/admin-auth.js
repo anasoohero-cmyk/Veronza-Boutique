@@ -81,8 +81,12 @@ module.exports = async (req, res) => {
       ok: true,
       user: { id: user.id, email: user.email || '' },
       role: admin.role,
+      // Product-category permissions are open-ended (see
+      // product-categories.js), so the owner's full access to every
+      // category is granted client-side by checking role === 'owner'
+      // directly, rather than trying to enumerate every category here.
       permissions: admin.role === 'owner'
-        ? { orders: { view: true, edit: true }, products: { view: true, edit: true }, chat: { view: true, edit: true } }
+        ? { orders: { view: true, edit: true }, chat: { view: true, edit: true } }
         : admin.permissions || {},
       display_name: admin.display_name || '',
     });
