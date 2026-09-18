@@ -6,6 +6,12 @@
   const maxPull = 180;
   const deadzone = 6;
   const minHoldMs = 350;
+  // Mobile browsers routinely report a non-zero scrollTop (1-3px) while
+  // "at the top" - iOS Safari's rubber-band bounce and dynamic toolbar in
+  // particular never quite settle at an exact 0. Comparing against 0
+  // exactly meant the gesture silently refused to start on real phones.
+  const atTopTolerance = 4;
+  const isAtTop = () => document.scrollingElement.scrollTop <= atTopTolerance;
   let startTime = 0;
   let startY = 0,
     pulling = false,
@@ -92,7 +98,7 @@
   document.addEventListener(
     'touchstart',
     (e) => {
-      if (refreshing || document.scrollingElement.scrollTop !== 0) return;
+      if (refreshing || !isAtTop()) return;
       if (e.target.closest('.whatsapp')) return;
       if (isOverlayOpen()) return;
       startY = e.touches[0].clientY;
@@ -107,7 +113,7 @@
     'touchmove',
     (e) => {
       if (!pulling || refreshing) return;
-      if (document.scrollingElement.scrollTop !== 0) {
+      if (!isAtTop()) {
         pulling = false;
         if (dragging) {
           resetVisual(0.2);
