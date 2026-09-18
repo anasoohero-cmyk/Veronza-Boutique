@@ -127,10 +127,18 @@ function waitAndRestoreChatWidget(tries = 20) {
 }
 function maybeOpenFromUrl() {
   if (urlOrderHandled) return;
-  const id = new URLSearchParams(location.search).get('order');
+  const params = new URLSearchParams(location.search);
+  const id = params.get('order');
   if (id && orders.find((o) => o.id === id)) {
     urlOrderHandled = true;
     openOrder(id);
+    return;
+  }
+  // Lets the admin-home dashboard's "+ إضافة طلب" quick action land
+  // directly on this modal instead of just the plain orders list.
+  if (params.get('new') === '1' && currentPermissions.edit) {
+    urlOrderHandled = true;
+    openManualOrderModal();
   }
 }
 function renderStats() {
