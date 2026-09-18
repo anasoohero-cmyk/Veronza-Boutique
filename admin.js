@@ -290,11 +290,18 @@ function enableSwipeToClose(modalSelector, closeFn) {
   const modal = $(modalSelector);
   const card = modal.querySelector('.modal-card');
   const head = modal.querySelector('.sheet-head');
+  // A small deadzone before the card starts moving, and skipping the close
+  // button entirely - otherwise the natural few px of finger movement
+  // during an ordinary tap on the × immediately starts "dragging" the
+  // card, which on real touchscreens can suppress the click that would
+  // normally fire on release, making the close button feel unresponsive.
+  const deadzone = 8;
   let startY = 0,
     dragging = false;
   head.addEventListener(
     'touchstart',
     (e) => {
+      if (e.target.closest('.close')) return;
       startY = e.touches[0].clientY;
       dragging = true;
       card.style.transition = 'none';
@@ -306,8 +313,8 @@ function enableSwipeToClose(modalSelector, closeFn) {
     (e) => {
       if (!dragging) return;
       const dy = e.touches[0].clientY - startY;
-      if (dy <= 0) return;
-      card.style.transform = `translateY(${dy}px)`;
+      if (dy <= deadzone) return;
+      card.style.transform = `translateY(${dy - deadzone}px)`;
     },
     { passive: true },
   );
