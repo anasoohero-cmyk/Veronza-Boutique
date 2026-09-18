@@ -619,6 +619,7 @@ function attachSwipeDownToClose(card, closeFn, { scrollEl } = {}) {
     dragging = false,
     moved = false,
     scrollTopAtStart = 0,
+    startedInScroller = true,
     baseTransform = '';
   const setOffset = (dy) => {
     card.style.transform = baseTransform ? `${baseTransform} translateY(${dy}px)` : `translateY(${dy}px)`;
@@ -627,6 +628,13 @@ function attachSwipeDownToClose(card, closeFn, { scrollEl } = {}) {
     const p = e.touches[0];
     startX = p.clientX;
     startY = p.clientY;
+    // The "must be scrolled to top" guard below only makes sense for a
+    // drag that actually starts inside the scrollable area (there it
+    // disambiguates "scroll back up" from "close"). A drag starting on
+    // the header/footer chrome has no such ambiguity - e.g. a chat panel
+    // whose message list is auto-scrolled to the bottom should still
+    // close on a swipe started from its header.
+    startedInScroller = scroller === card || scroller.contains(e.target);
     scrollTopAtStart = scroller.scrollTop;
     dragging = true;
     moved = false;
@@ -643,7 +651,7 @@ function attachSwipeDownToClose(card, closeFn, { scrollEl } = {}) {
     // Only take over for a clearly-vertical, downward drag while the sheet
     // is scrolled to the top — otherwise leave it to normal scrolling or
     // the image gallery's own horizontal swipe.
-    if (!moved && (Math.abs(dx) >= Math.abs(dy) || dy < 0 || scrollTopAtStart > 0)) {
+    if (!moved && (Math.abs(dx) >= Math.abs(dy) || dy < 0 || (startedInScroller && scrollTopAtStart > 0))) {
       dragging = false;
       return;
     }
