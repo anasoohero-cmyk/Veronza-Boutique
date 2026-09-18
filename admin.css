@@ -525,13 +525,13 @@ main {
   max-height: 92vh;
   background: #fff;
   border-radius: 22px;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
+  overflow: auto;
+  overscroll-behavior: contain;
 }
 .sheet-head {
-  position: relative;
-  flex-shrink: 0;
+  position: sticky;
+  top: 0;
+  z-index: 2;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -561,10 +561,7 @@ main {
   background: #ddd8d0;
 }
 .sheet-body {
-  overflow: auto;
-  overscroll-behavior: contain;
   padding: 20px;
-  flex: 1;
 }
 .close {
   width: 32px;
