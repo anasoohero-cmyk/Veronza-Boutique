@@ -35,7 +35,6 @@ function applyChatPermissions(adminCheck) {
   $('#usersMenuLink')?.toggleAttribute('hidden', adminCheck.role !== 'owner');
   $('#replyInput').disabled = !currentPermissions.edit;
   $('#replyForm').querySelector('button')?.toggleAttribute('disabled', !currentPermissions.edit);
-  $('#closeConversationBtn').hidden = !currentPermissions.edit;
   $('#callBtn').hidden = !currentPermissions.edit;
   if (!currentPermissions.view) {
     document.querySelector('main.chat-main').innerHTML =
@@ -70,7 +69,7 @@ function renderConversationList() {
   box.innerHTML = conversations
     .map(
       (c) =>
-        `<div class="conversation-row${c.id === activeId ? ' active' : ''}" data-id="${c.id}">${c.admin_unread ? '<span class="conversation-unread"></span>' : ''}<div class="conversation-avatar">${esc(initials(c.customer_name))}</div><div class="conversation-info"><div class="conversation-name">${esc(c.customer_name || 'زائر')}${c.status === 'closed' ? ' · منتهية' : ''}${c.missed_calls_count > 0 ? ` <span class="conversation-missed-call">📞 ${c.missed_calls_count}</span>` : ''}</div><div class="conversation-preview">${esc(c.last_message_preview || '')}</div></div><div class="conversation-time">${fmtTime(c.last_message_at)}</div></div>`,
+        `<div class="conversation-row${c.id === activeId ? ' active' : ''}" data-id="${c.id}">${c.admin_unread ? '<span class="conversation-unread"></span>' : ''}<div class="conversation-avatar">${esc(initials(c.customer_name))}</div><div class="conversation-info"><div class="conversation-name">${esc(c.customer_name || 'زائر')}${c.missed_calls_count > 0 ? ` <span class="conversation-missed-call">📞 ${c.missed_calls_count}</span>` : ''}</div><div class="conversation-preview">${esc(c.last_message_preview || '')}</div></div><div class="conversation-time">${fmtTime(c.last_message_at)}</div></div>`,
     )
     .join('');
   box
@@ -257,13 +256,6 @@ $('#replyForm').addEventListener('submit', async (e) => {
   input.focus();
   loadConversations();
 });
-
-$('#closeConversationBtn').onclick = async () => {
-  if (!activeId) return;
-  await sb.from('chat_conversations').update({ status: 'closed' }).eq('id', activeId);
-  toast('تم إنهاء المحادثة');
-  loadConversations();
-};
 
 sb.channel('veronza-admin-chat')
   .on(

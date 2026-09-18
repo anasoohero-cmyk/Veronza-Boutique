@@ -161,7 +161,7 @@
       listEl.innerHTML = conversations
         .map(
           (c) =>
-            `<div class="vz-chatw-row" data-id="${c.id}">${c.admin_unread ? '<span class="vz-chatw-unread"></span>' : ''}<div class="vz-chatw-avatar">${esc(initials(c.customer_name))}</div><div class="vz-chatw-rowinfo"><div class="vz-chatw-name">${esc(c.customer_name || 'زائر')}${c.status === 'closed' ? ' · منتهية' : ''}</div><div class="vz-chatw-preview">${esc(c.last_message_preview || '')}</div></div><div class="vz-chatw-time">${fmtTime(c.last_message_at)}</div></div>`,
+            `<div class="vz-chatw-row" data-id="${c.id}">${c.admin_unread ? '<span class="vz-chatw-unread"></span>' : ''}<div class="vz-chatw-avatar">${esc(initials(c.customer_name))}</div><div class="vz-chatw-rowinfo"><div class="vz-chatw-name">${esc(c.customer_name || 'زائر')}</div><div class="vz-chatw-preview">${esc(c.last_message_preview || '')}</div></div><div class="vz-chatw-time">${fmtTime(c.last_message_at)}</div></div>`,
         )
         .join('');
       listEl
