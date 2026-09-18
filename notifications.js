@@ -34,7 +34,7 @@
       const reg = await navigator.serviceWorker.ready;
       let sub = await reg.pushManager.getSubscription();
       if (!sub) {
-        const cfg = await fetch('/api/push-config', {
+        const cfg = await fetch('/api/push', {
           headers: { Authorization: `Bearer ${session.access_token}` },
         })
           .then((r) => r.json())
@@ -48,7 +48,7 @@
           applicationServerKey: base64ToBytes(cfg.publicKey),
         });
       }
-      const r = await fetch('/api/push-subscribe', {
+      const r = await fetch('/api/push', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
