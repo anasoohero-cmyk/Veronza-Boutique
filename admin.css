@@ -289,6 +289,12 @@ main {
   width: min(1240px, calc(100% - 28px));
   margin: 22px auto;
 }
+.orders-toolbar {
+  margin-bottom: 16px;
+}
+.orders-toolbar .primary {
+  width: 100%;
+}
 .stats {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
