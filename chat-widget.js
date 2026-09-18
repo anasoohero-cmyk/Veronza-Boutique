@@ -41,7 +41,7 @@
       .vz-chat-badge{display:inline-flex;align-items:center;justify-content:center;min-width:17px;height:17px;padding:0 4px;border-radius:99px;background:#b21f2d;color:#fff;font-size:9px;font-weight:700;margin-inline-start:6px;vertical-align:middle}
       .chat-header-btn{position:relative}
       .chat-header-btn .vz-chat-badge{position:absolute;top:1px;right:2px;margin:0}
-      .vz-chat-panel{position:fixed;left:50%;bottom:0;transform:translate(-50%,16px);opacity:0;pointer-events:none;width:min(100%,400px);max-height:78vh;background:#fff;z-index:95;display:flex;flex-direction:column;border-radius:22px 22px 0 0;box-shadow:0 -15px 45px rgba(0,0,0,.22);transition:transform .22s ease,opacity .22s ease;overflow:hidden}
+      .vz-chat-panel{position:fixed;left:50%;bottom:0;transform:translate(-50%,16px);opacity:0;pointer-events:none;width:min(100%,400px);height:78vh;max-height:78vh;background:#fff;z-index:95;display:flex;flex-direction:column;border-radius:22px 22px 0 0;box-shadow:0 -15px 45px rgba(0,0,0,.22);transition:transform .22s ease,opacity .22s ease;overflow:hidden}
       .vz-chat-panel.open{transform:translate(-50%,0);opacity:1;pointer-events:auto}
       .vz-chat-head{display:flex;align-items:center;gap:10px;padding:16px 18px;padding-top:max(16px,calc(env(safe-area-inset-top) + 8px));border-bottom:1px solid #eee;background:#111;color:#fff}
       .vz-chat-avatar{width:36px;height:36px;border-radius:50%;background:var(--gold,#b58a3b);display:grid;place-items:center;flex-shrink:0;font-family:'Playfair Display',serif;font-weight:700;font-size:15px}
@@ -64,7 +64,7 @@
       .vz-chat-foot button{border:0;background:#111;color:#fff;border-radius:99px;padding:11px 18px;font:inherit;font-weight:700}
       .vz-chat-foot button:disabled{opacity:.5}
       @media(min-width:700px){
-        .vz-chat-panel{left:auto;right:24px;bottom:24px;transform:translateY(16px);width:380px;max-width:calc(100vw - 32px);max-height:min(600px,calc(100vh - 110px));border-radius:20px}
+        .vz-chat-panel{left:auto;right:24px;bottom:24px;transform:translateY(16px);width:380px;max-width:calc(100vw - 32px);height:min(600px,calc(100vh - 110px));max-height:min(600px,calc(100vh - 110px));border-radius:20px}
         .vz-chat-panel.open{transform:translateY(0)}
       }
     `;
