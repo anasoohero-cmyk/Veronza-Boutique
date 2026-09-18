@@ -542,7 +542,7 @@ $('#manualOrderForm').addEventListener('submit', async (e) => {
   const submitBtn = e.target.querySelector('button[type=submit]');
   submitBtn.disabled = true;
   try {
-    const result = await api('/api/admin-manual-order', {
+    const result = await api('/api/admin-orders', {
       method: 'POST',
       body: JSON.stringify({
         customer_name: $('#moCustomerName').value.trim(),

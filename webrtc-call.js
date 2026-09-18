@@ -15,7 +15,7 @@
   let iceServersPromise = null;
   function getIceServers() {
     if (!iceServersPromise) {
-      iceServersPromise = fetch('/api/turn-credentials')
+      iceServersPromise = fetch('/api/calls')
         .then((r) => r.json())
         .then((data) => STUN_ONLY.concat(Array.isArray(data?.iceServers) ? data.iceServers : []))
         .catch(() => STUN_ONLY);

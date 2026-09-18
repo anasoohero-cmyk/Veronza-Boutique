@@ -95,14 +95,14 @@
     activeCallUI = null,
     callConversationId = null;
   function notifyCallStarted(conversationId) {
-    fetch('/api/call-notify', {
+    fetch('/api/calls?type=notify', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ conversation_id: conversationId }),
     }).catch(() => {});
   }
   function notifyCallMissed(conversationId) {
-    fetch('/api/call-missed', {
+    fetch('/api/calls?type=missed', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ conversation_id: conversationId }),
