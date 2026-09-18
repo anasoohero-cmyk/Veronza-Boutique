@@ -1,4 +1,4 @@
-const CACHE = 'veronza-v18';
+const CACHE = 'veronza-v19';
 const CORE_ASSETS = [
   '/',
   '/index.html',

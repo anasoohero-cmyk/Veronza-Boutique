@@ -235,26 +235,30 @@ $('#replyForm').addEventListener('submit', async (e) => {
   const text = input.value.trim();
   if (!text || !activeId) return;
   input.disabled = true;
-  const { data, error } = await sb
-    .from('chat_messages')
-    .insert({ conversation_id: activeId, sender: 'admin', body: text })
-    .select()
-    .single();
-  if (error) {
-    toast(error.message);
+  try {
+    const { data, error } = await sb
+      .from('chat_messages')
+      .insert({ conversation_id: activeId, sender: 'admin', body: text })
+      .select()
+      .single();
+    if (error) {
+      toast(error.message);
+      return;
+    }
+    await sb
+      .from('chat_conversations')
+      .update({ customer_unread: true, last_message_at: new Date().toISOString(), status: 'open' })
+      .eq('id', activeId);
+    activeMessages.push(data);
+    renderMessages();
+    input.value = '';
+    loadConversations();
+  } catch (err) {
+    toast(err?.message || 'حدث خطأ، حاول مرة أخرى');
+  } finally {
     input.disabled = false;
-    return;
+    input.focus();
   }
-  await sb
-    .from('chat_conversations')
-    .update({ customer_unread: true, last_message_at: new Date().toISOString(), status: 'open' })
-    .eq('id', activeId);
-  activeMessages.push(data);
-  renderMessages();
-  input.value = '';
-  input.disabled = false;
-  input.focus();
-  loadConversations();
 });
 
 sb.channel('veronza-admin-chat')
