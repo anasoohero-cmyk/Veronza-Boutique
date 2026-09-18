@@ -525,19 +525,24 @@ main {
   display: flex;
   align-items: flex-end;
   justify-content: center;
-  padding: 0 16px;
 }
 #orderModal {
   z-index: 55;
 }
 .modal-card {
-  width: min(720px, 100%);
-  /* Anchored to the bottom like the storefront's own sheets, with a
-     guaranteed gap at the top (never closer than 28px, or the
+  width: 100%;
+  max-width: 720px;
+  /* A true full-height sheet - edge-to-edge, filling the whole viewport
+     below a small guaranteed top gap (never closer than 28px, or the
      notch/status-bar safe area when that's larger) so the header can't
-     end up flush against the top edge on a tall form. */
-  max-height: calc(100vh - max(28px, env(safe-area-inset-top)) - env(safe-area-inset-bottom));
-  margin-bottom: env(safe-area-inset-bottom);
+     end up flush against the top edge on a tall form, and never leaving
+     a dimmed gap on the sides or under the card the way a
+     content-sized max-height did. The home-indicator safe area is
+     absorbed as bottom padding instead of a margin, so it's still
+     respected without showing through as a gap. */
+  height: calc(100vh - max(28px, env(safe-area-inset-top)));
+  max-height: calc(100vh - max(28px, env(safe-area-inset-top)));
+  padding-bottom: env(safe-area-inset-bottom);
   background: #fff;
   border-radius: 22px 22px 0 0;
   overflow: auto;
