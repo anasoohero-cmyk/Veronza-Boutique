@@ -146,6 +146,9 @@ a,
 .menu-btn {
   display: none;
 }
+.menu-actions {
+  display: contents;
+}
 .desktop-nav {
   height: 54px;
   display: flex;
@@ -906,10 +909,15 @@ a,
   .site-header {
     height: 72px;
     padding: 0 14px;
-    grid-template-columns: 42px 1fr 90px;
+    grid-template-columns: 80px 1fr 66px;
   }
   .menu-btn {
     display: grid;
+  }
+  .menu-actions {
+    display: flex;
+    align-items: center;
+    gap: 2px;
   }
   .desktop-only,
   .desktop-nav {

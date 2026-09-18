@@ -53,7 +53,14 @@
     button.setAttribute('aria-label', 'حساب الزبون');
     button.innerHTML =
       '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"/></svg><span>حسابي</span>';
-    document.querySelector('.header-actions')?.prepend(button);
+    // On mobile the account icon sits beside the hamburger menu button
+    // instead of the cart/search/chat cluster on the opposite side of the
+    // header - desktop (with its own nav bar) keeps the original spot.
+    const menuActions = window.matchMedia('(max-width: 900px)').matches
+      ? document.querySelector('.menu-actions')
+      : null;
+    if (menuActions) menuActions.appendChild(button);
+    else document.querySelector('.header-actions')?.prepend(button);
 
     const modal = document.createElement('div');
     modal.className = 'auth-modal';
