@@ -298,24 +298,26 @@
       const text = replyInput.value.trim();
       if (!text || !activeId) return;
       replyInput.disabled = true;
-      const { data, error } = await client
-        .from('chat_messages')
-        .insert({ conversation_id: activeId, sender: 'admin', body: text })
-        .select()
-        .single();
-      if (!error) {
-        await client
-          .from('chat_conversations')
-          .update({
-            customer_unread: true,
-            last_message_at: new Date().toISOString(),
-            status: 'open',
-          })
-          .eq('id', activeId);
-        activeMessages.push(data);
-        renderMessages();
-        loadConversations();
-      }
+      try {
+        const { data, error } = await client
+          .from('chat_messages')
+          .insert({ conversation_id: activeId, sender: 'admin', body: text })
+          .select()
+          .single();
+        if (!error) {
+          await client
+            .from('chat_conversations')
+            .update({
+              customer_unread: true,
+              last_message_at: new Date().toISOString(),
+              status: 'open',
+            })
+            .eq('id', activeId);
+          activeMessages.push(data);
+          renderMessages();
+          loadConversations();
+        }
+      } catch (_) {}
       replyInput.value = '';
       replyInput.disabled = false;
       replyInput.focus();
