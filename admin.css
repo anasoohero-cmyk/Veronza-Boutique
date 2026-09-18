@@ -201,6 +201,9 @@ body {
 .admin-menu-wrap {
   position: relative;
 }
+#homeLinkBtn {
+  order: 0;
+}
 .admin-menu-wrap {
   order: 1;
 }

@@ -1,0 +1,130 @@
+.quick-add-order {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: #111;
+  color: #fff;
+  border-radius: 18px;
+  padding: 16px 18px;
+  margin-bottom: 18px;
+  text-decoration: none;
+  transition: 0.15s;
+}
+.quick-add-order:hover {
+  background: #222;
+}
+.quick-add-order.hidden {
+  display: none;
+}
+.quick-add-icon {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #f6ecd9, #ecd9ae);
+  color: #9c7328;
+  display: grid;
+  place-items: center;
+  font-size: 22px;
+  font-weight: 800;
+}
+.quick-add-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.quick-add-text strong {
+  font-size: 14px;
+}
+.quick-add-text small {
+  color: #c9c2b4;
+  font-size: 11.5px;
+}
+.home-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+@media (min-width: 700px) {
+  .home-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+.home-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #fff;
+  border: 1px solid #e8e2d8;
+  border-radius: 18px;
+  padding: 16px;
+  text-decoration: none;
+  color: #111;
+  box-shadow: 0 2px 10px rgba(17, 17, 17, 0.04);
+  transition: 0.15s;
+}
+.home-card:hover {
+  border-color: #b58a3b;
+  transform: translateY(-1px);
+  box-shadow: 0 8px 20px rgba(181, 138, 59, 0.16);
+}
+.home-card-icon {
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  border-radius: 13px;
+  background: linear-gradient(135deg, #f6ecd9, #ecd9ae);
+  color: #9c7328;
+  display: grid;
+  place-items: center;
+}
+.home-card-icon svg {
+  width: 21px;
+  height: 21px;
+}
+.home-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  flex: 1;
+}
+.home-card-body strong {
+  font-size: 13.5px;
+}
+.home-card-detail {
+  font-size: 11px;
+  color: #777;
+}
+.home-card-arrow {
+  color: #bbb;
+  flex-shrink: 0;
+  font-size: 14px;
+}
+.home-card.alert .home-card-icon {
+  background: linear-gradient(135deg, #fbdada, #f3a6a6);
+  color: #a12b2b;
+}
+.home-card.alert .home-card-detail {
+  color: #a12b2b;
+  font-weight: 700;
+}
+.home-card.warn .home-card-icon {
+  background: linear-gradient(135deg, #fff0d8, #f0cf8f);
+  color: #9a5b00;
+}
+.home-card.warn .home-card-detail {
+  color: #9a5b00;
+  font-weight: 700;
+}
+.empty {
+  grid-column: 1/-1;
+  text-align: center;
+  padding: 40px 16px;
+  color: #888;
+}
+@media (max-width: 480px) {
+  .home-grid {
+    grid-template-columns: 1fr;
+  }
+}
