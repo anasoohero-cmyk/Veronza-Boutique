@@ -531,6 +531,12 @@ main {
   display: flex;
   align-items: flex-end;
   justify-content: center;
+  /* A horizontal swipe anywhere on the modal was being picked up by the
+     browser's own edge-swipe "go back" gesture instead of staying inside
+     the sheet - which navigated away from the page entirely instead of
+     just closing the modal. Telling the browser this element only pans
+     vertically stops it from grabbing horizontal drags for navigation. */
+  touch-action: pan-y;
 }
 #orderModal {
   z-index: 55;
@@ -538,6 +544,7 @@ main {
 .modal-card {
   width: 100%;
   max-width: 720px;
+  touch-action: pan-y;
   /* A true full-height sheet - edge-to-edge, filling the whole viewport
      below a small guaranteed top gap (never closer than 28px, or the
      notch/status-bar safe area when that's larger) so the header can't
@@ -563,6 +570,7 @@ main {
   justify-content: space-between;
   padding: 16px 16px 12px;
   border-bottom: 1px solid #eee;
+  touch-action: pan-y;
   background: #fff;
   cursor: grab;
 }
