@@ -513,18 +513,24 @@ main {
   inset: 0;
   background: #0008;
   z-index: 50;
-  display: grid;
-  place-items: center;
-  padding: max(16px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom));
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 0 16px;
 }
 #orderModal {
   z-index: 55;
 }
 .modal-card {
   width: min(720px, 100%);
-  max-height: 92vh;
+  /* Anchored to the bottom like the storefront's own sheets, with a
+     guaranteed gap at the top (never closer than 28px, or the
+     notch/status-bar safe area when that's larger) so the header can't
+     end up flush against the top edge on a tall form. */
+  max-height: calc(100vh - max(28px, env(safe-area-inset-top)) - env(safe-area-inset-bottom));
+  margin-bottom: env(safe-area-inset-bottom);
   background: #fff;
-  border-radius: 22px;
+  border-radius: 22px 22px 0 0;
   overflow: auto;
   overscroll-behavior: contain;
 }
@@ -745,9 +751,6 @@ main {
     width: 100%;
     padding: 12px;
     margin-top: 4px;
-  }
-  .modal-card {
-    max-height: 96vh;
   }
   .sheet-body {
     padding: 16px;
