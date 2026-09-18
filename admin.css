@@ -1,6 +1,9 @@
 * {
   box-sizing: border-box;
 }
+[hidden] {
+  display: none !important;
+}
 html {
   overflow-x: hidden;
   max-width: 100%;
