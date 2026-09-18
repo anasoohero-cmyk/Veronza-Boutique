@@ -345,22 +345,40 @@ main {
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.55);
-  display: grid;
-  place-items: center;
-  padding: max(16px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom));
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 0 16px;
   z-index: 20;
 }
 .modal-card {
   width: min(100%, 760px);
-  max-height: 94vh;
+  /* Anchored to the bottom with a guaranteed gap at the top (never closer
+     than 28px, or the notch/status-bar safe area when that's larger) so
+     the close button can't end up flush against the top edge on a long
+     form like this one. */
+  max-height: calc(100vh - max(28px, env(safe-area-inset-top)) - env(safe-area-inset-bottom));
+  margin-bottom: env(safe-area-inset-bottom);
   overflow: auto;
-  padding: 26px;
+  overscroll-behavior: contain;
+  padding: 0 26px 26px;
+  border-radius: 22px 22px 0 0;
   position: relative;
 }
+.modal-close-bar {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  justify-content: flex-end;
+  padding: 18px 0 0;
+  margin: 0 -26px;
+  background: #fff;
+}
+.modal-close-bar .close {
+  margin-inline-end: 18px;
+}
 .close {
-  position: absolute;
-  left: 18px;
-  top: 18px;
   border: 0;
   background: #f2eee8;
   border-radius: 50%;
