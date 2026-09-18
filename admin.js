@@ -144,14 +144,14 @@ function maybeOpenFromUrl() {
 function renderStats() {
   const c = (s) => orders.filter((o) => o.status === s).length;
   const items = [
-    ['all', 'كل الطلبات', orders.length],
     ['pending', 'جديدة', c('pending')],
-    ['confirmed', 'تم التأكيد', c('confirmed')],
     ['preparing', 'قيد التجهيز', c('preparing')],
+    ['confirmed', 'تم التأكيد', c('confirmed')],
     ['shipped', 'جاري التوصيل', c('shipped')],
     ['delivered', 'تم التسليم', c('delivered')],
     ['cancelled', 'ملغي', c('cancelled')],
     ['returned', 'مرتجع', c('returned')],
+    ['all', 'كل الطلبات', orders.length],
   ];
   $('#stats').innerHTML = items
     .map(
