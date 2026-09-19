@@ -985,10 +985,7 @@ function veronzaToast(msg, ms = 2200) {
   t._h = setTimeout(() => t.classList.remove('show'), ms);
 }
 function copyProductLink(id) {
-  const url = new URL(location.href);
-  url.search = '';
-  url.searchParams.set('p', id);
-  const link = url.toString();
+  const link = `${location.origin}/p/${encodeURIComponent(id)}`;
   if (navigator.share) {
     navigator.share({ url: link, title: 'Veronza Boutique' }).catch(() => {});
   } else if (navigator.clipboard) {

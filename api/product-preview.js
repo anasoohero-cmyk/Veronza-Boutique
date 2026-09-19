@@ -1,8 +1,9 @@
 // Facebook/WhatsApp/etc. crawlers don't run JS, so they never see the
 // client-side-rendered product page - they'd otherwise always get the same
 // generic homepage meta tags regardless of which product's link was shared.
-// vercel.json routes crawler requests for "/?p=<id>" here instead, so each
-// product link gets its own title/image/price in the share card.
+// vercel.json rewrites "/p/<id>" (the link copyProductLink() generates) to
+// this function - a plain path rewrite, unlike the query+header "has"
+// conditions this used before, which never actually matched in production.
 function escapeHtml(v) {
   return String(v ?? '').replace(
     /[&<>"']/g,
