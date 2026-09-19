@@ -205,6 +205,48 @@ function syncBodyScrollLock() {
     window.scrollTo(0, vzScrollLockY);
   }
 }
+
+// Opening a modal never used to touch browser history, so the phone's own
+// back gesture/button had nothing local to undo and fell straight through
+// to whatever page was visited before this one (admin-home.html) - skipping
+// right past the plain orders list a user expects one "back" to land on,
+// with a visible flash as the browser restored that earlier page. Each
+// modal open now pushes one history entry, and closing it (by any means -
+// the × button, the backdrop, swipe-to-close, or the phone's own back
+// gesture) consumes exactly that entry, so back only ever steps out one
+// modal at a time and never leaves this page while one is open.
+let vzModalHistoryDepth = 0;
+let vzSuppressPopstate = false;
+function pushModalHistoryState() {
+  vzModalHistoryDepth++;
+  history.pushState({ vzModal: true }, '', location.href);
+}
+function hideTopModalVisualOnly() {
+  if (!$('#orderModal').classList.contains('hidden')) $('#orderModal').classList.add('hidden');
+  else if (!$('#manualOrderModal').classList.contains('hidden'))
+    $('#manualOrderModal').classList.add('hidden');
+  else if (!$('#statusModal').classList.contains('hidden'))
+    $('#statusModal').classList.add('hidden');
+  syncBodyScrollLock();
+}
+function closeModalConsumingHistory(hideVisualFn) {
+  hideVisualFn();
+  syncBodyScrollLock();
+  if (vzModalHistoryDepth > 0) {
+    vzModalHistoryDepth--;
+    vzSuppressPopstate = true;
+    history.back();
+  }
+}
+window.addEventListener('popstate', () => {
+  if (vzSuppressPopstate) {
+    vzSuppressPopstate = false;
+    return;
+  }
+  if (vzModalHistoryDepth <= 0) return;
+  vzModalHistoryDepth--;
+  hideTopModalVisualOnly();
+});
 function openStatusList(status) {
   const label = status === 'all' ? 'جميع الطلبات' : statusNames[status] || status;
   const list = status === 'all' ? orders : orders.filter((o) => o.status === status);
@@ -214,10 +256,10 @@ function openStatusList(status) {
     : '<div class="empty">لا توجد طلبات في هذا القسم حالياً.</div>';
   $('#statusModal').classList.remove('hidden');
   syncBodyScrollLock();
+  pushModalHistoryState();
 }
 function closeStatusList() {
-  $('#statusModal').classList.add('hidden');
-  syncBodyScrollLock();
+  closeModalConsumingHistory(() => $('#statusModal').classList.add('hidden'));
 }
 function renderOrderDetails(itemsHtml) {
   $('#orderDetails').innerHTML =
@@ -242,6 +284,7 @@ function openOrder(id) {
   renderOrderDetails('<div class="empty">جاري تحميل المنتجات...</div>');
   $('#orderModal').classList.remove('hidden');
   syncBodyScrollLock();
+  pushModalHistoryState();
   api('/api/admin-orders?order_id=' + encodeURIComponent(id))
     .then((body) => {
       selected.items = body.items || [];
@@ -271,8 +314,7 @@ async function saveOrder() {
     const idx = orders.findIndex((o) => o.id === selected.id);
     if (idx >= 0) orders[idx] = selected;
     render();
-    $('#orderModal').classList.add('hidden');
-    syncBodyScrollLock();
+    closeOrderModal();
     if (body.notify) {
       toast(
         body.notify.sent
@@ -402,8 +444,7 @@ $('#orders').addEventListener('click', (e) => {
   if (row) openOrder(row.dataset.open);
 });
 const closeOrderModal = () => {
-  $('#orderModal').classList.add('hidden');
-  syncBodyScrollLock();
+  closeModalConsumingHistory(() => $('#orderModal').classList.add('hidden'));
 };
 $('#closeModal').onclick = closeOrderModal;
 $('#orderModal').addEventListener('click', (e) => {
@@ -514,10 +555,10 @@ async function openManualOrderModal() {
   moUpdateTotal();
   $('#manualOrderModal').classList.remove('hidden');
   syncBodyScrollLock();
+  pushModalHistoryState();
 }
 function closeManualOrderModal() {
-  $('#manualOrderModal').classList.add('hidden');
-  syncBodyScrollLock();
+  closeModalConsumingHistory(() => $('#manualOrderModal').classList.add('hidden'));
 }
 $('#manualOrderBtn').onclick = openManualOrderModal;
 $('#closeManualOrderModal').onclick = closeManualOrderModal;
