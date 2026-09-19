@@ -36,21 +36,32 @@ module.exports = async (req, res) => {
 
   try {
     const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body || {};
-    // Logged in full for now - this is the first real visibility into
-    // what actually happens to a message after Meta accepts it for
-    // sending (sent/delivered/read/failed), visible in Vercel's function
-    // logs for this endpoint.
-    console.log('WhatsApp webhook event:', JSON.stringify(body));
-
     const statuses =
       body?.entry?.flatMap((e) => e.changes?.flatMap((c) => c.value?.statuses || []) || []) || [];
-    for (const s of statuses) {
-      if (s.status === 'failed') {
-        const detail = (s.errors || [])
-          .map((e) => `${e.code}: ${e.title}${e.error_data?.details ? ' — ' + e.error_data.details : ''}`)
-          .join('; ');
-        console.error('WhatsApp message failed to deliver:', s.id, detail);
-      }
+    const supabaseUrl = process.env.SUPABASE_URL;
+    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (statuses.length && supabaseUrl && serviceKey) {
+      const rows = statuses.map((s) => {
+        const err = (s.errors || [])[0];
+        return {
+          message_id: s.id || null,
+          recipient: s.recipient_id || null,
+          status: s.status || null,
+          error_code: err?.code ?? null,
+          error_title: err?.title || null,
+          error_detail: err?.error_data?.details || null,
+          raw: s,
+        };
+      });
+      await fetch(`${supabaseUrl}/rest/v1/whatsapp_delivery_events`, {
+        method: 'POST',
+        headers: {
+          apikey: serviceKey,
+          Authorization: `Bearer ${serviceKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(rows),
+      }).catch((e) => console.error('Failed to persist WhatsApp delivery event:', e?.message || e));
     }
   } catch (e) {
     console.error('WhatsApp webhook parse error:', e?.message || e);
