@@ -52,8 +52,9 @@ module.exports = async (req, res) => {
           product.discount_price != null && product.discount_price < product.price
             ? product.discount_price
             : product.price;
-        title = `${product.name} — VERONZA BOUTIQUE`;
-        description = `${Number(price).toLocaleString('en-US')} د.ل — VERONZA BOUTIQUE`;
+        const priceText = `${Number(price).toLocaleString('en-US')} د.ل`;
+        title = `${product.name} — ${priceText} — VERONZA BOUTIQUE`;
+        description = `${priceText} — VERONZA BOUTIQUE`;
         if (product.img) image = product.img;
       }
     } catch (_) {}
