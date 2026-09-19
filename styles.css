@@ -941,7 +941,7 @@ a,
   .hero {
     height: auto;
     min-height: max(460px, calc(100vw * 2 / 3));
-    background-size: cover;
+    background-size: contain;
     background-position: center center;
     background-repeat: no-repeat;
   }
