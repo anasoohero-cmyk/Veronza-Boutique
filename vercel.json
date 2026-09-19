@@ -13,7 +13,7 @@
         {
           "type": "header",
           "key": "user-agent",
-          "value": "(?i).*(facebookexternalhit|facebot|whatsapp|twitterbot|linkedinbot|slackbot|telegrambot|discordbot|pinterest|redditbot|skypeuripreview|applebot|vkshare).*"
+          "value": ".*([Ff]acebook[Ee]xternal[Hh]it|[Ff]acebot|WhatsApp|Twitterbot|LinkedInBot|Slackbot|TelegramBot|Discordbot|Pinterest|redditbot|SkypeUriPreview|Applebot|vkShare).*"
         }
       ],
       "destination": "/api/product-preview"
