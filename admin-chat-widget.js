@@ -100,6 +100,7 @@
       <div class="vz-chatw-head">
         <button type="button" class="vz-chatw-back" data-back aria-label="رجوع">→</button>
         <h3 data-title>المحادثات</h3>
+        <a class="vz-chatw-call" data-realcall href="#" aria-label="اتصال هاتفي حقيقي" hidden>📱</a>
         <button type="button" class="vz-chatw-call" data-call aria-label="المكالمات الفائتة">📞<span class="vz-chatw-call-badge" data-call-badge hidden>0</span></button>
         <button type="button" class="vz-chatw-close-list" data-close aria-label="إغلاق">×</button>
       </div>
@@ -136,6 +137,7 @@
       activeCallUI = null;
     const callBtn = panel.querySelector('[data-call]');
     const callBadge = panel.querySelector('[data-call-badge]');
+    const realCallBtn = panel.querySelector('[data-realcall]');
     const missedPanel = panel.querySelector('[data-missed]');
     const missedListEl = panel.querySelector('[data-missed-list]');
     const teardownCall = () => {
@@ -233,6 +235,9 @@
       panel.classList.add('thread');
       const conv = conversations.find((c) => c.id === id);
       titleEl.textContent = conv?.customer_name || 'زائر';
+      const phone = conv?.customer_phone || '';
+      realCallBtn.href = phone ? `tel:${phone.replace(/\s+/g, '')}` : '#';
+      realCallBtn.hidden = !phone;
       const { data, error } = await client
         .from('chat_messages')
         .select('id,sender,body,created_at')
@@ -291,6 +296,7 @@
       panel.classList.remove('thread');
       titleEl.textContent = 'المحادثات';
       missedPanel.classList.remove('open');
+      realCallBtn.hidden = true;
     };
 
     replyForm.addEventListener('submit', async (e) => {
