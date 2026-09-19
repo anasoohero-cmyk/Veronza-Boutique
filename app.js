@@ -601,6 +601,14 @@ function openCheckout(isQuickBuy = false) {
   const modal = $('[data-checkout-modal]');
   if (modal) modal.classList.add('open');
   syncBodyScrollLock();
+  const items = isQuickBuy ? [quickBuyItem] : cart.filter((x) => x.selected !== false);
+  window.fbq?.('track', 'InitiateCheckout', {
+    content_ids: items.map((x) => String(x.id)),
+    content_type: 'product',
+    value: items.reduce((s, x) => s + x.price * x.qty, 0),
+    currency: 'LYD',
+    num_items: items.reduce((s, x) => s + x.qty, 0),
+  });
 }
 function closeCheckout() {
   $('[data-checkout-modal]')?.classList.remove('open');
@@ -893,9 +901,15 @@ function ensureProductModal() {
     return { id, p, q, size, color: modal.querySelector('[data-detail-color]').value };
   };
   modal.querySelector('[data-detail-add]').onclick = () => {
-    const { id, size, q, color } = readSelection();
+    const { id, p, size, q, color } = readSelection();
     if (size === null) return;
     addToCart(id, color, size, q);
+    window.fbq?.('track', 'AddToCart', {
+      content_ids: [String(id)],
+      content_type: 'product',
+      value: effectivePrice(p) * q,
+      currency: 'LYD',
+    });
     closeProductDetails();
   };
   modal.querySelector('[data-detail-buy]').onclick = () => {
@@ -953,6 +967,12 @@ function openProductDetails(id, updateUrl = true) {
   buyBtn.disabled = outOfStock;
   addBtn.textContent = outOfStock ? 'نفذت الكمية' : 'أضف إلى السلة';
   buyBtn.textContent = outOfStock ? 'نفذت الكمية' : 'اطلب الآن (شراء مباشر)';
+  window.fbq?.('track', 'ViewContent', {
+    content_ids: [String(p.id)],
+    content_type: 'product',
+    value: effectivePrice(p),
+    currency: 'LYD',
+  });
   modal.classList.add('open');
   syncBodyScrollLock();
   if (updateUrl) {
@@ -1260,6 +1280,13 @@ $('[data-checkout-form]').onsubmit = async (e) => {
       `تم إرسال الطلب بنجاح إلى واتساب Veronza.\nرقم الطلب: ${result.order_number}`,
       4500,
     );
+    window.fbq?.('track', 'Purchase', {
+      content_ids: orderItems.map((x) => String(x.id)),
+      content_type: 'product',
+      value: orderItems.reduce((s, x) => s + x.price * x.qty, 0),
+      currency: 'LYD',
+      num_items: orderItems.reduce((s, x) => s + x.qty, 0),
+    });
     if (!isQuickBuy) {
       // Only the items that were actually part of this order — anything
       // the customer left unchecked stays in the cart for a later order.
