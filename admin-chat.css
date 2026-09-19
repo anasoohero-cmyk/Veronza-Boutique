@@ -138,9 +138,9 @@ main.chat-main {
   color: #777;
   font-size: 11px;
 }
-.chat-thread-title small a {
-  color: inherit;
-  text-decoration: underline;
+.chat-call-btn {
+  text-decoration: none;
+  margin-inline-start: 6px;
 }
 .chat-back {
   display: none;
