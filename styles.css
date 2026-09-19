@@ -939,7 +939,11 @@ a,
     display: grid;
   }
   .hero {
-    min-height: 560px;
+    min-height: 0;
+    height: calc(100vw * 2 / 3);
+    background-size: cover;
+    background-position: center center;
+    background-repeat: no-repeat;
   }
   .hero-copy {
     padding: 0 8% 40px 6%;
