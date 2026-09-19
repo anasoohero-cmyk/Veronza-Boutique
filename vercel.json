@@ -6,11 +6,7 @@
   "framework": null,
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api/$1" },
-    {
-      "source": "/",
-      "has": [{ "type": "query", "key": "p" }],
-      "destination": "/api/product-preview"
-    }
+    { "source": "/p/:id", "destination": "/api/product-preview?p=:id" }
   ],
   "headers": [
     {
