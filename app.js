@@ -1125,6 +1125,37 @@ attachSwipeDownToClose($('[data-cart-drawer]'), closeLayers, {
   scrollEl: $('[data-cart-items]'),
 });
 attachSwipeDownToClose($('[data-mobile-menu]'), closeLayers);
+// Libyan mobile numbers are 10 digits starting with 0 (e.g. 0944000974),
+// or the same number with the country code instead of the leading 0
+// (+218944000974). Normalizes either into a canonical form, or reports how
+// many digits are still missing so the error can tell the customer exactly
+// what's wrong instead of a generic "invalid phone number".
+function validateLibyanPhone(raw) {
+  const trimmed = String(raw || '').trim();
+  let digits = trimmed.replace(/\D/g, '');
+  if (digits.startsWith('00218')) digits = digits.slice(2);
+  const isIntl = trimmed.replace(/[\s-]/g, '').startsWith('+218') || digits.startsWith('218');
+  if (isIntl) {
+    const local = digits.startsWith('218') ? digits.slice(3) : digits;
+    if (local.length < 9)
+      return {
+        ok: false,
+        message: `رقم الهاتف ناقص (${9 - local.length} رقم). لازم يكون بهذا الشكل: +218944000974`,
+      };
+    if (local.length > 9)
+      return { ok: false, message: 'رقم الهاتف طويل أكثر من اللازم. مثال: +218944000974' };
+    return { ok: true, formatted: '+218' + local };
+  }
+  if (!digits.startsWith('0')) digits = '0' + digits;
+  if (digits.length < 10)
+    return {
+      ok: false,
+      message: `رقم الهاتف ناقص (${10 - digits.length} رقم). لازم يكون 10 أرقام بهذا الشكل: 0944000974`,
+    };
+  if (digits.length > 10)
+    return { ok: false, message: 'رقم الهاتف طويل أكثر من اللازم. مثال: 0944000974' };
+  return { ok: true, formatted: digits };
+}
 $('[data-checkout-form]').onsubmit = async (e) => {
   e.preventDefault();
   const form = e.currentTarget;
@@ -1151,6 +1182,13 @@ $('[data-checkout-form]').onsubmit = async (e) => {
     veronzaToast('لازم تكتب الاسم ورقم الهاتف والعنوان.');
     return;
   }
+  const phoneCheck = validateLibyanPhone(customer.phone);
+  if (!phoneCheck.ok) {
+    veronzaToast(phoneCheck.message);
+    form.querySelector('[name="phone"]').focus();
+    return;
+  }
+  customer.phone = phoneCheck.formatted;
   const submit = form.querySelector('.checkout-submit');
   submit.disabled = true;
   submit.textContent = 'جاري التحقق من توفر المنتجات…';
