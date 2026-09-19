@@ -11,7 +11,7 @@ function escapeHtml(v) {
   );
 }
 
-const BOT_UA = /facebookexternalhit|facebot|whatsapp|twitterbot|linkedinbot|slackbot|telegrambot|discordbot|pinterest|redditbot|skypeuripreview|applebot|vkshare/i;
+const BOT_UA = /facebookexternalhit|facebot|instagram|whatsapp|twitterbot|linkedinbot|slackbot|telegrambot|discordbot|pinterest|redditbot|skypeuripreview|applebot|vkshare/i;
 
 module.exports = async (req, res) => {
   const supabaseUrl = process.env.SUPABASE_URL;
