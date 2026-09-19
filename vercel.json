@@ -5,7 +5,19 @@
   "installCommand": null,
   "framework": null,
   "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api/$1" }
+    { "source": "/api/(.*)", "destination": "/api/$1" },
+    {
+      "source": "/",
+      "has": [
+        { "type": "query", "key": "p" },
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": "(?i).*(facebookexternalhit|facebot|whatsapp|twitterbot|linkedinbot|slackbot|telegrambot|discordbot|pinterest|redditbot|skypeuripreview|applebot|vkshare).*"
+        }
+      ],
+      "destination": "/api/product-preview"
+    }
   ],
   "headers": [
     {
