@@ -17,12 +17,15 @@ module.exports = async (req, res) => {
   const supabaseUrl = process.env.SUPABASE_URL;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   // Hardcoded, not derived from VERCEL_URL - that env var is the raw
-  // per-deployment hostname (e.g. veronza-c04217wpn-....vercel.app), and
-  // Facebook's crawler follows the http-equiv refresh tag below, so a
-  // wrong domain here sends it right back to the generic static homepage.
+  // per-deployment hostname (e.g. veronza-c04217wpn-....vercel.app), which
+  // would otherwise leak into og:url below.
   const siteUrl = process.env.SITE_URL || 'https://veronza.vercel.app';
   const id = String((req.query || {}).p || '').trim();
-  const pageUrl = `${siteUrl}/?p=${encodeURIComponent(id)}#sections`;
+  // og:url is this same page's own stable link, so re-fetching it returns
+  // the same content - not the SPA URL below, which a crawler would treat
+  // as a redirect target and follow, landing back on the generic homepage.
+  const canonicalUrl = `${siteUrl}/p/${encodeURIComponent(id)}`;
+  const appUrl = `${siteUrl}/?p=${encodeURIComponent(id)}#sections`;
 
   // Real visitors shouldn't get stuck on this bot-only meta page - send them
   // straight to the actual app. /index.html (not "/") so this doesn't loop
@@ -68,10 +71,9 @@ module.exports = async (req, res) => {
 <meta property="og:title" content="${escapeHtml(title)}">
 <meta property="og:description" content="${escapeHtml(description)}">
 <meta property="og:image" content="${escapeHtml(image)}">
-<meta property="og:url" content="${escapeHtml(pageUrl)}">
+<meta property="og:url" content="${escapeHtml(canonicalUrl)}">
 <meta name="twitter:card" content="summary_large_image">
-<meta http-equiv="refresh" content="0;url=${escapeHtml(pageUrl)}">
 </head><body>
-<a href="${escapeHtml(pageUrl)}">${escapeHtml(title)}</a>
+<a href="${escapeHtml(appUrl)}">${escapeHtml(title)}</a>
 </body></html>`);
 };
