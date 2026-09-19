@@ -8,14 +8,7 @@
     { "source": "/api/(.*)", "destination": "/api/$1" },
     {
       "source": "/",
-      "has": [
-        { "type": "query", "key": "p" },
-        {
-          "type": "header",
-          "key": "user-agent",
-          "value": ".*([Ff]acebook[Ee]xternal[Hh]it|[Ff]acebot|WhatsApp|Twitterbot|LinkedInBot|Slackbot|TelegramBot|Discordbot|Pinterest|redditbot|SkypeUriPreview|Applebot|vkShare).*"
-        }
-      ],
+      "has": [{ "type": "query", "key": "p" }],
       "destination": "/api/product-preview"
     }
   ],
