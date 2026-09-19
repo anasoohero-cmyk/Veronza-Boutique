@@ -1156,6 +1156,29 @@ function validateLibyanPhone(raw) {
     return { ok: false, message: 'رقم الهاتف طويل أكثر من اللازم. مثال: 0944000974' };
   return { ok: true, formatted: digits };
 }
+// A toast that fades out on its own timer is easy to miss and, once gone,
+// leaves no trace of which field was wrong - the field itself gets a red
+// border and a message right under it that stays until the field is fixed.
+function setFieldError(form, name, message) {
+  const field = form.querySelector(`[name="${name}"]`);
+  const msgEl = form.querySelector(`[data-error-for="${name}"]`);
+  field?.classList.add('field-error');
+  if (msgEl) {
+    msgEl.textContent = message;
+    msgEl.hidden = false;
+  }
+}
+function clearFieldError(form, name) {
+  const field = form.querySelector(`[name="${name}"]`);
+  const msgEl = form.querySelector(`[data-error-for="${name}"]`);
+  field?.classList.remove('field-error');
+  if (msgEl) msgEl.hidden = true;
+}
+['name', 'phone', 'address'].forEach((name) => {
+  $(`[data-checkout-form] [name="${name}"]`)?.addEventListener('input', (e) => {
+    clearFieldError(e.currentTarget.form, name);
+  });
+});
 $('[data-checkout-form]').onsubmit = async (e) => {
   e.preventDefault();
   const form = e.currentTarget;
@@ -1178,14 +1201,26 @@ $('[data-checkout-form]').onsubmit = async (e) => {
     address: form.querySelector('[name="address"]').value.trim(),
     marketingOptIn: form.querySelector('[name="marketing_opt_in"]').checked,
   };
-  if (!customer.name || !customer.phone || !customer.address) {
-    veronzaToast('لازم تكتب الاسم ورقم الهاتف والعنوان.');
-    return;
+  ['name', 'phone', 'address'].forEach((name) => clearFieldError(form, name));
+  let firstInvalid = null;
+  if (!customer.name) {
+    setFieldError(form, 'name', 'اكتب اسمك الكامل.');
+    firstInvalid = firstInvalid || 'name';
   }
-  const phoneCheck = validateLibyanPhone(customer.phone);
-  if (!phoneCheck.ok) {
-    veronzaToast(phoneCheck.message);
-    form.querySelector('[name="phone"]').focus();
+  const phoneCheck = customer.phone ? validateLibyanPhone(customer.phone) : { ok: false };
+  if (!customer.phone) {
+    setFieldError(form, 'phone', 'اكتب رقم هاتفك.');
+    firstInvalid = firstInvalid || 'phone';
+  } else if (!phoneCheck.ok) {
+    setFieldError(form, 'phone', phoneCheck.message);
+    firstInvalid = firstInvalid || 'phone';
+  }
+  if (!customer.address) {
+    setFieldError(form, 'address', 'اكتب عنوان التوصيل.');
+    firstInvalid = firstInvalid || 'address';
+  }
+  if (firstInvalid) {
+    form.querySelector(`[name="${firstInvalid}"]`).focus();
     return;
   }
   customer.phone = phoneCheck.formatted;

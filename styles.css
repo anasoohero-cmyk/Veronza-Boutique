@@ -1345,6 +1345,11 @@ a,
   z-index: 999;
   opacity: 0;
   transition: 0.25s;
+  /* The toast sits near the bottom of the screen, right where a sheet's
+     own primary button often is (e.g. checkout's "تأكيد الطلب"). Without
+     this it silently swallows taps meant for whatever is underneath it
+     even while fading in/out, making that button feel broken. */
+  pointer-events: none;
 }
 .veronza-toast.show {
   opacity: 1;
