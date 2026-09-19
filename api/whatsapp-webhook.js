@@ -18,6 +18,23 @@ function json(req, res, status, body) {
 module.exports = async (req, res) => {
   if (req.method === 'GET') {
     const q = req.query || {};
+    // Temporary one-off action: links this app as the webhook receiver for a
+    // WABA (POST /{waba-id}/subscribed_apps) - a step separate from the
+    // Callback URL verification above, and easy to miss.
+    if (q.action === 'link_waba') {
+      if (!VERIFY_TOKEN || q.secret !== VERIFY_TOKEN)
+        return json(req, res, 403, { ok: false, error: 'Bad secret' });
+      const wabaId = q.waba_id;
+      const metaToken = process.env.META_ACCESS_TOKEN;
+      if (!wabaId || !metaToken)
+        return json(req, res, 400, { ok: false, error: 'Missing waba_id or META_ACCESS_TOKEN' });
+      const r = await fetch(
+        `https://graph.facebook.com/v23.0/${encodeURIComponent(wabaId)}/subscribed_apps`,
+        { method: 'POST', headers: { Authorization: `Bearer ${metaToken}` } },
+      );
+      const data = await r.json().catch(() => ({}));
+      return json(req, res, r.status, { ok: r.ok, data });
+    }
     const mode = q['hub.mode'];
     const token = q['hub.verify_token'];
     const challenge = q['hub.challenge'];
