@@ -939,8 +939,8 @@ a,
     display: grid;
   }
   .hero {
-    min-height: 0;
-    height: calc(100vw * 2 / 3);
+    height: auto;
+    min-height: max(460px, calc(100vw * 2 / 3));
     background-size: cover;
     background-position: center center;
     background-repeat: no-repeat;
