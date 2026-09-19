@@ -31,12 +31,15 @@ module.exports = async (req, res) => {
       let wabaId = q.waba_id;
       let lookup = null;
       if (!wabaId) {
+        // Phone-number node doesn't expose its parent WABA directly - the
+        // access token's own granular scopes do (the WABA id it was granted
+        // whatsapp_business_management on).
         const lr = await fetch(
-          `https://graph.facebook.com/v23.0/${encodeURIComponent(phoneNumberId)}?fields=whatsapp_business_account_id`,
-          { headers: { Authorization: `Bearer ${metaToken}` } },
+          `https://graph.facebook.com/v23.0/debug_token?input_token=${encodeURIComponent(metaToken)}&access_token=${encodeURIComponent(metaToken)}`,
         );
         lookup = await lr.json().catch(() => ({}));
-        wabaId = lookup?.whatsapp_business_account_id;
+        const scopes = lookup?.data?.granular_scopes || [];
+        wabaId = scopes.find((s) => s.scope === 'whatsapp_business_management')?.target_ids?.[0];
         if (!wabaId) return json(req, res, 200, { ok: false, step: 'lookup', lookup });
       }
       const r = await fetch(
