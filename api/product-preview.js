@@ -16,9 +16,11 @@ const BOT_UA = /facebookexternalhit|facebot|instagram|whatsapp|twitterbot|linked
 module.exports = async (req, res) => {
   const supabaseUrl = process.env.SUPABASE_URL;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  const siteUrl =
-    process.env.SITE_URL ||
-    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'https://veronza.vercel.app');
+  // Hardcoded, not derived from VERCEL_URL - that env var is the raw
+  // per-deployment hostname (e.g. veronza-c04217wpn-....vercel.app), and
+  // Facebook's crawler follows the http-equiv refresh tag below, so a
+  // wrong domain here sends it right back to the generic static homepage.
+  const siteUrl = process.env.SITE_URL || 'https://veronza.vercel.app';
   const id = String((req.query || {}).p || '').trim();
   const pageUrl = `${siteUrl}/?p=${encodeURIComponent(id)}#sections`;
 
