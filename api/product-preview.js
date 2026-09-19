@@ -10,6 +10,8 @@ function escapeHtml(v) {
   );
 }
 
+const BOT_UA = /facebookexternalhit|facebot|whatsapp|twitterbot|linkedinbot|slackbot|telegrambot|discordbot|pinterest|redditbot|skypeuripreview|applebot|vkshare/i;
+
 module.exports = async (req, res) => {
   const supabaseUrl = process.env.SUPABASE_URL;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -18,6 +20,15 @@ module.exports = async (req, res) => {
     (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'https://veronza.vercel.app');
   const id = String((req.query || {}).p || '').trim();
   const pageUrl = `${siteUrl}/?p=${encodeURIComponent(id)}#sections`;
+
+  // Real visitors shouldn't get stuck on this bot-only meta page - send them
+  // straight to the actual app. /index.html (not "/") so this doesn't loop
+  // back into the same rewrite.
+  if (!BOT_UA.test(req.headers['user-agent'] || '')) {
+    res.statusCode = 302;
+    res.setHeader('Location', `/index.html?p=${encodeURIComponent(id)}#sections`);
+    return res.end();
+  }
 
   let title = 'VERONZA BOUTIQUE — أحذية وشنط';
   let description = 'Veronza Boutique — أحذية وشنط بتصاميم راقية وتجربة تسوق فاخرة.';
