@@ -26,7 +26,19 @@ module.exports = async (req, res) => {
       res.setHeader('Content-Type', 'text/plain');
       return res.end(String(challenge || ''));
     }
-    return json(req, res, 403, { ok: false, error: 'Verification failed' });
+    // Temporary diagnostic fields (never the real token) to pin down a
+    // verification mismatch without needing shell/log access.
+    return json(req, res, 403, {
+      ok: false,
+      error: 'Verification failed',
+      debug: {
+        modeReceived: mode ?? null,
+        tokenReceived: token ?? null,
+        tokenReceivedLength: token ? token.length : 0,
+        envVarIsSet: !!VERIFY_TOKEN,
+        envVarLength: VERIFY_TOKEN ? VERIFY_TOKEN.length : 0,
+      },
+    });
   }
 
   if (req.method !== 'POST') {
