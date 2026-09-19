@@ -138,6 +138,10 @@ main.chat-main {
   color: #777;
   font-size: 11px;
 }
+.chat-thread-title small a {
+  color: inherit;
+  text-decoration: underline;
+}
 .chat-back {
   display: none;
 }
