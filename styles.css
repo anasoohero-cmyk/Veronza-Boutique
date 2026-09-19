@@ -940,35 +940,39 @@ a,
   }
   .hero {
     height: auto;
-    min-height: max(460px, calc(100vw * 2 / 3));
+    min-height: max(340px, calc(52vw));
     background-size: contain;
     background-position: center center;
     background-repeat: no-repeat;
   }
   .hero-copy {
-    padding: 0 8% 40px 6%;
+    padding: 0 8% 20px 6%;
     max-width: 100%;
   }
   .hero h1 {
-    font-size: 42px;
-    margin: 8px 0;
+    font-size: 30px;
+    margin: 6px 0;
   }
   .hero-copy p {
-    font-size: 12px;
-    margin-bottom: 17px;
-    max-width: 280px;
+    font-size: 11px;
+    margin-bottom: 12px;
+    max-width: 260px;
   }
   .gold-btn {
-    width: 160px;
-    padding: 12px;
+    width: 150px;
+    padding: 10px;
   }
   .hero-features {
-    gap: 20px;
-    margin-top: 26px;
+    gap: 14px;
+    margin-top: 16px;
   }
   .hero-features > div {
-    max-width: 108px;
-    font-size: 15px;
+    max-width: 92px;
+    font-size: 13px;
+  }
+  .hero-features svg {
+    width: 26px;
+    height: 26px;
   }
   .hero-features svg {
     width: 30px;
