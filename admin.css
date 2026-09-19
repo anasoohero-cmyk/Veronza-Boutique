@@ -546,15 +546,19 @@ main {
   max-width: 720px;
   touch-action: pan-y;
   /* A true full-height sheet - edge-to-edge, filling the whole viewport
-     below a small guaranteed top gap (never closer than 28px, or the
+     below a small guaranteed top gap (never closer than 64px, or the
      notch/status-bar safe area when that's larger) so the header can't
-     end up flush against the top edge on a tall form, and never leaving
+     end up under the status bar/notch/Dynamic Island, and never leaving
      a dimmed gap on the sides or under the card the way a
-     content-sized max-height did. The home-indicator safe area is
-     absorbed as bottom padding instead of a margin, so it's still
-     respected without showing through as a gap. */
-  height: calc(100vh - max(28px, env(safe-area-inset-top)));
-  max-height: calc(100vh - max(28px, env(safe-area-inset-top)));
+     content-sized max-height did. env(safe-area-inset-top) reports 0 in
+     a lot of real browsing contexts (a plain Safari tab rather than an
+     installed home-screen app, for one), so the fixed 64px floor is what
+     actually keeps clear of the camera/status bar there - env() only
+     takes over when it reports something taller. The home-indicator safe
+     area is absorbed as bottom padding instead of a margin, so it's
+     still respected without showing through as a gap. */
+  height: calc(100vh - max(64px, env(safe-area-inset-top)));
+  max-height: calc(100vh - max(64px, env(safe-area-inset-top)));
   padding-bottom: env(safe-area-inset-bottom);
   background: #fff;
   border-radius: 22px 22px 0 0;
