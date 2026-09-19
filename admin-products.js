@@ -113,7 +113,7 @@ function showApp(session, adminCheck) {
   $('#appView').classList.remove('hidden');
   $('#adminEmail').textContent = session.user.email || '';
   if (adminCheck) applyProductsPermissions(adminCheck);
-  if (currentPermissions.view) load();
+  if (isOwner || Object.keys(typeNames).some(canViewType)) load();
 }
 
 function showLogin() {
