@@ -985,7 +985,7 @@ function veronzaToast(msg, ms = 2200) {
   t._h = setTimeout(() => t.classList.remove('show'), ms);
 }
 function copyProductLink(id) {
-  const link = `${location.origin}/p/${encodeURIComponent(id)}`;
+  const link = `https://veronza.vercel.app/p/${encodeURIComponent(id)}`;
   if (navigator.share) {
     navigator.share({ url: link, title: 'Veronza Boutique' }).catch(() => {});
   } else if (navigator.clipboard) {
@@ -998,7 +998,7 @@ function copyProductLink(id) {
   }
 }
 function shareSite() {
-  const link = `${location.origin}/`;
+  const link = 'https://veronza.vercel.app/';
   if (navigator.share) {
     navigator.share({ url: link, title: 'Veronza Boutique' }).catch(() => {});
   } else if (navigator.clipboard) {
