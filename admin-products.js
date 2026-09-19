@@ -130,6 +130,9 @@ async function load() {
     .order('id', { ascending: false });
   if (error) {
     console.error(error);
+    toast('تعذر تحميل المنتجات: ' + error.message);
+    const box = $('#products');
+    if (box) box.innerHTML = `<p class="empty">تعذر تحميل المنتجات (${esc(error.message)}). حاول تحديث الصفحة.</p>`;
     return;
   }
   products = Array.isArray(data) ? data : [];
@@ -164,6 +167,10 @@ function render() {
   );
   const box = $('#products');
   if (!box) return;
+  if (!list.length) {
+    box.innerHTML = `<p class="empty">${products.length ? 'لا توجد منتجات مطابقة للبحث.' : 'لا توجد منتجات مضافة بعد. اضغط "+ إضافة منتج" لإضافة أول منتج.'}</p>`;
+    return;
+  }
   box.innerHTML = list
     .map((p) => {
       const hasDiscount =
