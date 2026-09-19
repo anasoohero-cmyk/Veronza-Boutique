@@ -207,7 +207,7 @@ module.exports = async (req, res) => {
       type: 'chat',
       title: 'رسالة جديدة في الشات',
       body: `${customerName}: ${text}`.slice(0, 180),
-      url: '/admin-chat.html',
+      url: `/admin-chat.html?c=${encodeURIComponent(conversationId)}`,
     });
 
     const message = Array.isArray(insertMsg.data) ? insertMsg.data[0] : insertMsg.data;

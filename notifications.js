@@ -109,7 +109,9 @@
     const list = panel.querySelector('[data-nlist]');
     const fmt = (d) =>
       new Date(d).toLocaleString('ar-LY', { dateStyle: 'medium', timeStyle: 'short' });
+    let currentRows = [];
     const render = (rows) => {
+      currentRows = rows;
       badge.hidden = !rows.some((x) => !x.read_at);
       const unread = rows.filter((x) => !x.read_at).length;
       badge.textContent = unread > 99 ? '99+' : unread;
@@ -127,12 +129,17 @@
       list.querySelectorAll('[data-id]').forEach(
         (el) =>
           (el.onclick = async () => {
+            const row = currentRows.find((x) => String(x.id) === el.dataset.id);
             await client
               .from('notifications')
               .update({ read_at: new Date().toISOString() })
               .eq('id', el.dataset.id)
               .eq('admin_user_id', session.user.id);
-            load();
+            // Older rows (sent before the url column existed) fall back to
+            // the order page when there's an order_id to work with.
+            const dest = row?.url || (row?.order_id ? `/admin.html?order=${row.order_id}` : null);
+            if (dest) location.href = dest;
+            else load();
           }),
       );
     };
@@ -145,7 +152,7 @@
     const fetchNotifications = () =>
       client
         .from('notifications')
-        .select('id,title,body,read_at,created_at,order_id')
+        .select('id,title,body,read_at,created_at,order_id,url')
         .eq('admin_user_id', session.user.id)
         .order('created_at', { ascending: false })
         .limit(100);
