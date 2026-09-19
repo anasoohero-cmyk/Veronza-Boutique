@@ -166,9 +166,10 @@ async function openConversation(id) {
   const conv = conversations.find((c) => c.id === id);
   $('#threadName').textContent = conv?.customer_name || 'زائر';
   const phone = conv?.customer_phone || '';
-  $('#threadPhone').innerHTML = phone
-    ? `<a href="tel:${esc(phone.replace(/\s+/g, ''))}">${esc(phone)}</a>`
-    : '';
+  $('#threadPhone').textContent = phone;
+  const realCallBtn = $('#realCallBtn');
+  realCallBtn.href = phone ? `tel:${phone.replace(/\s+/g, '')}` : '#';
+  realCallBtn.style.display = phone ? '' : 'none';
   setupCallFor(id, conv?.customer_name);
   const { data, error } = await sb
     .from('chat_messages')
