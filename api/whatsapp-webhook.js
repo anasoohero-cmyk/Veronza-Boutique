@@ -24,16 +24,27 @@ module.exports = async (req, res) => {
     if (q.action === 'link_waba') {
       if (!VERIFY_TOKEN || q.secret !== VERIFY_TOKEN)
         return json(req, res, 403, { ok: false, error: 'Bad secret' });
-      const wabaId = q.waba_id;
       const metaToken = process.env.META_ACCESS_TOKEN;
-      if (!wabaId || !metaToken)
-        return json(req, res, 400, { ok: false, error: 'Missing waba_id or META_ACCESS_TOKEN' });
+      const phoneNumberId = process.env.META_PHONE_NUMBER_ID;
+      if (!metaToken || !phoneNumberId)
+        return json(req, res, 400, { ok: false, error: 'Missing META_ACCESS_TOKEN or META_PHONE_NUMBER_ID' });
+      let wabaId = q.waba_id;
+      let lookup = null;
+      if (!wabaId) {
+        const lr = await fetch(
+          `https://graph.facebook.com/v23.0/${encodeURIComponent(phoneNumberId)}?fields=whatsapp_business_account_id`,
+          { headers: { Authorization: `Bearer ${metaToken}` } },
+        );
+        lookup = await lr.json().catch(() => ({}));
+        wabaId = lookup?.whatsapp_business_account_id;
+        if (!wabaId) return json(req, res, 200, { ok: false, step: 'lookup', lookup });
+      }
       const r = await fetch(
         `https://graph.facebook.com/v23.0/${encodeURIComponent(wabaId)}/subscribed_apps`,
         { method: 'POST', headers: { Authorization: `Bearer ${metaToken}` } },
       );
       const data = await r.json().catch(() => ({}));
-      return json(req, res, r.status, { ok: r.ok, data });
+      return json(req, res, r.status, { ok: r.ok, wabaId, lookup, data });
     }
     const mode = q['hub.mode'];
     const token = q['hub.verify_token'];
