@@ -42,6 +42,7 @@ async function notifyAdmins(supabaseUrl, serviceKey, { type, title, body, orderI
       title,
       body,
       order_id: orderId || null,
+      url: url || null,
     }));
     await fetch(`${supabaseUrl}/rest/v1/notifications`, {
       method: 'POST',

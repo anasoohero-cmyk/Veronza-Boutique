@@ -250,7 +250,7 @@ module.exports = async (req, res) => {
       title: 'طلب يدوي جديد',
       body: `${order.order_number} · ${name} · ${total.toLocaleString('ar-LY')} د.ل`,
       orderId,
-      url: '/admin.html',
+      url: `/admin.html?order=${encodeURIComponent(orderId)}`,
     });
 
     return json(req, res, 200, { order_id: orderId, order_number: order.order_number });
