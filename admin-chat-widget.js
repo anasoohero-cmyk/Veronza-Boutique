@@ -140,11 +140,15 @@
     const realCallBtn = panel.querySelector('[data-realcall]');
     const missedPanel = panel.querySelector('[data-missed]');
     const missedListEl = panel.querySelector('[data-missed-list]');
+    window.veronzaActiveCallConversationIds = window.veronzaActiveCallConversationIds || new Set();
+    let activeCallId = null;
     const teardownCall = () => {
       activeCallUI?.destroy();
       activeCall?.destroy();
       activeCall = null;
       activeCallUI = null;
+      if (activeCallId) window.veronzaActiveCallConversationIds.delete(activeCallId);
+      activeCallId = null;
     };
 
     const initials = (name) => {
@@ -260,6 +264,8 @@
       teardownCall();
       if (canEditChat && window.VeronzaCall) {
         activeCall = new window.VeronzaCall(client, id);
+        activeCallId = id;
+        window.veronzaActiveCallConversationIds.add(id);
         activeCallUI = window.VeronzaCall.mountUI(activeCall, {
           calleeLabel: conv?.customer_name || 'الزبون',
         });

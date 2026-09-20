@@ -122,11 +122,15 @@ function renderMessages() {
 
 let activeCall = null;
 let activeCallUI = null;
+let activeCallId = null;
+window.veronzaActiveCallConversationIds = window.veronzaActiveCallConversationIds || new Set();
 function teardownCall() {
   activeCallUI?.destroy();
   activeCall?.destroy();
   activeCall = null;
   activeCallUI = null;
+  if (activeCallId) window.veronzaActiveCallConversationIds.delete(activeCallId);
+  activeCallId = null;
 }
 async function logCallToConversation(conversationId, durationSec) {
   const mm = String(Math.floor(durationSec / 60)).padStart(2, '0');
@@ -152,6 +156,8 @@ function setupCallFor(id, customerName) {
   teardownCall();
   if (!currentPermissions.edit) return;
   activeCall = new window.VeronzaCall(sb, id);
+  activeCallId = id;
+  window.veronzaActiveCallConversationIds.add(id);
   activeCallUI = window.VeronzaCall.mountUI(activeCall, { calleeLabel: customerName || 'الزبون' });
   activeCall.onCallEnded = (durationSec) => logCallToConversation(id, durationSec);
   $('#callBtn').onclick = () => activeCall.startCall();
