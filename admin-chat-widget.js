@@ -263,6 +263,8 @@
         activeCallUI = window.VeronzaCall.mountUI(activeCall, {
           calleeLabel: conv?.customer_name || 'الزبون',
         });
+        callBtn.onclick = () => activeCall.startCall();
+        callBtn.setAttribute('aria-label', 'مكالمة داخل الموقع');
         activeCall.onCallEnded = async (durationSec) => {
           const mm = String(Math.floor(durationSec / 60)).padStart(2, '0');
           const ss = String(durationSec % 60).padStart(2, '0');
@@ -297,6 +299,8 @@
       titleEl.textContent = 'المحادثات';
       missedPanel.classList.remove('open');
       realCallBtn.hidden = true;
+      callBtn.onclick = () => missedPanel.classList.toggle('open');
+      callBtn.setAttribute('aria-label', 'المكالمات الفائتة');
     };
 
     replyForm.addEventListener('submit', async (e) => {
