@@ -201,6 +201,37 @@
     shade.onclick = close;
     panel.querySelector('[data-nclose]').onclick = close;
     window.veronzaEnsurePush = () => ensurePush(client, session, true);
+    let globalCall = null,
+      globalCallUI = null,
+      globalCallConversationId = null;
+    // A call ringing while the admin is anywhere else in the panel (not the
+    // specific chat thread) - answered here, using the same VeronzaCall/
+    // mountUI machinery admin-chat.html and the floating widget already use.
+    // Skipped if that same conversation already has its own listener open
+    // (registered in window.veronzaActiveCallConversationIds), so we never
+    // double-subscribe to the same signaling channel.
+    const handleIncomingCallRow = (row) => {
+      if (row?.type !== 'call' || !window.VeronzaCall) return;
+      const id = (row.url || '').match(/[?&]c=([^&]+)/)?.[1];
+      if (!id || window.veronzaActiveCallConversationIds?.has(id)) return;
+      if (globalCallConversationId === id) return;
+      globalCallUI?.destroy();
+      globalCall?.destroy();
+      globalCallConversationId = id;
+      globalCall = new window.VeronzaCall(client, id);
+      globalCallUI = window.VeronzaCall.mountUI(globalCall, {
+        calleeLabel: (row.body || '').replace(/ يتصل بك الآن من الشات.*$/, '') || 'الزبون',
+      });
+      const cleanup = () => {
+        globalCallConversationId = null;
+      };
+      globalCall.onCallEnded = cleanup;
+      const origDestroy = globalCallUI.destroy.bind(globalCallUI);
+      globalCallUI.destroy = () => {
+        cleanup();
+        origDestroy();
+      };
+    };
     client
       .channel('veronza-notifications')
       .on(
@@ -213,6 +244,7 @@
         },
         (payload) => {
           load();
+          handleIncomingCallRow(payload.new);
           try {
             new Audio(
               'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABAAZGF0YQAAAAA=',
