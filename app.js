@@ -220,12 +220,7 @@ function esc(v) {
   );
 }
 function productVisual(p) {
-  // The two-photo "bag + shoe" collage only makes sense for an actual Set
-  // bundle - every product type now supports a second photo (e.g. a back
-  // angle), which isn't a bag/shoe pairing and shouldn't be shown as one.
-  return p.type === 'set' && p.extraImg
-    ? `<div class="set-visual"><img src="${esc(p.img)}" alt="${esc(p.name)} — الشنطة" loading="lazy"><img src="${esc(p.extraImg)}" alt="${esc(p.name)} — الحذاء" loading="lazy"></div>`
-    : `<img src="${esc(p.img)}" alt="${esc(p.name)}" loading="lazy">`;
+  return `<img src="${esc(p.img)}" alt="${esc(p.name)}" loading="lazy">`;
 }
 function isSizeRequired(p) {
   return p?.type === 'shoes' || p?.type === 'set';
