@@ -262,12 +262,31 @@ function openModal(p) {
   }
   $('#modal').classList.remove('hidden');
   syncBodyScrollLock();
+  // A swipe-back/native back gesture is browser history navigation, not a
+  // page-local action - without a history entry of our own for the modal,
+  // it skips straight past it to whatever admin page was open before this
+  // one (e.g. Orders), instead of just closing the modal in place.
+  if (!modalHistoryPushed) {
+    modalHistoryPushed = true;
+    history.pushState({ productModal: true }, '', location.href);
+  }
 }
 
-function closeModal() {
+let modalHistoryPushed = false;
+function closeModal(fromPopstate = false) {
   $('#modal').classList.add('hidden');
   syncBodyScrollLock();
+  if (modalHistoryPushed) {
+    modalHistoryPushed = false;
+    // Only consume the history entry ourselves when *we* triggered the
+    // close (X/cancel/save) - if a back gesture got us here, the browser
+    // already popped it, and going back again would leave this page too.
+    if (!fromPopstate) history.back();
+  }
 }
+window.addEventListener('popstate', () => {
+  if (!$('#modal').classList.contains('hidden')) closeModal(true);
+});
 
 function csv(v) {
   return String(v || '')
