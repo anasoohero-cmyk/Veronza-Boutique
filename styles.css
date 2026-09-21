@@ -16,6 +16,7 @@ html {
   overscroll-behavior: contain;
   overflow-x: hidden;
   max-width: 100%;
+  touch-action: pan-y;
 }
 body {
   margin: 0;
@@ -26,6 +27,7 @@ body {
   overscroll-behavior: contain;
   overflow-x: hidden;
   max-width: 100%;
+  touch-action: pan-y;
 }
 a {
   text-decoration: none;
@@ -990,6 +992,7 @@ a,
   .tabs {
     justify-content: flex-start;
     overflow-x: auto;
+    touch-action: pan-x;
     gap: 25px;
     white-space: nowrap;
     scrollbar-width: none;
