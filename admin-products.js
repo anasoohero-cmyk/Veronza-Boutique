@@ -137,7 +137,12 @@ async function load() {
   }
   products = Array.isArray(data) ? data : [];
   render();
+  renderModelCodeOptions();
   restoreAfterUpdate();
+}
+function renderModelCodeOptions() {
+  const codes = [...new Set(products.map((p) => p.model_code).filter(Boolean))].sort();
+  $('#modelCodeList').innerHTML = codes.map((c) => `<option value="${esc(c)}">`).join('');
 }
 let restoredAfterUpdate = false;
 function restoreAfterUpdate() {
@@ -537,6 +542,13 @@ async function save(e) {
     }
   }
 
+  const modelCode = $('#modelCode').value.trim().toUpperCase();
+  if (!/^V[0-9]{2,}$/.test(modelCode)) {
+    $('#formError').textContent = 'كود الموديل مطلوب، بصيغة V01 وهكذا.';
+    return;
+  }
+  $('#modelCode').value = modelCode;
+
   if (!id) {
     const { data, error } = await sb.rpc('next_product_code');
     if (error) {
@@ -575,7 +587,7 @@ async function save(e) {
     price,
     discount_price: discountPrice,
     type,
-    model_code: $('#modelCode').value.trim() || null,
+    model_code: modelCode,
     img: $('#img').value.trim(),
     extra_img:
       $('#extraImgs')
@@ -686,6 +698,14 @@ $('#copySiteLinkBtn').onclick = async () => {
 $('#addBtn').onclick = () => openModal();
 $('#cancelBtn').onclick = closeModal;
 $('#closeModal').onclick = closeModal;
+$('#genModelCode').onclick = async () => {
+  const { data, error } = await sb.rpc('next_model_code');
+  if (error) {
+    toast('تعذر توليد كود الموديل: ' + error.message);
+    return;
+  }
+  $('#modelCode').value = data;
+};
 $('#search').addEventListener('input', render);
 $('#migrateImagesBtn')?.addEventListener('click', migrateOldImages);
 
