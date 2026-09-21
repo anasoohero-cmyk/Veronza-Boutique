@@ -197,6 +197,7 @@ function resetForm() {
   $('#quantity').value = '0';
   $('#modelCode').value = '';
   $('#bagSetLinks').value = '';
+  $('#shoeSetLinks').value = '';
   $('#type').value = Object.keys(typeNames).find(canEditType) || 'shoes';
   $('#extraImgs').value = '';
   $('#isActive').value = 'true';
@@ -210,6 +211,16 @@ function resetForm() {
 
 function toggleBagLinksField() {
   $('#bagLinksLabel').hidden = $('#type').value !== 'bags';
+  $('#shoeLinksLabel').hidden = $('#type').value !== 'shoes';
+}
+
+async function loadShoeSetLinks(shoeId) {
+  const { data, error } = await sb
+    .from('shoe_set_links')
+    .select('set_model_code')
+    .eq('shoe_product_id', shoeId);
+  if (error) return;
+  $('#shoeSetLinks').value = (data || []).map((r) => r.set_model_code).join(', ');
 }
 
 async function loadBagSetLinks(bagId) {
@@ -239,8 +250,10 @@ function openModal(p) {
     $('#type').value = p.type || 'shoes';
     $('#modelCode').value = p.model_code || '';
     $('#bagSetLinks').value = '';
+    $('#shoeSetLinks').value = '';
     toggleBagLinksField();
     if (p.type === 'bags') loadBagSetLinks(p.id);
+    if (p.type === 'shoes') loadShoeSetLinks(p.id);
     $('#img').value = p.img || '';
     $('#extraImgs').value = p.extra_img || '';
     currentImages = [p.img, ...String(p.extra_img || '').split(/\n+/)]
@@ -680,6 +693,8 @@ async function save(e) {
     else result = await sb.from('products').insert(payload).select().single();
     if (result.error) throw result.error;
     if (payload.type === 'bags') await syncBagSetLinks(result.data.id);
+    if (payload.type === 'shoes')
+      await syncShoeSetLinks(result.data.id, result.data.quantity, result.data.size_quantities);
     closeModal();
     toast(id ? 'تم تعديل المنتج' : 'تمت إضافة المنتج');
     await load();
@@ -713,6 +728,44 @@ async function syncBagSetLinks(bagId) {
   if (toInsert.length) {
     const { error } = await sb.from('bag_set_links').insert(toInsert);
     if (error) throw new Error('تعذر حفظ روابط الموديلات الإضافية: ' + error.message);
+  }
+}
+
+async function syncShoeSetLinks(shoeId, quantity, sizeQuantities) {
+  const codes = [
+    ...new Set(
+      $('#shoeSetLinks')
+        .value.split(',')
+        .map((s) => s.trim().toUpperCase())
+        .filter(Boolean),
+    ),
+  ];
+  const { data: existing } = await sb
+    .from('shoe_set_links')
+    .select('id,set_model_code')
+    .eq('shoe_product_id', shoeId);
+  const toDelete = (existing || []).filter((r) => !codes.includes(r.set_model_code)).map((r) => r.id);
+  const existingCodes = new Set((existing || []).map((r) => r.set_model_code));
+  const toInsert = codes
+    .filter((c) => !existingCodes.has(c))
+    .map((c) => ({ shoe_product_id: shoeId, set_model_code: c }));
+  if (toDelete.length) {
+    const { error } = await sb.from('shoe_set_links').delete().in('id', toDelete);
+    if (error) throw new Error('تعذر تحديث روابط السيتات الإضافية: ' + error.message);
+  }
+  if (toInsert.length) {
+    const { error } = await sb.from('shoe_set_links').insert(toInsert);
+    if (error) throw new Error('تعذر حفظ روابط السيتات الإضافية: ' + error.message);
+    // Re-save the shoe's own (unchanged) stock so the sync trigger notices
+    // the newly-linked set(s) and brings them into line. This goes through
+    // the shoe's own row, never the set's directly - only a Set's own
+    // update can trigger the bag-decrement side effect; a shoe update never
+    // does, so this can't be misread as a sale.
+    const { error: touchError } = await sb
+      .from('products')
+      .update({ quantity, size_quantities: sizeQuantities })
+      .eq('id', shoeId);
+    if (touchError) throw new Error('تعذر مزامنة السيتات المرتبطة: ' + touchError.message);
   }
 }
 
