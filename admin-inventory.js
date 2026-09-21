@@ -108,10 +108,24 @@ function productStatus(p) {
 }
 const STATUS_LABEL = { ok: 'متوفر', low: 'منخفض', out: 'نفذ' };
 
+// A shoe and a set under the same model_code share one physical stock (the
+// sync trigger keeps their quantity/size_quantities identical) - counting
+// both toward the totals below would double the real stock. Bags (and any
+// product with no model_code) always count on their own.
+function stockUnits() {
+  const seenModels = new Set();
+  return products.filter((p) => {
+    if ((p.type !== 'shoes' && p.type !== 'set') || !p.model_code) return true;
+    if (seenModels.has(p.model_code)) return false;
+    seenModels.add(p.model_code);
+    return true;
+  });
+}
+
 async function load() {
   const { data, error } = await sb
     .from('products')
-    .select('id,code,name,type,img,quantity,sizes,size_quantities,is_active')
+    .select('id,code,name,type,model_code,img,quantity,sizes,size_quantities,is_active')
     .order('quantity', { ascending: true });
   if (error) {
     toast('تعذر تحميل بيانات المخزون: ' + error.message);
@@ -124,9 +138,10 @@ async function load() {
 }
 
 function renderStats() {
-  const totalStock = products.reduce((s, p) => s + Number(p.quantity || 0), 0);
-  const outCount = products.filter((p) => productStatus(p) === 'out').length;
-  const lowCount = products.filter((p) => productStatus(p) === 'low').length;
+  const units = stockUnits();
+  const totalStock = units.reduce((s, p) => s + Number(p.quantity || 0), 0);
+  const outCount = units.filter((p) => productStatus(p) === 'out').length;
+  const lowCount = units.filter((p) => productStatus(p) === 'low').length;
   $('#inventoryStats').innerHTML = `
     <button class="stat" type="button" data-stat="all"><b>${totalStock}</b><span>إجمالي المخزون (قطعة)</span></button>
     <button class="stat" type="button" data-stat="all"><b>${products.length}</b><span>عدد المنتجات</span></button>
