@@ -495,6 +495,33 @@ function renderSizeQuantities(existing = {}) {
   });
 }
 
+// While the admin is still filling the form (before save), pull sizes from
+// an existing shoe/set sibling under the same model - the DB trigger only
+// mirrors stock after the row is actually inserted, which is too late to
+// save the admin from re-typing sizes that already exist on the sibling.
+function findModelSizeSibling(modelCode) {
+  const currentId = $('#productId').value;
+  return products.find(
+    (p) =>
+      p.model_code === modelCode &&
+      (p.type === 'shoes' || p.type === 'set') &&
+      String(p.id) !== String(currentId) &&
+      Object.keys(p.size_quantities || {}).length > 0,
+  );
+}
+function applyModelSizesIfAvailable() {
+  if ($('#productId').value) return; // only auto-fill for a brand-new product
+  const type = $('#type').value;
+  if (type !== 'shoes' && type !== 'set') return;
+  const modelCode = $('#modelCode').value.trim().toUpperCase();
+  if (!modelCode) return;
+  const sibling = findModelSizeSibling(modelCode);
+  if (!sibling) return;
+  renderSizeOptions(sibling.sizes || [], sibling.size_quantities || {});
+  syncSelectedSizes();
+  syncTotalQuantity();
+}
+
 function syncTotalQuantity() {
   const inputs = [...document.querySelectorAll('.size-quantity')];
   if (!inputs.length) return;
@@ -706,12 +733,15 @@ $('#genModelCode').onclick = async () => {
   }
   $('#modelCode').value = data;
 };
+$('#modelCode').addEventListener('input', applyModelSizesIfAvailable);
+$('#modelCode').addEventListener('change', applyModelSizesIfAvailable);
 $('#search').addEventListener('input', render);
 $('#migrateImagesBtn')?.addEventListener('click', migrateOldImages);
 
 $('#type').addEventListener('change', () => {
   updateSizesRequired();
   renderSizeQuantities();
+  applyModelSizesIfAvailable();
 });
 $('#sizes').addEventListener('input', () => {
   syncSelectedSizes();
