@@ -13,7 +13,7 @@
 }
 html {
   scroll-behavior: smooth;
-  overscroll-behavior-y: contain;
+  overscroll-behavior: contain;
   overflow-x: hidden;
   max-width: 100%;
 }
@@ -23,7 +23,7 @@ body {
   background: #fff;
   font-family: Cairo, Arial, sans-serif;
   line-height: 1.55;
-  overscroll-behavior-y: contain;
+  overscroll-behavior: contain;
   overflow-x: hidden;
   max-width: 100%;
 }
