@@ -125,7 +125,7 @@ async function load() {
   const { data, error } = await sb
     .from('products')
     .select(
-      'id,code,name,description,price,discount_price,type,img,extra_img,rating,reviews,colors,sizes,size_quantities,is_active,quantity,created_at,updated_at',
+      'id,code,name,description,price,discount_price,type,model_code,img,extra_img,rating,reviews,colors,sizes,size_quantities,is_active,quantity,created_at,updated_at',
     )
     .order('id', { ascending: false });
   if (error) {
@@ -190,6 +190,7 @@ function resetForm() {
   $('#code').readOnly = true;
   $('#code').required = false;
   $('#quantity').value = '0';
+  $('#modelCode').value = '';
   $('#type').value = Object.keys(typeNames).find(canEditType) || 'shoes';
   $('#extraImgs').value = '';
   $('#isActive').value = 'true';
@@ -216,6 +217,7 @@ function openModal(p) {
     $('#price').value = p.price || '';
     $('#discountPrice').value = p.discount_price != null ? p.discount_price : '';
     $('#type').value = p.type || 'shoes';
+    $('#modelCode').value = p.model_code || '';
     $('#img').value = p.img || '';
     $('#extraImgs').value = p.extra_img || '';
     currentImages = [p.img, ...String(p.extra_img || '').split(/\n+/)]
@@ -573,6 +575,7 @@ async function save(e) {
     price,
     discount_price: discountPrice,
     type,
+    model_code: $('#modelCode').value.trim() || null,
     img: $('#img').value.trim(),
     extra_img:
       $('#extraImgs')
