@@ -196,6 +196,7 @@ function resetForm() {
   $('#code').required = false;
   $('#quantity').value = '0';
   $('#modelCode').value = '';
+  $('#bagSetLinks').value = '';
   $('#type').value = Object.keys(typeNames).find(canEditType) || 'shoes';
   $('#extraImgs').value = '';
   $('#isActive').value = 'true';
@@ -204,6 +205,20 @@ function resetForm() {
   currentImages = [];
   renderPreview();
   toggleDiscountField();
+  toggleBagLinksField();
+}
+
+function toggleBagLinksField() {
+  $('#bagLinksLabel').hidden = $('#type').value !== 'bags';
+}
+
+async function loadBagSetLinks(bagId) {
+  const { data, error } = await sb
+    .from('bag_set_links')
+    .select('set_model_code')
+    .eq('bag_product_id', bagId);
+  if (error) return;
+  $('#bagSetLinks').value = (data || []).map((r) => r.set_model_code).join(', ');
 }
 
 function openModal(p) {
@@ -223,6 +238,9 @@ function openModal(p) {
     $('#discountPrice').value = p.discount_price != null ? p.discount_price : '';
     $('#type').value = p.type || 'shoes';
     $('#modelCode').value = p.model_code || '';
+    $('#bagSetLinks').value = '';
+    toggleBagLinksField();
+    if (p.type === 'bags') loadBagSetLinks(p.id);
     $('#img').value = p.img || '';
     $('#extraImgs').value = p.extra_img || '';
     currentImages = [p.img, ...String(p.extra_img || '').split(/\n+/)]
@@ -642,12 +660,35 @@ async function save(e) {
     if (id) result = await sb.from('products').update(payload).eq('id', id).select().single();
     else result = await sb.from('products').insert(payload).select().single();
     if (result.error) throw result.error;
+    if (payload.type === 'bags') await syncBagSetLinks(result.data.id);
     closeModal();
     toast(id ? 'تم تعديل المنتج' : 'تمت إضافة المنتج');
     await load();
   } catch (error) {
     $('#formError').textContent = error.message || 'تعذر حفظ المنتج';
   }
+}
+
+async function syncBagSetLinks(bagId) {
+  const codes = [
+    ...new Set(
+      $('#bagSetLinks')
+        .value.split(',')
+        .map((s) => s.trim().toUpperCase())
+        .filter(Boolean),
+    ),
+  ];
+  const { data: existing } = await sb
+    .from('bag_set_links')
+    .select('id,set_model_code')
+    .eq('bag_product_id', bagId);
+  const toDelete = (existing || []).filter((r) => !codes.includes(r.set_model_code)).map((r) => r.id);
+  const existingCodes = new Set((existing || []).map((r) => r.set_model_code));
+  const toInsert = codes
+    .filter((c) => !existingCodes.has(c))
+    .map((c) => ({ bag_product_id: bagId, set_model_code: c }));
+  if (toDelete.length) await sb.from('bag_set_links').delete().in('id', toDelete);
+  if (toInsert.length) await sb.from('bag_set_links').insert(toInsert);
 }
 
 async function remove(id) {
@@ -742,6 +783,7 @@ $('#type').addEventListener('change', () => {
   updateSizesRequired();
   renderSizeQuantities();
   applyModelSizesIfAvailable();
+  toggleBagLinksField();
 });
 $('#sizes').addEventListener('input', () => {
   syncSelectedSizes();
