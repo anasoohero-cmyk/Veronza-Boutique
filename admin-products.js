@@ -125,7 +125,7 @@ async function load() {
   const { data, error } = await sb
     .from('products')
     .select(
-      'id,code,name,description,price,discount_price,type,model_code,img,extra_img,rating,reviews,colors,sizes,size_quantities,is_active,quantity,created_at,updated_at',
+      'id,code,name,description,price,discount_price,type,model_code,img,extra_img,rating,reviews,colors,sizes,size_quantities,is_active,quantity,created_at,updated_at,linked_bag_id',
     )
     .order('id', { ascending: false });
   if (error) {
@@ -196,7 +196,7 @@ function resetForm() {
   $('#code').required = false;
   $('#quantity').value = '0';
   $('#modelCode').value = '';
-  $('#bagSetLinks').value = '';
+  $('#linkedBagCode').value = '';
   $('#shoeSetLinks').value = '';
   $('#type').value = Object.keys(typeNames).find(canEditType) || 'shoes';
   $('#extraImgs').value = '';
@@ -206,11 +206,11 @@ function resetForm() {
   currentImages = [];
   renderPreview();
   toggleDiscountField();
-  toggleBagLinksField();
+  toggleLinkFields();
 }
 
-function toggleBagLinksField() {
-  $('#bagLinksLabel').hidden = $('#type').value !== 'bags';
+function toggleLinkFields() {
+  $('#linkedBagLabel').hidden = $('#type').value !== 'set';
   $('#shoeLinksLabel').hidden = $('#type').value !== 'shoes';
 }
 
@@ -221,15 +221,6 @@ async function loadShoeSetLinks(shoeId) {
     .eq('shoe_product_id', shoeId);
   if (error) return;
   $('#shoeSetLinks').value = (data || []).map((r) => r.set_model_code).join(', ');
-}
-
-async function loadBagSetLinks(bagId) {
-  const { data, error } = await sb
-    .from('bag_set_links')
-    .select('set_model_code')
-    .eq('bag_product_id', bagId);
-  if (error) return;
-  $('#bagSetLinks').value = (data || []).map((r) => r.set_model_code).join(', ');
 }
 
 function openModal(p) {
@@ -249,10 +240,10 @@ function openModal(p) {
     $('#discountPrice').value = p.discount_price != null ? p.discount_price : '';
     $('#type').value = p.type || 'shoes';
     $('#modelCode').value = p.model_code || '';
-    $('#bagSetLinks').value = '';
+    const linkedBag = p.linked_bag_id ? products.find((pr) => String(pr.id) === String(p.linked_bag_id)) : null;
+    $('#linkedBagCode').value = linkedBag ? linkedBag.code : '';
     $('#shoeSetLinks').value = '';
-    toggleBagLinksField();
-    if (p.type === 'bags') loadBagSetLinks(p.id);
+    toggleLinkFields();
     if (p.type === 'shoes') loadShoeSetLinks(p.id);
     $('#img').value = p.img || '';
     $('#extraImgs').value = p.extra_img || '';
@@ -657,6 +648,19 @@ async function save(e) {
 
   const sizeQuantities = isSized ? getSizeQuantities() : {};
 
+  let linkedBagId = null;
+  if (type === 'set') {
+    const linkedBagCode = $('#linkedBagCode').value.trim();
+    if (linkedBagCode) {
+      const bag = products.find((p) => p.type === 'bags' && String(p.code) === linkedBagCode);
+      if (!bag) {
+        $('#formError').textContent = 'كود الشنطة المرتبطة غير موجود.';
+        return;
+      }
+      linkedBagId = bag.id;
+    }
+  }
+
   const payload = {
     name: $('#name').value.trim(),
     description: $('#description').value.trim() || null,
@@ -665,6 +669,7 @@ async function save(e) {
     discount_price: discountPrice,
     type,
     model_code: modelCode,
+    linked_bag_id: type === 'set' ? linkedBagId : null,
     img: $('#img').value.trim(),
     extra_img:
       $('#extraImgs')
@@ -692,7 +697,6 @@ async function save(e) {
     if (id) result = await sb.from('products').update(payload).eq('id', id).select().single();
     else result = await sb.from('products').insert(payload).select().single();
     if (result.error) throw result.error;
-    if (payload.type === 'bags') await syncBagSetLinks(result.data.id);
     if (payload.type === 'shoes')
       await syncShoeSetLinks(result.data.id, result.data.quantity, result.data.size_quantities);
     closeModal();
@@ -700,34 +704,6 @@ async function save(e) {
     await load();
   } catch (error) {
     $('#formError').textContent = error.message || 'تعذر حفظ المنتج';
-  }
-}
-
-async function syncBagSetLinks(bagId) {
-  const codes = [
-    ...new Set(
-      $('#bagSetLinks')
-        .value.split(',')
-        .map((s) => s.trim().toUpperCase())
-        .filter(Boolean),
-    ),
-  ];
-  const { data: existing } = await sb
-    .from('bag_set_links')
-    .select('id,set_model_code')
-    .eq('bag_product_id', bagId);
-  const toDelete = (existing || []).filter((r) => !codes.includes(r.set_model_code)).map((r) => r.id);
-  const existingCodes = new Set((existing || []).map((r) => r.set_model_code));
-  const toInsert = codes
-    .filter((c) => !existingCodes.has(c))
-    .map((c) => ({ bag_product_id: bagId, set_model_code: c }));
-  if (toDelete.length) {
-    const { error } = await sb.from('bag_set_links').delete().in('id', toDelete);
-    if (error) throw new Error('تعذر تحديث روابط الموديلات الإضافية: ' + error.message);
-  }
-  if (toInsert.length) {
-    const { error } = await sb.from('bag_set_links').insert(toInsert);
-    if (error) throw new Error('تعذر حفظ روابط الموديلات الإضافية: ' + error.message);
   }
 }
 
@@ -861,7 +837,7 @@ $('#type').addEventListener('change', () => {
   updateSizesRequired();
   renderSizeQuantities();
   applyModelSizesIfAvailable();
-  toggleBagLinksField();
+  toggleLinkFields();
 });
 $('#sizes').addEventListener('input', () => {
   syncSelectedSizes();
