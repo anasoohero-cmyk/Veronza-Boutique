@@ -72,8 +72,9 @@
           if(!moved&&Math.abs(dx)<10&&Math.abs(dy)<10)return;
           if(!moved&&Math.abs(dy)>=Math.abs(dx)){dragging=false;return}
           moved=true;
+          if(e.cancelable)e.preventDefault();
           if(dx>0)setOffset(dx);
-        },{passive:true});
+        },{passive:false});
         section.addEventListener('touchend',e=>{
           if(!dragging)return;dragging=false;
           section.style.transition='transform .22s ease';
