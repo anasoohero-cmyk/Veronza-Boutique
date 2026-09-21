@@ -182,6 +182,12 @@
         return;
       }
       if (this.state !== 'idle') {
+        // The caller re-broadcasts the same offer every few seconds until it
+        // sees an answer (in case we weren't subscribed yet). A resend of the
+        // call we already accepted isn't a second, different call — treating
+        // it as one wrongly told the caller we were busy while we were still
+        // in the middle of connecting to them.
+        if (this._pendingOfferSdp?.sdp && payload.sdp?.sdp === this._pendingOfferSdp.sdp) return;
         this._send({ type: 'busy' });
         return;
       }
