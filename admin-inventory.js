@@ -110,14 +110,42 @@ const STATUS_LABEL = { ok: 'متوفر', low: 'منخفض', out: 'نفذ' };
 
 // A shoe and a set under the same model_code share one physical stock (the
 // sync trigger keeps their quantity/size_quantities identical) - counting
-// both toward the totals below would double the real stock. Bags (and any
-// product with no model_code) always count on their own.
+// both toward the totals below would double the real stock. A shoe can also
+// be shared across several sets with their own distinct model_codes via
+// shoe_set_links, so model_code equality alone isn't enough - group codes
+// that shoe_set_links ties together (mirrors the DB's model_sync_group()).
+// Bags (and any product with no model_code) always count on their own.
+let syncGroupRoot = new Map();
+function buildSyncGroups(shoeLinkRows) {
+  const parent = new Map();
+  const find = (x) => {
+    while (parent.has(x) && parent.get(x) !== x) x = parent.get(x);
+    return x;
+  };
+  const union = (a, b) => {
+    if (!parent.has(a)) parent.set(a, a);
+    if (!parent.has(b)) parent.set(b, b);
+    const ra = find(a);
+    const rb = find(b);
+    if (ra !== rb) parent.set(ra, rb);
+  };
+  shoeLinkRows.forEach((l) => {
+    if (l.shoe_model_code && l.set_model_code) union(l.shoe_model_code, l.set_model_code);
+  });
+  const root = new Map();
+  parent.forEach((_, code) => root.set(code, find(code)));
+  return root;
+}
+function groupCode(p) {
+  return syncGroupRoot.get(p.model_code) || p.model_code;
+}
 function stockUnits() {
   const seenModels = new Set();
   return products.filter((p) => {
     if ((p.type !== 'shoes' && p.type !== 'set') || !p.model_code) return true;
-    if (seenModels.has(p.model_code)) return false;
-    seenModels.add(p.model_code);
+    const g = groupCode(p);
+    if (seenModels.has(g)) return false;
+    seenModels.add(g);
     return true;
   });
 }
@@ -132,6 +160,13 @@ async function load() {
     return;
   }
   products = (data || []).filter((p) => canViewType(p.type));
+  const { data: linkRows } = await sb.from('shoe_set_links').select('shoe_product_id, set_model_code');
+  const shoeModelById = new Map(products.map((p) => [String(p.id), p.model_code]));
+  const shoeLinkRows = (linkRows || []).map((l) => ({
+    set_model_code: l.set_model_code,
+    shoe_model_code: shoeModelById.get(String(l.shoe_product_id)),
+  }));
+  syncGroupRoot = buildSyncGroups(shoeLinkRows);
   render();
   $('#inventoryLastUpdated').textContent =
     'آخر تحديث ' + new Date().toLocaleTimeString('ar-LY', { hour: '2-digit', minute: '2-digit' });
