@@ -687,8 +687,14 @@ async function syncBagSetLinks(bagId) {
   const toInsert = codes
     .filter((c) => !existingCodes.has(c))
     .map((c) => ({ bag_product_id: bagId, set_model_code: c }));
-  if (toDelete.length) await sb.from('bag_set_links').delete().in('id', toDelete);
-  if (toInsert.length) await sb.from('bag_set_links').insert(toInsert);
+  if (toDelete.length) {
+    const { error } = await sb.from('bag_set_links').delete().in('id', toDelete);
+    if (error) throw new Error('تعذر تحديث روابط الموديلات الإضافية: ' + error.message);
+  }
+  if (toInsert.length) {
+    const { error } = await sb.from('bag_set_links').insert(toInsert);
+    if (error) throw new Error('تعذر حفظ روابط الموديلات الإضافية: ' + error.message);
+  }
 }
 
 async function remove(id) {
