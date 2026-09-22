@@ -777,7 +777,7 @@ main {
 }
 .toast {
   position: fixed;
-  bottom: 18px;
+  bottom: calc(76px + env(safe-area-inset-bottom, 0px));
   left: 50%;
   transform: translateX(-50%) translateY(80px);
   background: #111;
