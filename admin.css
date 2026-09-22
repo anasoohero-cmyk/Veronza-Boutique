@@ -289,6 +289,51 @@ main {
   width: min(1240px, calc(100% - 28px));
   margin: 22px auto;
 }
+.app main {
+  padding-bottom: 90px;
+}
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 40;
+  display: flex;
+  background: #fff;
+  border-top: 1px solid #e8e2d8;
+  padding: 8px max(10px, calc((100% - 1240px) / 2)) calc(8px + env(safe-area-inset-bottom));
+  box-shadow: 0 -6px 20px rgba(17, 17, 17, 0.06);
+}
+.bottom-nav-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  text-decoration: none;
+  color: #8a8a8a;
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 4px 0 2px;
+}
+.bottom-nav-icon {
+  width: 44px;
+  height: 30px;
+  border-radius: 14px;
+  display: grid;
+  place-items: center;
+  transition: 0.15s;
+}
+.bottom-nav-item svg {
+  width: 21px;
+  height: 21px;
+}
+.bottom-nav-item.active {
+  color: #9c7328;
+}
+.bottom-nav-item.active .bottom-nav-icon {
+  background: linear-gradient(135deg, #f6ecd9, #ecd9ae);
+}
 .orders-toolbar {
   margin-bottom: 16px;
 }
