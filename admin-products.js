@@ -208,11 +208,21 @@ function waitAndRestoreChatWidget(tries = 20) {
   else if (tries > 0) setTimeout(() => waitAndRestoreChatWidget(tries - 1), 200);
 }
 
+let activeTypeFilter = 'all';
+function setTypeFilter(type) {
+  activeTypeFilter = type;
+  $('#typeFilters')
+    ?.querySelectorAll('button')
+    .forEach((b) => b.classList.toggle('active', b.dataset.typeFilter === type));
+  render();
+}
+
 function render() {
   const q = $('#search').value.trim().toLowerCase();
   const list = products.filter(
     (p) =>
       canViewType(p.type) &&
+      (activeTypeFilter === 'all' || p.type === activeTypeFilter) &&
       (!q || String(p.name).toLowerCase().includes(q) || String(p.code).toLowerCase().includes(q)),
   );
   const box = $('#products');
@@ -885,6 +895,9 @@ $('#genModelCode').onclick = async () => {
 $('#modelCode').addEventListener('input', applyModelSizesIfAvailable);
 $('#modelCode').addEventListener('change', applyModelSizesIfAvailable);
 $('#search').addEventListener('input', render);
+$('#typeFilters')
+  ?.querySelectorAll('button')
+  .forEach((b) => b.addEventListener('click', () => setTypeFilter(b.dataset.typeFilter)));
 $('#migrateImagesBtn')?.addEventListener('click', migrateOldImages);
 
 $('#type').addEventListener('change', () => {
