@@ -1,4 +1,13 @@
-const CACHE = 'veronza-v99';
+const CACHE = 'veronza-v100';
+// Product photos live on Supabase Storage, a different origin than the
+// site itself - the app-shell cache below only ever handles same-origin
+// requests, so every visit re-downloaded every product image from
+// scratch regardless of how many times it had already been seen. Each
+// uploaded file gets a unique, unchanging filename, so once fetched it's
+// safe to keep indefinitely in its own cache that survives app deploys
+// (only CACHE above gets wiped on each release).
+const IMAGE_CACHE = 'veronza-images-v1';
+const IMAGE_HOST = 'kahbxvbirsjmednkybse.supabase.co';
 const CORE_ASSETS = [
   '/',
   '/index.html',
@@ -50,7 +59,9 @@ self.addEventListener('activate', (e) => {
   e.waitUntil(
     caches
       .keys()
-      .then((keys) => Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k))))
+      .then((keys) =>
+        Promise.all(keys.filter((k) => k !== CACHE && k !== IMAGE_CACHE).map((k) => caches.delete(k))),
+      )
       .then(() => self.clients.claim()),
   );
 });
@@ -60,6 +71,21 @@ self.addEventListener('message', (e) => {
 self.addEventListener('fetch', (e) => {
   if (e.request.method !== 'GET') return;
   const url = new URL(e.request.url);
+  if (url.hostname === IMAGE_HOST && url.pathname.startsWith('/storage/v1/object/public/')) {
+    e.respondWith(
+      caches.open(IMAGE_CACHE).then((cache) =>
+        cache.match(e.request).then(
+          (cached) =>
+            cached ||
+            fetch(e.request).then((response) => {
+              if (response && response.ok) cache.put(e.request, response.clone());
+              return response;
+            }),
+        ),
+      ),
+    );
+    return;
+  }
   if (url.origin !== self.location.origin) return;
   if (url.pathname.startsWith('/api/')) return;
   const isAppShell = e.request.mode === 'navigate' || CORE_ASSETS.includes(url.pathname);
