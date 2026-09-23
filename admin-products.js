@@ -125,7 +125,7 @@ async function load() {
   const { data, error } = await sb
     .from('products')
     .select(
-      'id,code,name,description,price,discount_price,type,model_code,img,extra_img,rating,reviews,colors,sizes,size_quantities,is_active,quantity,created_at,updated_at,linked_bag_id',
+      'id,code,name,description,price,discount_price,type,model_code,img,extra_img,rating,reviews,colors,sizes,size_quantities,is_active,quantity,created_at,updated_at',
     )
     .order('id', { ascending: false });
   if (error) {
@@ -196,7 +196,6 @@ function resetForm() {
   $('#code').required = false;
   $('#quantity').value = '0';
   $('#modelCode').value = '';
-  $('#linkedBagCode').value = '';
   $('#shoeSetLinks').value = '';
   $('#type').value = Object.keys(typeNames).find(canEditType) || 'shoes';
   $('#extraImgs').value = '';
@@ -210,7 +209,6 @@ function resetForm() {
 }
 
 function toggleLinkFields() {
-  $('#linkedBagLabel').hidden = $('#type').value !== 'set';
   $('#shoeLinksLabel').hidden = $('#type').value !== 'shoes';
 }
 
@@ -240,8 +238,6 @@ function openModal(p) {
     $('#discountPrice').value = p.discount_price != null ? p.discount_price : '';
     $('#type').value = p.type || 'shoes';
     $('#modelCode').value = p.model_code || '';
-    const linkedBag = p.linked_bag_id ? products.find((pr) => String(pr.id) === String(p.linked_bag_id)) : null;
-    $('#linkedBagCode').value = linkedBag ? linkedBag.code : '';
     $('#shoeSetLinks').value = '';
     toggleLinkFields();
     if (p.type === 'shoes') loadShoeSetLinks(p.id);
@@ -648,19 +644,6 @@ async function save(e) {
 
   const sizeQuantities = isSized ? getSizeQuantities() : {};
 
-  let linkedBagId = null;
-  if (type === 'set') {
-    const linkedBagCode = $('#linkedBagCode').value.trim();
-    if (linkedBagCode) {
-      const bag = products.find((p) => p.type === 'bags' && String(p.code) === linkedBagCode);
-      if (!bag) {
-        $('#formError').textContent = 'كود الشنطة المرتبطة غير موجود.';
-        return;
-      }
-      linkedBagId = bag.id;
-    }
-  }
-
   const payload = {
     name: $('#name').value.trim(),
     description: $('#description').value.trim() || null,
@@ -669,7 +652,6 @@ async function save(e) {
     discount_price: discountPrice,
     type,
     model_code: modelCode,
-    linked_bag_id: type === 'set' ? linkedBagId : null,
     img: $('#img').value.trim(),
     extra_img:
       $('#extraImgs')
