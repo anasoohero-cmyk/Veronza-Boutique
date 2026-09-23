@@ -214,7 +214,8 @@ function renderList() {
             .map((s) => `<span class="size-chip ${sizeStatus(sq[s])}">${esc(s)} · ${Number(sq[s] || 0)}</span>`)
             .join('')}</div>`
         : '';
-      return `<div class="inv-row"><img class="thumb" src="${esc(p.img)}" alt=""><div class="inv-main"><h3>${esc(p.name)}</h3><div class="meta">الكود: ${esc(p.code)} · النوع: ${typeNames[p.type] || esc(p.type)}${p.is_active ? '' : ' · غير مفعّل'}</div>${sizesHtml}</div><div class="inv-total"><b>${Number(p.quantity || 0)}</b><span>قطعة</span></div><span class="badge ${status}">${STATUS_LABEL[status]}</span></div>`;
+      const modelHtml = p.model_code ? ` · الموديل: ${esc(p.model_code)}` : '';
+      return `<div class="inv-row"><img class="thumb" src="${esc(p.img)}" alt=""><div class="inv-main"><h3>${esc(p.name)}</h3><div class="meta">الكود: ${esc(p.code)}${modelHtml} · النوع: ${typeNames[p.type] || esc(p.type)}${p.is_active ? '' : ' · غير مفعّل'}</div>${sizesHtml}</div><div class="inv-total"><b>${Number(p.quantity || 0)}</b><span>قطعة</span></div><span class="badge ${status}">${STATUS_LABEL[status]}</span></div>`;
     })
     .join('');
 }
