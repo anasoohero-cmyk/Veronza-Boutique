@@ -116,6 +116,7 @@ const STATUS_LABEL = { ok: 'متوفر', low: 'منخفض', out: 'نفذ' };
 // that shoe_set_links ties together (mirrors the DB's model_sync_group()).
 // Bags (and any product with no model_code) always count on their own.
 let syncGroupRoot = new Map();
+let syncGroupMembers = new Map();
 function buildSyncGroups(shoeLinkRows) {
   const parent = new Map();
   const find = (x) => {
@@ -138,6 +139,15 @@ function buildSyncGroups(shoeLinkRows) {
 }
 function groupCode(p) {
   return syncGroupRoot.get(p.model_code) || p.model_code;
+}
+// Model codes tied together via shoe_set_links (e.g. one shoe shared by
+// sets V17/V18/V19) - shown so a linked product's card doesn't just list
+// its own model code while hiding the other models it actually shares
+// stock with.
+function linkedModelCodes(p) {
+  if (!p.model_code || !syncGroupRoot.has(p.model_code)) return [];
+  const members = syncGroupMembers.get(groupCode(p)) || new Set();
+  return [...members].filter((c) => c !== p.model_code).sort();
 }
 function stockUnits() {
   const seenModels = new Set();
@@ -167,6 +177,11 @@ async function load() {
     shoe_model_code: shoeModelById.get(String(l.shoe_product_id)),
   }));
   syncGroupRoot = buildSyncGroups(shoeLinkRows);
+  syncGroupMembers = new Map();
+  syncGroupRoot.forEach((root, code) => {
+    if (!syncGroupMembers.has(root)) syncGroupMembers.set(root, new Set());
+    syncGroupMembers.get(root).add(code);
+  });
   render();
   $('#inventoryLastUpdated').textContent =
     'آخر تحديث ' + new Date().toLocaleTimeString('ar-LY', { hour: '2-digit', minute: '2-digit' });
@@ -214,7 +229,11 @@ function renderList() {
             .map((s) => `<span class="size-chip ${sizeStatus(sq[s])}">${esc(s)} · ${Number(sq[s] || 0)}</span>`)
             .join('')}</div>`
         : '';
-      return `<div class="inv-row"><img class="thumb" src="${esc(p.img)}" alt=""><div class="inv-main"><h3>${esc(p.name)}</h3><div class="meta">الكود: ${esc(p.code)} · النوع: ${typeNames[p.type] || esc(p.type)}${p.is_active ? '' : ' · غير مفعّل'}</div>${sizesHtml}</div><div class="inv-total"><b>${Number(p.quantity || 0)}</b><span>قطعة</span></div><span class="badge ${status}">${STATUS_LABEL[status]}</span></div>`;
+      const linked = linkedModelCodes(p);
+      const modelHtml = p.model_code
+        ? ` · الموديل: ${esc(p.model_code)}${linked.length ? ` (مرتبط مع ${linked.map(esc).join('، ')})` : ''}`
+        : '';
+      return `<div class="inv-row"><img class="thumb" src="${esc(p.img)}" alt=""><div class="inv-main"><h3>${esc(p.name)}</h3><div class="meta">الكود: ${esc(p.code)}${modelHtml} · النوع: ${typeNames[p.type] || esc(p.type)}${p.is_active ? '' : ' · غير مفعّل'}</div>${sizesHtml}</div><div class="inv-total"><b>${Number(p.quantity || 0)}</b><span>قطعة</span></div><span class="badge ${status}">${STATUS_LABEL[status]}</span></div>`;
     })
     .join('');
 }
