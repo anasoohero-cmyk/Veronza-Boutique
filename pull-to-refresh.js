@@ -30,6 +30,23 @@
     pulling = false,
     dragging = false,
     refreshing = false;
+  // Transforming document.body while the category page is open used to
+  // break it: #new is position:fixed there, and a `transform` on any
+  // ancestor (body included) makes fixed descendants position themselves
+  // relative to that ancestor instead of the real viewport - so mid-drag,
+  // #new could size itself against body's full (much taller) scrollable
+  // height and let whatever real page content sits further down bleed
+  // into view at the edge. Dragging #new itself instead avoids that,
+  // since a transform on an element never changes what it itself is
+  // fixed relative to - only what its own fixed/absolute descendants are.
+  let dragTarget = document.body;
+  const currentDragTarget = () => {
+    if (document.body.classList.contains('category-page-mode')) {
+      const section = document.getElementById('new');
+      if (section) return section;
+    }
+    return document.body;
+  };
 
   const bar = document.createElement('div');
   bar.setAttribute('aria-hidden', 'true');
@@ -100,9 +117,9 @@
   }
 
   const resetVisual = (duration) => {
-    document.body.style.transition = `transform ${duration}s ease`;
-    document.body.style.transform = '';
-    document.body.style.willChange = '';
+    dragTarget.style.transition = `transform ${duration}s ease`;
+    dragTarget.style.transform = '';
+    dragTarget.style.willChange = '';
     setBarState(0, false);
     bar.style.pointerEvents = 'none';
     document.querySelector('.whatsapp')?.style.setProperty('opacity', '1');
@@ -118,6 +135,7 @@
       startTime = Date.now();
       pulling = true;
       dragging = false;
+      dragTarget = currentDragTarget();
     },
     { passive: true },
   );
@@ -145,11 +163,11 @@
       if (distance < deadzone) return;
       if (!dragging) {
         dragging = true;
-        document.body.style.willChange = 'transform';
+        dragTarget.style.willChange = 'transform';
       }
       const pulled = Math.min((distance - deadzone) * 0.55, maxPull);
-      document.body.style.transition = 'none';
-      document.body.style.transform = `translateY(${pulled}px)`;
+      dragTarget.style.transition = 'none';
+      dragTarget.style.transform = `translateY(${pulled}px)`;
       bar.style.pointerEvents = 'auto';
       const wa = document.querySelector('.whatsapp');
       if (wa) wa.style.opacity = '0';
@@ -164,12 +182,12 @@
       const wasDragging = dragging;
       pulling = false;
       if (!wasDragging) return;
-      const match = /translateY\(([\d.]+)px\)/.exec(document.body.style.transform || '');
+      const match = /translateY\(([\d.]+)px\)/.exec(dragTarget.style.transform || '');
       const pulled = match ? parseFloat(match[1]) : 0;
       const heldLongEnough = Date.now() - startTime >= minHoldMs;
       if (pulled >= threshold && heldLongEnough) {
-        document.body.style.transition = 'transform .2s ease';
-        document.body.style.transform = `translateY(${maxPull}px)`;
+        dragTarget.style.transition = 'transform .2s ease';
+        dragTarget.style.transform = `translateY(${maxPull}px)`;
         doRefresh();
       } else {
         resetVisual(0.25);
