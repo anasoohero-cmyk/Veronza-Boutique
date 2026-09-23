@@ -11,7 +11,20 @@
   // particular never quite settle at an exact 0. Comparing against 0
   // exactly meant the gesture silently refused to start on real phones.
   const atTopTolerance = 4;
-  const isAtTop = () => document.scrollingElement.scrollTop <= atTopTolerance;
+  // Inside a category page (#new), that section is the actual scrolling
+  // container (position:fixed with its own overflow-y:auto) - the
+  // document's own scrollTop stays frozen at 0 the whole time, so checking
+  // it here made every pull-up-to-go-back gesture look like "already at
+  // the top" no matter how far down the category list the user had
+  // scrolled, and triggered a refresh (or the visual pull) instead of a
+  // normal scroll.
+  const isAtTop = () => {
+    if (document.body.classList.contains('category-page-mode')) {
+      const section = document.getElementById('new');
+      return !section || section.scrollTop <= atTopTolerance;
+    }
+    return document.scrollingElement.scrollTop <= atTopTolerance;
+  };
   let startTime = 0;
   let startY = 0,
     pulling = false,
