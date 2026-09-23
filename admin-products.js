@@ -294,7 +294,7 @@ window.addEventListener('popstate', () => {
 
 function csv(v) {
   return String(v || '')
-    .split(',')
+    .split(/[,،]/)
     .map((x) => x.trim())
     .filter(Boolean);
 }
@@ -711,7 +711,7 @@ async function syncShoeSetLinks(shoeId, quantity, sizeQuantities) {
   const codes = [
     ...new Set(
       $('#shoeSetLinks')
-        .value.split(',')
+        .value.split(/[,،]/)
         .map((s) => s.trim().toUpperCase())
         .filter(Boolean),
     ),
