@@ -7,12 +7,36 @@
       (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' })[c],
     );
 
-  const loadClient = () =>
-    new Promise((resolve, reject) => {
+  // This runs on every page load, before the page's own supabase-js
+  // <script> tag (further down in the body) has even started fetching -
+  // so checking only window.supabase here always missed it and injected
+  // a second copy of the same library. Reusing app.js's already-tracked
+  // loader (it also matches an in-flight <script data-supabase-js> tag,
+  // including the page's static one) means the library loads once per
+  // page, not twice.
+  const loadClient = () => {
+    if (window.loadSupabaseClient) return window.loadSupabaseClient();
+    return new Promise((resolve, reject) => {
       if (window.supabase?.createClient)
         return resolve(window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY));
+      const existing = document.querySelector('script[data-supabase-js]');
+      if (existing) {
+        existing.addEventListener(
+          'load',
+          () =>
+            window.supabase?.createClient
+              ? resolve(window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY))
+              : reject(new Error('تعذر تحميل خدمة الحساب')),
+          { once: true },
+        );
+        existing.addEventListener('error', () => reject(new Error('تعذر تحميل خدمة الحساب')), {
+          once: true,
+        });
+        return;
+      }
       const s = document.createElement('script');
       s.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
+      s.dataset.supabaseJs = 'true';
       s.onload = () =>
         window.supabase?.createClient
           ? resolve(window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY))
@@ -20,6 +44,7 @@
       s.onerror = () => reject(new Error('تعذر تحميل خدمة الحساب'));
       document.head.appendChild(s);
     });
+  };
 
   const start = async () => {
     const client = await loadClient();
