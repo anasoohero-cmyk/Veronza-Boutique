@@ -121,6 +121,39 @@ function showLogin() {
   $('#loginView').classList.remove('hidden');
 }
 
+// Model codes tied together via shoe_set_links (e.g. one shoe shared by
+// sets V17/V18/V19) - mirrors model_sync_group() in the DB, so a linked
+// product's card can show every model it actually shares stock with,
+// not just its own code.
+let syncGroupRoot = new Map();
+let syncGroupMembers = new Map();
+function buildSyncGroups(shoeLinkRows) {
+  const parent = new Map();
+  const find = (x) => {
+    while (parent.has(x) && parent.get(x) !== x) x = parent.get(x);
+    return x;
+  };
+  const union = (a, b) => {
+    if (!parent.has(a)) parent.set(a, a);
+    if (!parent.has(b)) parent.set(b, b);
+    const ra = find(a);
+    const rb = find(b);
+    if (ra !== rb) parent.set(ra, rb);
+  };
+  shoeLinkRows.forEach((l) => {
+    if (l.shoe_model_code && l.set_model_code) union(l.shoe_model_code, l.set_model_code);
+  });
+  const root = new Map();
+  parent.forEach((_, code) => root.set(code, find(code)));
+  return root;
+}
+function linkedModelCodes(p) {
+  if (!p.model_code || !syncGroupRoot.has(p.model_code)) return [];
+  const root = syncGroupRoot.get(p.model_code);
+  const members = syncGroupMembers.get(root) || new Set();
+  return [...members].filter((c) => c !== p.model_code).sort();
+}
+
 async function load() {
   const { data, error } = await sb
     .from('products')
@@ -136,6 +169,18 @@ async function load() {
     return;
   }
   products = Array.isArray(data) ? data : [];
+  const { data: linkRows } = await sb.from('shoe_set_links').select('shoe_product_id, set_model_code');
+  const shoeModelById = new Map(products.map((p) => [String(p.id), p.model_code]));
+  const shoeLinkRows = (linkRows || []).map((l) => ({
+    set_model_code: l.set_model_code,
+    shoe_model_code: shoeModelById.get(String(l.shoe_product_id)),
+  }));
+  syncGroupRoot = buildSyncGroups(shoeLinkRows);
+  syncGroupMembers = new Map();
+  syncGroupRoot.forEach((root, code) => {
+    if (!syncGroupMembers.has(root)) syncGroupMembers.set(root, new Set());
+    syncGroupMembers.get(root).add(code);
+  });
   render();
   renderModelCodeOptions();
   restoreAfterUpdate();
@@ -183,7 +228,11 @@ function render() {
       const priceHtml = hasDiscount
         ? `<div class="price"><s>${Number(p.price || 0).toLocaleString('ar-LY')} د.ل</s><br>${Number(p.discount_price).toLocaleString('ar-LY')} د.ل</div>`
         : `<div class="price">${Number(p.price || 0).toLocaleString('ar-LY')} د.ل</div>`;
-      return `<div class="product-row"><img class="thumb" src="${esc(p.img)}" alt=""><div class="product-main"><h3>${esc(p.name)}${hasDiscount ? ' <span class="badge off" style="background:#c0392b;color:#fff">خصم</span>' : ''}</h3><div class="meta">الكود: ${esc(p.code)} · النوع: ${typeNames[p.type] || esc(p.type)} · الكمية: ${Number(p.quantity || 0)}<br>الألوان: ${esc((p.colors || []).join('، ') || '—')} · المقاسات: ${esc((p.sizes || []).join('، ') || '—')}</div></div>${priceHtml}<span class="badge ${p.is_active ? 'on' : 'off'}">${p.is_active ? 'متوفر' : 'غير متوفر'}</span>${canEditType(p.type) ? `<div class="row-actions"><button data-edit="${p.id}">تعديل</button><button class="danger" data-delete="${p.id}">حذف</button></div>` : ''}</div>`;
+      const linked = linkedModelCodes(p);
+      const modelHtml = p.model_code
+        ? ` · الموديل: ${esc(p.model_code)}${linked.length ? ` (مرتبط مع ${linked.map(esc).join('، ')})` : ''}`
+        : '';
+      return `<div class="product-row"><img class="thumb" src="${esc(p.img)}" alt=""><div class="product-main"><h3>${esc(p.name)}${hasDiscount ? ' <span class="badge off" style="background:#c0392b;color:#fff">خصم</span>' : ''}</h3><div class="meta">الكود: ${esc(p.code)}${modelHtml} · النوع: ${typeNames[p.type] || esc(p.type)} · الكمية: ${Number(p.quantity || 0)}<br>الألوان: ${esc((p.colors || []).join('، ') || '—')} · المقاسات: ${esc((p.sizes || []).join('، ') || '—')}</div></div>${priceHtml}<span class="badge ${p.is_active ? 'on' : 'off'}">${p.is_active ? 'متوفر' : 'غير متوفر'}</span>${canEditType(p.type) ? `<div class="row-actions"><button data-edit="${p.id}">تعديل</button><button class="danger" data-delete="${p.id}">حذف</button></div>` : ''}</div>`;
     })
     .join('');
 }
