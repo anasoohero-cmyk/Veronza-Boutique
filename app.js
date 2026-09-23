@@ -220,7 +220,12 @@ function esc(v) {
   );
 }
 function productVisual(p) {
-  return `<img src="${esc(p.img)}" alt="${esc(p.name)}" loading="lazy">`;
+  // A failed image load (flaky connection, a blocked third-party request)
+  // otherwise leaves the browser's small broken-image glyph floating over
+  // an empty card with no visible product - hiding it falls back to the
+  // card's own neutral background instead, which reads as a plain
+  // placeholder rather than something broken.
+  return `<img src="${esc(p.img)}" alt="${esc(p.name)}" loading="lazy" onerror="this.style.display='none'">`;
 }
 function isSizeRequired(p) {
   return p?.type === 'shoes' || p?.type === 'set';
