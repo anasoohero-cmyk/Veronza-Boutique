@@ -638,102 +638,112 @@ function getSizeQuantities() {
 
 async function save(e) {
   e.preventDefault();
-  $('#formError').textContent = '';
-  const id = $('#productId').value;
-  const sizes = csv($('#sizes').value);
-  const type = $('#type').value;
-  const isSized = type === 'shoes' || type === 'set';
-
-  if (!canEditType(type)) {
-    $('#formError').textContent = 'ماعندكش صلاحية تعديل هذا القسم.';
-    return;
-  }
-
-  if (isSized && !sizes.length) {
-    $('#formError').textContent = 'المقاسات مطلوبة للحذاء والـ Set.';
-    return;
-  }
-
-  if (isSized) {
-    const missing = [...document.querySelectorAll('.size-option:checked')].some((option) => {
-      const input = option.closest('label')?.querySelector('.size-quantity');
-      return !input || input.value === '';
-    });
-    if (missing) {
-      $('#formError').textContent = 'حدد كمية لكل مقاس.';
-      return;
-    }
-  }
-
-  const modelCode = $('#modelCode').value.trim().toUpperCase();
-  if (!/^V[0-9]{2,}$/.test(modelCode)) {
-    $('#formError').textContent = 'كود الموديل مطلوب، بصيغة V01 وهكذا.';
-    return;
-  }
-  $('#modelCode').value = modelCode;
-
-  if (!id) {
-    const { data, error } = await sb.rpc('next_product_code');
-    if (error) {
-      $('#formError').textContent = 'تعذر توليد كود المنتج: ' + error.message;
-      return;
-    }
-    $('#code').value = String(data);
-    $('#code').required = true;
-  }
-
-  const price = Number($('#price').value || 0);
-  const discountPriceRaw = $('#discountPrice').value.trim();
-  const discountPrice = discountPriceRaw === '' ? null : Number(discountPriceRaw);
-  if (
-    discountPrice != null &&
-    (Number.isNaN(discountPrice) || discountPrice < 0 || discountPrice >= price)
-  ) {
-    $('#formError').textContent = 'سعر الخصم لازم يكون رقم موجب وأقل من السعر الأصلي.';
-    return;
-  }
-
-  const original = id ? products.find((p) => String(p.id) === String(id)) : null;
-  const originalDiscountPrice = original?.discount_price ?? null;
-  const discountChanged = discountPrice !== originalDiscountPrice;
-  if (discountChanged && !canEditDiscount()) {
-    $('#formError').textContent = 'ماعندكش صلاحية تعديل التخفيضات.';
-    return;
-  }
-
-  const sizeQuantities = isSized ? getSizeQuantities() : {};
-
-  const payload = {
-    name: $('#name').value.trim(),
-    description: $('#description').value.trim() || null,
-    code: $('#code').value.trim(),
-    price,
-    discount_price: discountPrice,
-    type,
-    model_code: modelCode,
-    img: $('#img').value.trim(),
-    extra_img:
-      $('#extraImgs')
-        .value.split(/\n+/)
-        .map((x) => x.trim())
-        .filter(Boolean)
-        .join('\n') || null,
-    colors: csv($('#colors').value),
-    sizes: isSized ? sizes : [],
-    size_quantities: sizeQuantities,
-    quantity: isSized
-      ? Object.values(sizeQuantities).reduce((a, b) => a + b, 0)
-      : Math.max(0, Math.floor(Number($('#quantity').value || 0))),
-    is_active: $('#isActive').value === 'true',
-    updated_at: new Date().toISOString(),
-  };
-
-  if (!payload.name || !payload.code || !payload.img) {
-    $('#formError').textContent = 'الاسم والكود والصورة الرئيسية مطلوبة.';
-    return;
-  }
-
+  const saveBtn = $('#saveBtn');
+  // Nothing visually marked the button as busy while a save was in
+  // flight (including the async next_product_code round-trip below), so
+  // an admin who saw no reaction would tap it again - and again - each
+  // tap starting its own independent insert. Lock it for the whole
+  // function so a slow connection can't produce duplicate products.
+  if (saveBtn.disabled) return;
+  saveBtn.disabled = true;
+  const originalLabel = saveBtn.textContent;
+  saveBtn.textContent = 'جاري الحفظ...';
   try {
+    $('#formError').textContent = '';
+    const id = $('#productId').value;
+    const sizes = csv($('#sizes').value);
+    const type = $('#type').value;
+    const isSized = type === 'shoes' || type === 'set';
+
+    if (!canEditType(type)) {
+      $('#formError').textContent = 'ماعندكش صلاحية تعديل هذا القسم.';
+      return;
+    }
+
+    if (isSized && !sizes.length) {
+      $('#formError').textContent = 'المقاسات مطلوبة للحذاء والـ Set.';
+      return;
+    }
+
+    if (isSized) {
+      const missing = [...document.querySelectorAll('.size-option:checked')].some((option) => {
+        const input = option.closest('label')?.querySelector('.size-quantity');
+        return !input || input.value === '';
+      });
+      if (missing) {
+        $('#formError').textContent = 'حدد كمية لكل مقاس.';
+        return;
+      }
+    }
+
+    const modelCode = $('#modelCode').value.trim().toUpperCase();
+    if (!/^V[0-9]{2,}$/.test(modelCode)) {
+      $('#formError').textContent = 'كود الموديل مطلوب، بصيغة V01 وهكذا.';
+      return;
+    }
+    $('#modelCode').value = modelCode;
+
+    if (!id) {
+      const { data, error } = await sb.rpc('next_product_code');
+      if (error) {
+        $('#formError').textContent = 'تعذر توليد كود المنتج: ' + error.message;
+        return;
+      }
+      $('#code').value = String(data);
+      $('#code').required = true;
+    }
+
+    const price = Number($('#price').value || 0);
+    const discountPriceRaw = $('#discountPrice').value.trim();
+    const discountPrice = discountPriceRaw === '' ? null : Number(discountPriceRaw);
+    if (
+      discountPrice != null &&
+      (Number.isNaN(discountPrice) || discountPrice < 0 || discountPrice >= price)
+    ) {
+      $('#formError').textContent = 'سعر الخصم لازم يكون رقم موجب وأقل من السعر الأصلي.';
+      return;
+    }
+
+    const original = id ? products.find((p) => String(p.id) === String(id)) : null;
+    const originalDiscountPrice = original?.discount_price ?? null;
+    const discountChanged = discountPrice !== originalDiscountPrice;
+    if (discountChanged && !canEditDiscount()) {
+      $('#formError').textContent = 'ماعندكش صلاحية تعديل التخفيضات.';
+      return;
+    }
+
+    const sizeQuantities = isSized ? getSizeQuantities() : {};
+
+    const payload = {
+      name: $('#name').value.trim(),
+      description: $('#description').value.trim() || null,
+      code: $('#code').value.trim(),
+      price,
+      discount_price: discountPrice,
+      type,
+      model_code: modelCode,
+      img: $('#img').value.trim(),
+      extra_img:
+        $('#extraImgs')
+          .value.split(/\n+/)
+          .map((x) => x.trim())
+          .filter(Boolean)
+          .join('\n') || null,
+      colors: csv($('#colors').value),
+      sizes: isSized ? sizes : [],
+      size_quantities: sizeQuantities,
+      quantity: isSized
+        ? Object.values(sizeQuantities).reduce((a, b) => a + b, 0)
+        : Math.max(0, Math.floor(Number($('#quantity').value || 0))),
+      is_active: $('#isActive').value === 'true',
+      updated_at: new Date().toISOString(),
+    };
+
+    if (!payload.name || !payload.code || !payload.img) {
+      $('#formError').textContent = 'الاسم والكود والصورة الرئيسية مطلوبة.';
+      return;
+    }
+
     let result;
     if (id) result = await sb.from('products').update(payload).eq('id', id).select().single();
     else result = await sb.from('products').insert(payload).select().single();
@@ -745,6 +755,9 @@ async function save(e) {
     await load();
   } catch (error) {
     $('#formError').textContent = error.message || 'تعذر حفظ المنتج';
+  } finally {
+    saveBtn.disabled = false;
+    saveBtn.textContent = originalLabel;
   }
 }
 
