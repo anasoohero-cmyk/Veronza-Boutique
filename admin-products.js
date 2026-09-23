@@ -569,6 +569,16 @@ function updateSizesRequired() {
   const required = $('#type').value === 'shoes' || $('#type').value === 'set';
   $('#sizes').required = required;
   $('#sizes').closest('label').classList.toggle('required', required);
+  if (!required) {
+    // Switching away from shoes/set must drop any sizes picked while a
+    // matching model's sizes got auto-filled earlier in the same form -
+    // otherwise the hidden #sizes field keeps them even after the visible
+    // checkboxes are cleared below, and they leak into a bag/other type's
+    // saved data.
+    $('#sizes').value = '';
+    renderSizeOptions([], {});
+    return;
+  }
   const selected = [...document.querySelectorAll('.size-option:checked')].map((i) => i.value);
   const existing = getSizeQuantities();
   renderSizeOptions(selected, existing);
@@ -709,7 +719,7 @@ async function save(e) {
         .filter(Boolean)
         .join('\n') || null,
     colors: csv($('#colors').value),
-    sizes,
+    sizes: isSized ? sizes : [],
     size_quantities: sizeQuantities,
     quantity: isSized
       ? Object.values(sizeQuantities).reduce((a, b) => a + b, 0)
