@@ -68,8 +68,28 @@
     }
   };
 
+  // A reload while one of these is open throws away whatever the admin
+  // was typing that hasn't been saved yet (a new product being filled in
+  // has nothing in the database to restore from) - hold the update off
+  // until the admin closes it, instead of losing their in-progress work.
+  const isEditingUnsavedWork = () => {
+    const productModal = document.querySelector('#modal');
+    if (productModal && !productModal.classList.contains('hidden')) return true;
+    const manualOrderModal = document.querySelector('#manualOrderModal');
+    if (manualOrderModal && !manualOrderModal.classList.contains('hidden')) return true;
+    return false;
+  };
+
+  let pendingReloadVersion;
+  let hasPendingReload = false;
+
   const reloadWhenSafe = (version) => {
     if (reloadQueued) return;
+    if (isEditingUnsavedWork()) {
+      hasPendingReload = true;
+      pendingReloadVersion = version;
+      return;
+    }
     reloadQueued = true;
     if (version) {
       try {
@@ -79,6 +99,13 @@
     saveRestoreState();
     window.location.reload();
   };
+
+  setInterval(() => {
+    if (hasPendingReload && !isEditingUnsavedWork()) {
+      hasPendingReload = false;
+      reloadWhenSafe(pendingReloadVersion);
+    }
+  }, 5000);
 
   if ('serviceWorker' in navigator) {
     const hadControllerAtStart = !!navigator.serviceWorker.controller;
