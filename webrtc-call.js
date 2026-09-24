@@ -4,7 +4,14 @@
 // is closed (that needs a native app + a paid telephony service).
 (() => {
   const STUN_ONLY = [{ urls: 'stun:stun.l.google.com:19302' }];
-  const CALL_TIMEOUT_MS = 30000;
+  // The caller keeps re-broadcasting its offer every 3s for this whole
+  // window, so any side that subscribes late still catches it. 30s wasn't
+  // realistic for the admin's actual path: receive the push notification,
+  // tap it, cold-launch/open the admin app, sign-in check, load
+  // admin-chat.html, then deep-link into the right conversation - by the
+  // time all that finished the call had frequently already timed out with
+  // nothing to answer, exactly as reported live.
+  const CALL_TIMEOUT_MS = 60000;
   const AUDIO_CONSTRAINTS = { echoCancellation: true, noiseSuppression: true, autoGainControl: true };
 
   // A TURN relay is what actually makes calls work reliably between two
