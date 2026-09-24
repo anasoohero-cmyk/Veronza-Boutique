@@ -528,7 +528,7 @@ main {
 }
 .toast {
   position: fixed;
-  bottom: calc(76px + env(safe-area-inset-bottom, 0px));
+  bottom: calc(96px + env(safe-area-inset-bottom, 0px));
   right: 20px;
   background: #111;
   color: #fff;
