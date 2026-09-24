@@ -82,9 +82,22 @@
     async _ensurePc() {
       if (this.pc) return this.pc;
       const iceServers = await getIceServers();
+      // Temporary diagnostic (kept on the instance, read by mountUI's debug
+      // line): lastIceServerCount tells us whether /api/calls actually
+      // returned a TURN server at all (1 = STUN-only fallback, the Metered
+      // fetch failed or returned nothing); gatheredCandidateTypes tells us
+      // whether a TURN relay candidate was ever actually usable even when
+      // one was configured - "relay" missing there despite a TURN server
+      // being present points at the credentials/account, not the code.
+      this.lastIceServerCount = iceServers.length;
+      this.gatheredCandidateTypes = new Set();
       const pc = new RTCPeerConnection({ iceServers });
       pc.onicecandidate = (e) => {
-        if (e.candidate) this._send({ type: 'ice', candidate: e.candidate.toJSON() });
+        if (e.candidate) {
+          this._send({ type: 'ice', candidate: e.candidate.toJSON() });
+          const type = e.candidate.type || /typ (\w+)/.exec(e.candidate.candidate || '')?.[1];
+          if (type) this.gatheredCandidateTypes.add(type);
+        }
       };
       pc.ontrack = (e) => this.onRemoteStream?.(e.streams[0]);
       pc.onconnectionstatechange = () => {
@@ -425,6 +438,7 @@
         .vz-call-incoming-actions [data-call-accept]{background:#111;color:#fff}
         .vz-call-incoming-actions [data-call-reject]{background:#f4f1ec;color:#111}
         .vz-call-toast{position:fixed;bottom:calc(env(safe-area-inset-bottom,0px) + 40px);left:50%;transform:translateX(-50%);background:#fff;color:#111;padding:10px 18px;border-radius:10px;font:600 13px Cairo,sans-serif;z-index:420;box-shadow:0 6px 20px #0004;max-width:88vw;text-align:center}
+        .vz-call-debug{font-size:11px;color:#8a8a8a;margin-top:6px;font-family:monospace,Cairo}
       `;
       document.head.appendChild(style);
     }
@@ -435,6 +449,7 @@
       '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>' +
       '<span>مكالمة مشفرة</span>' +
       '</div>' +
+      '<div class="vz-call-debug" data-call-debug></div>' +
       '<div class="vz-call-mid">' +
       `<div class="vz-call-avatar">${esc((calleeLabel || '؟').trim().charAt(0))}</div>` +
       `<div class="vz-call-name">${esc(calleeLabel)}</div>` +
@@ -496,6 +511,31 @@
       }
     }
 
+    // Temporary diagnostic line - see the comment on lastIceServerCount /
+    // gatheredCandidateTypes in _ensurePc(). Left visible (not cleared) once
+    // a call ends, so it can be read off the screen or screenshotted.
+    const debugEl = win.querySelector('[data-call-debug]');
+    let debugTimer = null;
+    function updateDebugLine() {
+      if (!call.pc) return;
+      const servers = call.lastIceServerCount;
+      const types = call.gatheredCandidateTypes ? Array.from(call.gatheredCandidateTypes) : [];
+      const relay = types.includes('relay') ? 'نعم' : 'لا';
+      debugEl.textContent = `TURN servers: ${servers ?? '؟'} — relay candidate: ${relay} — ICE: ${call.pc.iceConnectionState}`;
+    }
+    function startDebugUpdates() {
+      stopDebugUpdates();
+      updateDebugLine();
+      debugTimer = setInterval(updateDebugLine, 1000);
+    }
+    function stopDebugUpdates() {
+      if (debugTimer) {
+        clearInterval(debugTimer);
+        debugTimer = null;
+      }
+      updateDebugLine();
+    }
+
     // Best-effort earpiece/loudspeaker switch. Most mobile browsers already
     // play call audio through the main (loud) speaker by default - there is
     // no reliable, universal web API to force the private earpiece the way
@@ -540,7 +580,14 @@
       signalEl.classList.add(level);
     };
     call.onIncomingCall = () => incoming.classList.add('show');
+    // Tracked separately from call.state because _teardown() (which runs
+    // before onRemoteEnd fires below) already resets the call's own
+    // internal "was this connected" bookkeeping - this is the only way
+    // onRemoteEnd can still tell the two cases apart by the time it runs.
+    let wasConnected = false;
     call.onStateChange = (state) => {
+      if (state === 'connected') wasConnected = true;
+      else if (state === 'calling' || state === 'ringing') wasConnected = false;
       incoming.classList.toggle('show', state === 'ringing');
       win.classList.toggle('show', state === 'calling' || state === 'connected');
       if (state === 'calling' || state === 'ringing') {
@@ -553,6 +600,11 @@
       } else {
         stopDurationDisplay();
         statusEl.textContent = state === 'calling' ? 'جاري الاتصال...' : '';
+      }
+      if (state === 'calling' || state === 'connected') {
+        startDebugUpdates();
+      } else if (state === 'ended' || state === 'idle') {
+        stopDebugUpdates();
       }
       if (state === 'calling') {
         signalEl.classList.remove('fair', 'poor');
@@ -567,11 +619,21 @@
     call.onConnectFailed = () =>
       showToast('تعذر إكمال المكالمة — تأكد من قوة الاتصال بالإنترنت وحاول مرة أخرى.');
     call.onError = (e) => showToast('تعذر الوصول للمايكروفون: ' + (e?.message || ''));
+    // A call the other side ends (or whose own timeout ends it) while still
+    // ringing/connecting used to just vanish here with zero feedback - the
+    // caller's own timeout shows onConnectFailed locally, but the *other*
+    // side only ever finds out via this silent teardown. A call that did
+    // connect first is left alone; that gets logged to the chat instead
+    // (onCallEnded, wired separately by admin-chat-widget.js).
+    call.onRemoteEnd = () => {
+      if (!wasConnected) showToast('انتهت المكالمة — الطرف الآخر أنهى الاتصال.');
+    };
 
     return {
       destroy() {
         ringer.stop();
         stopDurationDisplay();
+        if (debugTimer) clearInterval(debugTimer);
         win.remove();
         incoming.remove();
         audioEl.remove();
