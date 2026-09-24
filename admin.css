@@ -777,7 +777,12 @@ main {
 }
 .toast {
   position: fixed;
-  bottom: calc(76px + env(safe-area-inset-bottom, 0px));
+  /* The bottom nav's own real height (padding + icon + label) comes out
+     to ~70px before its own safe-area padding, so the old 76px offset
+     here left only a few px of clearance above it - on devices with no
+     safe-area inset (most Android phones), the toast visually rode right
+     on top of the nav bar instead of floating clearly above it. */
+  bottom: calc(96px + env(safe-area-inset-bottom, 0px));
   left: 50%;
   transform: translateX(-50%) translateY(80px);
   background: #111;
