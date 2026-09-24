@@ -128,6 +128,18 @@
   document.addEventListener(
     'touchstart',
     (e) => {
+      // iOS can abort a touch sequence mid-drag without ever firing
+      // touchend or touchcancel - an incoming call banner, Control Center,
+      // the app switcher. That left the previous drag's transform stuck on
+      // its target indefinitely (in category mode, permanently uncovering
+      // a strip of the home page above the fixed panel), since the early
+      // returns below could skip the reset entirely - e.g. simply being
+      // scrolled away from the top of the list. Any new touch anywhere is
+      // a safe point to notice and clear that leftover state first.
+      if (dragging || (dragTarget && dragTarget.style.transform)) {
+        resetVisual(0);
+        dragging = false;
+      }
       if (refreshing || !isAtTop()) return;
       if (e.target.closest('.whatsapp')) return;
       if (isOverlayOpen()) return;
@@ -139,6 +151,13 @@
     },
     { passive: true },
   );
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden && (dragging || (dragTarget && dragTarget.style.transform))) {
+      resetVisual(0);
+      dragging = false;
+      pulling = false;
+    }
+  });
 
   document.addEventListener(
     'touchmove',
