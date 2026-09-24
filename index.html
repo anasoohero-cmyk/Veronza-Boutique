@@ -66,7 +66,35 @@
         window.renderProducts(list);
         document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('active',b.dataset.filter===type));
       }
-      function leaveCategory(){document.body.classList.remove('category-page-mode');section?.classList.add('is-hidden');activeType='all';const url=new URL(location.href);url.searchParams.delete('cat');history.replaceState({},'',url);window.scrollTo({top:0,behavior:'smooth'})}
+      // #new is position:fixed;inset:0 in category mode, which is supposed
+      // to always track the visible viewport - but iOS Safari's *visible*
+      // viewport changes size for reasons that have nothing to do with
+      // page scroll: the toolbar collapsing/expanding, an active call's
+      // green status bar appearing or disappearing, the keyboard opening.
+      // inset:0 doesn't reliably repaint against those on real devices,
+      // leaving a strip of whatever's behind #new visible at an edge - a
+      // call starting right as the category page was open (confirmed live)
+      // is exactly this. The Visual Viewport API exists specifically to
+      // track this reliably; pin #new to it explicitly instead of trusting
+      // inset:0 alone, and re-sync on every change it reports.
+      function syncNewViewport(){
+        if(!section||!document.body.classList.contains('category-page-mode'))return;
+        const vv=window.visualViewport;
+        if(!vv)return;
+        section.style.top=vv.offsetTop+'px';
+        section.style.left=vv.offsetLeft+'px';
+        section.style.width=vv.width+'px';
+        section.style.height=vv.height+'px';
+      }
+      if(window.visualViewport){
+        window.visualViewport.addEventListener('resize',syncNewViewport);
+        window.visualViewport.addEventListener('scroll',syncNewViewport);
+      }
+      function clearNewViewportOverride(){
+        if(!section)return;
+        section.style.top='';section.style.left='';section.style.width='';section.style.height='';
+      }
+      function leaveCategory(){document.body.classList.remove('category-page-mode');section?.classList.add('is-hidden');clearNewViewportOverride();activeType='all';const url=new URL(location.href);url.searchParams.delete('cat');history.replaceState({},'',url);window.scrollTo({top:0,behavior:'smooth'})}
       function choose(type){
         if(!section)return;
         activeType=type||'all';
@@ -84,6 +112,11 @@
         renderCategory(activeType);
         const url=new URL(location.href);url.searchParams.set('cat',activeType);history.replaceState({},'',url);
         section.scrollTop=0;
+        syncNewViewport();
+      }
+      if(document.body.classList.contains('category-page-mode')){
+        syncNewViewport();
+        setTimeout(syncNewViewport,300);
       }
       function refreshCurrentView(){if(document.body.classList.contains('category-page-mode'))renderCategory(activeType)}
       window.veronzaRefreshView=refreshCurrentView;
