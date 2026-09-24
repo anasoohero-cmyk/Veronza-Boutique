@@ -286,7 +286,7 @@ function renderOrderDetails() {
       canEditItems && !editingOrderItems
         ? '<button type="button" class="edit-items-toggle" id="editItemsBtn">تعديل المنتجات</button>'
         : ''
-    }</h3>${editingOrderItems ? orderItemsEditorHtml() : orderItemsReadOnlyHtml()}<div style="display:flex;justify-content:space-between;margin-top:12px;font-weight:800"><span>الإجمالي</span><span>${Number(selected.total || 0).toLocaleString('ar-LY')} د.ل</span></div></div><div class="actions-box"><h3>إدارة الطلب</h3><div class="detail-actions"><select id="orderStatus">${Object.entries(
+    }</h3>${editingOrderItems ? orderItemsEditorHtml() : orderItemsReadOnlyHtml() + `<div style="display:flex;justify-content:space-between;margin-top:12px;font-weight:800"><span>الإجمالي</span><span>${Number(selected.total || 0).toLocaleString('ar-LY')} د.ل</span></div>`}</div><div class="actions-box"><h3>إدارة الطلب</h3><div class="detail-actions"><select id="orderStatus">${Object.entries(
       statusNames,
     )
       .map(
