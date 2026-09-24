@@ -77,7 +77,7 @@
   const panel = document.createElement('div');
   panel.className = 'vz-chat-panel';
   panel.innerHTML = `
-    <div class="vz-chat-head"><span class="vz-chat-avatar">V</span><div class="vz-chat-head-info"><strong>تواصل مع Veronza</strong><small><span class="vz-chat-online-dot"></span>عادة نرد خلال دقائق</small></div><button type="button" class="vz-chat-call" data-call aria-label="مكالمة صوتية" hidden>📞</button><button type="button" class="vz-chat-close" aria-label="إغلاق">×</button></div>
+    <div class="vz-chat-head"><span class="vz-chat-avatar">V</span><div class="vz-chat-head-info"><strong>تواصل مع Veronza</strong><small><span class="vz-chat-online-dot"></span>عادة نرد خلال دقائق</small></div><button type="button" class="vz-chat-call" data-call aria-label="مكالمة صوتية">📞</button><button type="button" class="vz-chat-close" aria-label="إغلاق">×</button></div>
     <div class="vz-chat-name-row" data-name-row hidden><input type="text" data-name-input placeholder="اسمك (اختياري)"></div>
     <div class="vz-chat-body" data-body><div class="vz-chat-welcome">أهلاً 👋 اكتب لنا أي سؤال عن المنتجات أو الطلب وبنرد عليك بأقرب وقت.</div></div>
     <form class="vz-chat-foot" data-form><input type="text" data-input placeholder="اكتب رسالتك..." autocomplete="off" required><button type="submit">إرسال</button></form>
@@ -123,14 +123,29 @@
       onMissedCall: () => notifyCallMissed(conversationId),
     });
     callConversationId = conversationId;
-    callBtn.hidden = false;
-    callBtn.onclick = () => {
-      window.VeronzaCall.showChoice({
-        phone: STORE_PHONE,
-        onInSite: () => beginInSiteCall(conversationId),
-      });
-    };
   }
+  // The button used to only appear once ensureCallFor() had already run,
+  // which only happened after a conversation existed - and a fresh visitor
+  // has none until their first text message is sent, hiding the button
+  // for anyone who opened the chat specifically to call, without typing
+  // anything first. It's visible from the start now; a tap creates the
+  // conversation (if one doesn't exist yet) on demand before offering the
+  // call choice, the same lazy path window.veronzaStartInSiteCall already
+  // used.
+  callBtn.onclick = async () => {
+    if (!window.VeronzaCall) return;
+    let s;
+    try {
+      s = await ensureConversation();
+    } catch (_) {
+      return;
+    }
+    ensureCallFor(s.conversation_id);
+    window.VeronzaCall.showChoice({
+      phone: STORE_PHONE,
+      onInSite: () => beginInSiteCall(s.conversation_id),
+    });
+  };
   window.veronzaStartInSiteCall = async () => {
     const s = await ensureConversation();
     ensureCallFor(s.conversation_id);
