@@ -190,7 +190,13 @@
       shade.classList.add('open');
       document.body.style.overflow = 'hidden';
       load();
-      ensurePush(client, session, true);
+      // Was verbose (true) - fired an alert() dialog on the push-subscription
+      // refresh EVERY time this panel opened, freezing the whole page (alert
+      // is a blocking, synchronous dialog) on any transient failure - which
+      // could easily swallow the exact tap meant to open an incoming call's
+      // notification. Silent here; window.veronzaEnsurePush (a dedicated,
+      // explicit "enable notifications" action elsewhere) still asks loudly.
+      ensurePush(client, session, false);
     };
     const close = () => {
       panel.classList.remove('open');
