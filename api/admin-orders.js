@@ -128,6 +128,47 @@ async function notifyCustomerStatusChange(order, newStatus) {
     return { sent: false, error: String(e?.message || e).slice(0, 500) };
   }
 }
+async function normalizeOrderItems(rawItems, headers) {
+  const normalizedItems = [];
+  for (const rawItem of rawItems) {
+    const code = String(rawItem.product_code || '').trim();
+    const qty = Number(rawItem.quantity);
+    if (!code || !Number.isInteger(qty) || qty < 1) return { error: 'عنصر غير صالح في الطلب' };
+    const productResp = await fetch(
+      `${SUPABASE_URL}/rest/v1/products?select=id,code,name,price,discount_price,img,type,colors,sizes&code=eq.${encodeURIComponent(code)}&is_active=eq.true&limit=1`,
+      { headers },
+    );
+    if (!productResp.ok) return { error: 'تعذر التحقق من المنتج' };
+    const product = (await productResp.json())[0];
+    if (!product) return { error: `منتج غير صالح: ${code}` };
+    const color = rawItem.color ? String(rawItem.color).trim() || null : null;
+    const size = rawItem.size ? String(rawItem.size).trim() || null : null;
+    const isSized = ['shoes', 'set'].includes(String(product.type).toLowerCase());
+    if (isSized && !size) return { error: `المقاس مطلوب لـ ${code}` };
+    if (
+      size &&
+      isSized &&
+      Array.isArray(product.sizes) &&
+      product.sizes.length &&
+      !product.sizes.includes(size)
+    )
+      return { error: `مقاس غير صالح لـ ${code}` };
+    const basePrice = Number(product.price) || 0;
+    const discountPrice = product.discount_price != null ? Number(product.discount_price) : null;
+    const unitPrice = discountPrice != null && discountPrice < basePrice ? discountPrice : basePrice;
+    normalizedItems.push({
+      product_code: product.code,
+      product_name: product.name,
+      color,
+      size,
+      quantity: qty,
+      unit_price: unitPrice,
+      image_url: product.img || null,
+    });
+  }
+  const total = normalizedItems.reduce((sum, it) => sum + it.unit_price * it.quantity, 0);
+  return { items: normalizedItems, total };
+}
 module.exports = async (req, res) => {
   if (req.method === 'OPTIONS') {
     res.writeHead(204, corsHeaders(req));
@@ -179,45 +220,9 @@ module.exports = async (req, res) => {
       Authorization: `Bearer ${SERVICE_KEY}`,
       'Content-Type': 'application/json',
     };
-    const normalizedItems = [];
-    for (const rawItem of items) {
-      const code = String(rawItem.product_code || '').trim();
-      const qty = Number(rawItem.quantity);
-      if (!code || !Number.isInteger(qty) || qty < 1)
-        return json(req, res, 400, { error: 'عنصر غير صالح في الطلب' });
-      const productResp = await fetch(
-        `${SUPABASE_URL}/rest/v1/products?select=id,code,name,price,discount_price,img,type,colors,sizes&code=eq.${encodeURIComponent(code)}&is_active=eq.true&limit=1`,
-        { headers },
-      );
-      if (!productResp.ok) return json(req, res, 502, { error: 'تعذر التحقق من المنتج' });
-      const product = (await productResp.json())[0];
-      if (!product) return json(req, res, 400, { error: `منتج غير صالح: ${code}` });
-      const color = rawItem.color ? String(rawItem.color).trim() || null : null;
-      const size = rawItem.size ? String(rawItem.size).trim() || null : null;
-      const isSized = ['shoes', 'set'].includes(String(product.type).toLowerCase());
-      if (isSized && !size) return json(req, res, 400, { error: `المقاس مطلوب لـ ${code}` });
-      if (
-        size &&
-        isSized &&
-        Array.isArray(product.sizes) &&
-        product.sizes.length &&
-        !product.sizes.includes(size)
-      )
-        return json(req, res, 400, { error: `مقاس غير صالح لـ ${code}` });
-      const basePrice = Number(product.price) || 0;
-      const discountPrice = product.discount_price != null ? Number(product.discount_price) : null;
-      const unitPrice = discountPrice != null && discountPrice < basePrice ? discountPrice : basePrice;
-      normalizedItems.push({
-        product_code: product.code,
-        product_name: product.name,
-        color,
-        size,
-        quantity: qty,
-        unit_price: unitPrice,
-        image_url: product.img || null,
-      });
-    }
-    const total = normalizedItems.reduce((sum, it) => sum + it.unit_price * it.quantity, 0);
+    const normalized = await normalizeOrderItems(items, headers);
+    if (normalized.error) return json(req, res, 400, { error: normalized.error });
+    const { items: normalizedItems, total } = normalized;
 
     const rpcResp = await fetch(`${SUPABASE_URL}/rest/v1/rpc/place_order_atomic`, {
       method: 'POST',
@@ -274,13 +279,46 @@ module.exports = async (req, res) => {
       'cancelled',
       'returned',
     ];
-    if (!body.id || !allowed.includes(body.status))
+    const editingItems = Array.isArray(body.items);
+    const hasStatus = body.status != null;
+    if (!body.id || (!editingItems && !hasStatus) || (hasStatus && !allowed.includes(body.status)))
       return json(req, res, 400, { error: 'Invalid order or status' });
     const existing = await sbFetch(
       `/rest/v1/orders?select=id,order_number,customer_name,customer_phone,status,stock_decremented&id=eq.${encodeURIComponent(body.id)}&limit=1`,
     );
     const previousOrder = existing.ok && Array.isArray(existing.data) ? existing.data[0] : null;
     if (!previousOrder) return json(req, res, 404, { error: 'الطلب غير موجود' });
+
+    if (editingItems) {
+      const headers = {
+        apikey: SERVICE_KEY,
+        Authorization: `Bearer ${SERVICE_KEY}`,
+        'Content-Type': 'application/json',
+      };
+      const normalized = await normalizeOrderItems(body.items, headers);
+      if (normalized.error) return json(req, res, 400, { error: normalized.error });
+      const editResp = await fetch(`${SUPABASE_URL}/rest/v1/rpc/edit_order_items_atomic`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ p_order_id: body.id, p_items: normalized.items }),
+      });
+      if (!editResp.ok) {
+        const detail = await editResp.text();
+        if (detail.includes('INSUFFICIENT_STOCK'))
+          return json(req, res, 409, {
+            error: 'الكمية غير متوفرة في المخزون لتعديل هذا الطلب — راجع الكميات المتاحة.',
+          });
+        return json(req, res, 502, { error: 'تعذر تعديل منتجات الطلب' });
+      }
+    }
+
+    if (!hasStatus) {
+      const r = await sbFetch(
+        `/rest/v1/orders?select=id,order_number,user_id,customer_name,customer_phone,customer_address,total,status,admin_notes,created_at,updated_at,whatsapp_status,whatsapp_last_error,whatsapp_sent_at&id=eq.${encodeURIComponent(body.id)}&limit=1`,
+      );
+      const updatedOrder = r.ok && Array.isArray(r.data) ? r.data[0] : null;
+      return json(req, res, 200, { order: updatedOrder, notify: null });
+    }
 
     // Stock stays decremented only while an order sits in "shipped"/"delivered".
     // Moving into either of those (from anywhere) decrements it; moving out of

@@ -678,6 +678,45 @@ main {
   margin: 0 0 6px;
   font-size: 13px;
 }
+.items-box h3 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.edit-items-toggle {
+  border: 1px solid #ddd8d0;
+  background: #fff;
+  color: #111;
+  border-radius: 8px;
+  padding: 5px 10px;
+  font: inherit;
+  font-weight: 700;
+  font-size: 11px;
+  cursor: pointer;
+}
+.oe-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+.oe-actions .primary {
+  flex: 1;
+  padding: 10px;
+  font-size: 13px;
+  border-radius: 10px;
+}
+.oe-actions .ghost {
+  flex: 1;
+  border: 1px solid #ddd8d0;
+  background: #fff;
+  color: #111;
+  border-radius: 10px;
+  padding: 10px;
+  font: inherit;
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+}
 .customer-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;

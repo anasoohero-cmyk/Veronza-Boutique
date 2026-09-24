@@ -261,9 +261,32 @@ function openStatusList(status) {
 function closeStatusList() {
   closeModalConsumingHistory(() => $('#statusModal').classList.add('hidden'));
 }
-function renderOrderDetails(itemsHtml) {
+let editingOrderItems = false;
+let orderItemsLoading = false;
+let orderItemsError = '';
+function orderItemsReadOnlyHtml() {
+  if (orderItemsLoading) return '<div class="empty">جاري تحميل المنتجات...</div>';
+  if (orderItemsError) return `<div class="empty">تعذر تحميل المنتجات. ${esc(orderItemsError)}</div>`;
+  return (
+    (selected.items || [])
+      .map(
+        (i) =>
+          `<div class="item">${i.image_url ? `<img src="${esc(i.image_url)}" alt="">` : '<div></div>'}<div><div class="item-name">${esc(i.product_name)}</div><div class="item-meta">الكود: ${esc(i.product_code)} · اللون: ${esc(i.color || '—')} · المقاس: ${esc(i.size || '—')} · الكمية: ${esc(i.quantity)}</div></div><div class="item-price">${Number(i.unit_price || 0).toLocaleString('ar-LY')} د.ل</div></div>`,
+      )
+      .join('') || '<div class="empty">لا توجد منتجات.</div>'
+  );
+}
+function orderItemsEditorHtml() {
+  return `<div class="manual-order-form"><div id="oeItems" class="manual-order-items"></div><button type="button" id="oeAddItem" class="ghost" style="align-self:flex-start">+ إضافة منتج</button><div class="manual-order-total">الإجمالي: <span id="oeTotal">0</span> د.ل</div><div id="oeError" class="error" role="alert"></div><div class="oe-actions"><button type="button" id="oeSave" class="primary">حفظ المنتجات</button><button type="button" id="oeCancel" class="ghost">إلغاء</button></div></div>`;
+}
+function renderOrderDetails() {
+  const canEditItems = currentPermissions.edit && !orderItemsLoading && !orderItemsError;
   $('#orderDetails').innerHTML =
-    `<div class="detail-title"><span class="eyebrow">VERONZA ORDER</span><h2>${esc(selected.order_number)}</h2><p>${new Date(selected.created_at).toLocaleString('ar-LY')} · WhatsApp: ${esc(selected.whatsapp_status || 'pending')}</p></div><div class="customer-box"><h3>بيانات الزبون</h3><div class="customer-grid"><div class="field field-wide"><b>الاسم</b><span>${esc(selected.customer_name)}</span><b>الهاتف</b><span>${esc(selected.customer_phone)}</span></div><div class="field field-wide"><b>العنوان</b><span>${esc(selected.customer_address)}</span></div></div><div class="contact-actions"><a href="tel:${esc(selected.customer_phone)}">اتصال بالزبون</a><a target="_blank" rel="noopener noreferrer" href="https://wa.me/${encodeURIComponent(selected.customer_phone.replace(/\D/g, ''))}">WhatsApp</a></div></div><div class="items-box"><h3>المنتجات</h3>${itemsHtml}<div style="display:flex;justify-content:space-between;margin-top:12px;font-weight:800"><span>الإجمالي</span><span>${Number(selected.total || 0).toLocaleString('ar-LY')} د.ل</span></div></div><div class="actions-box"><h3>إدارة الطلب</h3><div class="detail-actions"><select id="orderStatus">${Object.entries(
+    `<div class="detail-title"><span class="eyebrow">VERONZA ORDER</span><h2>${esc(selected.order_number)}</h2><p>${new Date(selected.created_at).toLocaleString('ar-LY')} · WhatsApp: ${esc(selected.whatsapp_status || 'pending')}</p></div><div class="customer-box"><h3>بيانات الزبون</h3><div class="customer-grid"><div class="field field-wide"><b>الاسم</b><span>${esc(selected.customer_name)}</span><b>الهاتف</b><span>${esc(selected.customer_phone)}</span></div><div class="field field-wide"><b>العنوان</b><span>${esc(selected.customer_address)}</span></div></div><div class="contact-actions"><a href="tel:${esc(selected.customer_phone)}">اتصال بالزبون</a><a target="_blank" rel="noopener noreferrer" href="https://wa.me/${encodeURIComponent(selected.customer_phone.replace(/\D/g, ''))}">WhatsApp</a></div></div><div class="items-box"><h3><span>المنتجات</span>${
+      canEditItems && !editingOrderItems
+        ? '<button type="button" class="edit-items-toggle" id="editItemsBtn">تعديل المنتجات</button>'
+        : ''
+    }</h3>${editingOrderItems ? orderItemsEditorHtml() : orderItemsReadOnlyHtml()}<div style="display:flex;justify-content:space-between;margin-top:12px;font-weight:800"><span>الإجمالي</span><span>${Number(selected.total || 0).toLocaleString('ar-LY')} د.ل</span></div></div><div class="actions-box"><h3>إدارة الطلب</h3><div class="detail-actions"><select id="orderStatus">${Object.entries(
       statusNames,
     )
       .map(
@@ -276,31 +299,186 @@ function renderOrderDetails(itemsHtml) {
   $('#adminNote').disabled = !currentPermissions.edit;
   $('#saveOrder').hidden = !currentPermissions.edit;
   $('#saveOrder').onclick = saveOrder;
+  if (editingOrderItems) {
+    loadManualOrderProducts().then(() => {
+      const items = selected.items && selected.items.length ? selected.items : [null];
+      items.forEach((i) => oeAddItemRow(i));
+      oeUpdateTotal();
+    });
+    $('#oeAddItem').onclick = () => oeAddItemRow();
+    $('#oeCancel').onclick = () => {
+      editingOrderItems = false;
+      renderOrderDetails();
+    };
+    $('#oeSave').onclick = saveOrderItems;
+  } else if (canEditItems) {
+    $('#editItemsBtn').onclick = () => {
+      editingOrderItems = true;
+      renderOrderDetails();
+    };
+  }
 }
 function openOrder(id) {
   selected = orders.find((o) => o.id === id);
   if (!selected) return;
   selected.items = selected.items || [];
-  renderOrderDetails('<div class="empty">جاري تحميل المنتجات...</div>');
+  editingOrderItems = false;
+  orderItemsLoading = true;
+  orderItemsError = '';
+  renderOrderDetails();
   $('#orderModal').classList.remove('hidden');
   syncBodyScrollLock();
   pushModalHistoryState();
   api('/api/admin-orders?order_id=' + encodeURIComponent(id))
     .then((body) => {
       selected.items = body.items || [];
+      orderItemsLoading = false;
       if ($('#orderModal').classList.contains('hidden')) return;
-      const itemsHtml =
-        selected.items
-          .map(
-            (i) =>
-              `<div class="item">${i.image_url ? `<img src="${esc(i.image_url)}" alt="">` : '<div></div>'}<div><div class="item-name">${esc(i.product_name)}</div><div class="item-meta">الكود: ${esc(i.product_code)} · اللون: ${esc(i.color || '—')} · المقاس: ${esc(i.size || '—')} · الكمية: ${esc(i.quantity)}</div></div><div class="item-price">${Number(i.unit_price || 0).toLocaleString('ar-LY')} د.ل</div></div>`,
-          )
-          .join('') || '<div class="empty">لا توجد منتجات.</div>';
-      renderOrderDetails(itemsHtml);
+      renderOrderDetails();
     })
     .catch((e) => {
-      renderOrderDetails(`<div class="empty">تعذر تحميل المنتجات. ${esc(e.message)}</div>`);
+      orderItemsLoading = false;
+      orderItemsError = e.message;
+      if ($('#orderModal').classList.contains('hidden')) return;
+      renderOrderDetails();
     });
+}
+function oeItemRowHtml(products) {
+  const options = products
+    .map((p) => `<option value="${p.code}">${esc(p.name)} — ${esc(p.code)}</option>`)
+    .join('');
+  return `<div class="manual-order-item"><div class="item-grid"><label>المنتج<select data-oe-product><option value="">اختار منتج</option>${options}</select></label><label>اللون<select data-oe-color></select></label><label>المقاس<select data-oe-size></select></label><label>الكمية<input data-oe-qty type="number" min="1" step="1" value="1"></label></div><button type="button" class="remove-item" data-oe-remove>حذف</button></div>`;
+}
+function oeUpdateItemRow(row, products) {
+  const productSelect = row.querySelector('[data-oe-product]');
+  const colorSelect = row.querySelector('[data-oe-color]');
+  const sizeSelect = row.querySelector('[data-oe-size]');
+  const p = products.find((x) => x.code === productSelect.value);
+  if (!p) {
+    colorSelect.innerHTML = '';
+    sizeSelect.innerHTML = '';
+    colorSelect.disabled = true;
+    sizeSelect.disabled = true;
+    oeUpdateTotal();
+    return;
+  }
+  colorSelect.disabled = false;
+  colorSelect.innerHTML =
+    (p.colors || []).map((c) => `<option value="${esc(c)}">${esc(c)}</option>`).join('') ||
+    '<option value="">موحد</option>';
+  const desiredColor = row.dataset.oeInitialColor;
+  if (desiredColor && [...colorSelect.options].some((o) => o.value === desiredColor))
+    colorSelect.value = desiredColor;
+  if (moIsSizeRequired(p)) {
+    sizeSelect.disabled = false;
+    sizeSelect.innerHTML =
+      '<option value="">اختار المقاس</option>' +
+      (p.sizes || [])
+        .map((s) => {
+          const out = moSizeStock(p, s) <= 0;
+          return `<option value="${esc(s)}" ${out ? 'disabled' : ''}>${esc(s)}${out ? ' (نفذت)' : ''}</option>`;
+        })
+        .join('');
+    const desiredSize = row.dataset.oeInitialSize;
+    if (desiredSize && [...sizeSelect.options].some((o) => o.value === desiredSize))
+      sizeSelect.value = desiredSize;
+  } else {
+    sizeSelect.disabled = true;
+    sizeSelect.innerHTML = '<option value="">—</option>';
+  }
+  oeUpdateTotal();
+}
+function oeUpdateTotal() {
+  let total = 0;
+  $('#oeItems')
+    .querySelectorAll('.manual-order-item')
+    .forEach((row) => {
+      const code = row.querySelector('[data-oe-product]').value;
+      const qty = Math.max(1, Number(row.querySelector('[data-oe-qty]').value) || 1);
+      const p = manualOrderProducts?.find((x) => x.code === code);
+      if (p) total += moEffectivePrice(p) * qty;
+    });
+  const totalEl = $('#oeTotal');
+  if (totalEl) totalEl.textContent = total.toLocaleString('ar-LY');
+}
+function oeAddItemRow(initial) {
+  const products = manualOrderProducts || [];
+  const wrap = document.createElement('div');
+  wrap.innerHTML = oeItemRowHtml(products);
+  const row = wrap.firstElementChild;
+  if (initial) {
+    row.dataset.oeInitialColor = initial.color || '';
+    row.dataset.oeInitialSize = initial.size || '';
+  }
+  $('#oeItems').appendChild(row);
+  const productSelect = row.querySelector('[data-oe-product]');
+  if (initial?.product_code) productSelect.value = initial.product_code;
+  productSelect.addEventListener('change', () => oeUpdateItemRow(row, products));
+  row.querySelector('[data-oe-qty]').addEventListener('input', oeUpdateTotal);
+  row.querySelector('[data-oe-remove]').addEventListener('click', () => {
+    row.remove();
+    oeUpdateTotal();
+  });
+  if (initial?.quantity) row.querySelector('[data-oe-qty]').value = initial.quantity;
+  oeUpdateItemRow(row, products);
+}
+async function saveOrderItems() {
+  $('#oeError').textContent = '';
+  const items = [];
+  let invalid = false;
+  $('#oeItems')
+    .querySelectorAll('.manual-order-item')
+    .forEach((row) => {
+      const code = row.querySelector('[data-oe-product]').value;
+      const color = row.querySelector('[data-oe-color]').value || null;
+      const size = row.querySelector('[data-oe-size]').value || null;
+      const qty = Math.max(1, Number(row.querySelector('[data-oe-qty]').value) || 1);
+      const p = manualOrderProducts?.find((x) => x.code === code);
+      if (!code || !p) {
+        invalid = true;
+        return;
+      }
+      if (moIsSizeRequired(p) && !size) {
+        invalid = true;
+        return;
+      }
+      items.push({ product_code: code, color, size, quantity: qty });
+    });
+  if (invalid || !items.length) {
+    $('#oeError').textContent = 'حدد منتج ومقاس صحيح لكل عنصر في الطلب.';
+    return;
+  }
+  const saveBtn = $('#oeSave');
+  saveBtn.disabled = true;
+  let body;
+  try {
+    body = await api('/api/admin-orders', {
+      method: 'PATCH',
+      body: JSON.stringify({ id: selected.id, items }),
+    });
+  } catch (e) {
+    saveBtn.disabled = false;
+    $('#oeError').textContent = e.message;
+    return;
+  }
+  selected = { ...selected, ...body.order };
+  const idx = orders.findIndex((o) => o.id === selected.id);
+  if (idx >= 0) orders[idx] = selected;
+  editingOrderItems = false;
+  orderItemsLoading = true;
+  orderItemsError = '';
+  renderOrderDetails();
+  render();
+  toast('تم حفظ المنتجات ✓');
+  try {
+    const itemsBody = await api('/api/admin-orders?order_id=' + encodeURIComponent(selected.id));
+    selected.items = itemsBody.items || [];
+    orderItemsLoading = false;
+  } catch (e) {
+    orderItemsLoading = false;
+    orderItemsError = e.message;
+  }
+  if (!$('#orderModal').classList.contains('hidden')) renderOrderDetails();
 }
 async function saveOrder() {
   try {
