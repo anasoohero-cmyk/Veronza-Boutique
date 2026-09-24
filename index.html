@@ -11,7 +11,7 @@
   </script>
   <noscript><img height="1" width="1" style="display:none" src="https://www.facebook.com/tr?id=999761866469236&ev=PageView&noscript=1" /></noscript>
   <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&family=Playfair+Display:wght@500;600;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="styles.css">
-  <style>.checkout-modal{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:flex-end;justify-content:center;z-index:100}.checkout-modal.open{display:flex}.checkout-card{width:min(100%,560px);max-height:92vh;overflow:auto;background:#fff;padding:24px;border-radius:24px 24px 0 0;box-shadow:0 -10px 40px rgba(0,0,0,.18)}.checkout-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}.checkout-head h2{margin:0}.checkout-close{border:0;background:#f4f1ec;width:38px;height:38px;border-radius:50%;font-size:24px}.checkout-form{display:grid;gap:13px}.checkout-form label{display:grid;gap:7px;font-weight:700;font-size:13px}.checkout-form input,.checkout-form textarea{width:100%;box-sizing:border-box;border:1px solid #ddd8d0;border-radius:12px;padding:13px;font:inherit;background:#fff}.checkout-form textarea{min-height:90px;resize:vertical}.checkout-form input.field-error,.checkout-form textarea.field-error{border-color:#b42318;background:#fff6f5}.field-error-msg{color:#b42318;font-size:12px;font-weight:700;margin-top:-2px}.checkout-submit{border:0;background:#111;color:#fff;padding:14px;border-radius:12px;font:inherit;font-weight:800;cursor:pointer}.checkout-note{font-size:12px;color:#777;line-height:1.7;margin:0}.products.is-hidden{display:none}.category{cursor:pointer}.category-page-mode #new{position:fixed;inset:0;z-index:30;background:#fff;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;display:block!important;min-height:100vh;margin:0;padding-top:24px}</style>
+  <style>.checkout-modal{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:flex-end;justify-content:center;z-index:100}.checkout-modal.open{display:flex}.checkout-card{width:min(100%,560px);max-height:92vh;overflow:auto;background:#fff;padding:24px;border-radius:24px 24px 0 0;box-shadow:0 -10px 40px rgba(0,0,0,.18)}.checkout-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}.checkout-head h2{margin:0}.checkout-close{border:0;background:#f4f1ec;width:38px;height:38px;border-radius:50%;font-size:24px}.checkout-form{display:grid;gap:13px}.checkout-form label{display:grid;gap:7px;font-weight:700;font-size:13px}.checkout-form input,.checkout-form textarea{width:100%;box-sizing:border-box;border:1px solid #ddd8d0;border-radius:12px;padding:13px;font:inherit;background:#fff}.checkout-form textarea{min-height:90px;resize:vertical}.checkout-form input.field-error,.checkout-form textarea.field-error{border-color:#b42318;background:#fff6f5}.field-error-msg{color:#b42318;font-size:12px;font-weight:700;margin-top:-2px}.checkout-submit{border:0;background:#111;color:#fff;padding:14px;border-radius:12px;font:inherit;font-weight:800;cursor:pointer}.checkout-note{font-size:12px;color:#777;line-height:1.7;margin:0}.products.is-hidden{display:none}.category{cursor:pointer}.category-page-mode #new{position:fixed;top:0;left:0;right:0;z-index:30;background:#fff;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;display:block!important;height:100vh;height:100dvh;margin:0;padding-top:24px}</style>
 </head>
 <body>
   <script>
@@ -66,35 +66,7 @@
         window.renderProducts(list);
         document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('active',b.dataset.filter===type));
       }
-      // #new is position:fixed;inset:0 in category mode, which is supposed
-      // to always track the visible viewport - but iOS Safari's *visible*
-      // viewport changes size for reasons that have nothing to do with
-      // page scroll: the toolbar collapsing/expanding, an active call's
-      // green status bar appearing or disappearing, the keyboard opening.
-      // inset:0 doesn't reliably repaint against those on real devices,
-      // leaving a strip of whatever's behind #new visible at an edge - a
-      // call starting right as the category page was open (confirmed live)
-      // is exactly this. The Visual Viewport API exists specifically to
-      // track this reliably; pin #new to it explicitly instead of trusting
-      // inset:0 alone, and re-sync on every change it reports.
-      function syncNewViewport(){
-        if(!section||!document.body.classList.contains('category-page-mode'))return;
-        const vv=window.visualViewport;
-        if(!vv)return;
-        section.style.top=vv.offsetTop+'px';
-        section.style.left=vv.offsetLeft+'px';
-        section.style.width=vv.width+'px';
-        section.style.height=vv.height+'px';
-      }
-      if(window.visualViewport){
-        window.visualViewport.addEventListener('resize',syncNewViewport);
-        window.visualViewport.addEventListener('scroll',syncNewViewport);
-      }
-      function clearNewViewportOverride(){
-        if(!section)return;
-        section.style.top='';section.style.left='';section.style.width='';section.style.height='';
-      }
-      function leaveCategory(){document.body.classList.remove('category-page-mode');section?.classList.add('is-hidden');clearNewViewportOverride();activeType='all';const url=new URL(location.href);url.searchParams.delete('cat');history.replaceState({},'',url);window.scrollTo({top:0,behavior:'smooth'})}
+      function leaveCategory(){document.body.classList.remove('category-page-mode');section?.classList.add('is-hidden');activeType='all';const url=new URL(location.href);url.searchParams.delete('cat');history.replaceState({},'',url);window.scrollTo({top:0,behavior:'smooth'})}
       function choose(type){
         if(!section)return;
         activeType=type||'all';
@@ -112,11 +84,6 @@
         renderCategory(activeType);
         const url=new URL(location.href);url.searchParams.set('cat',activeType);history.replaceState({},'',url);
         section.scrollTop=0;
-        syncNewViewport();
-      }
-      if(document.body.classList.contains('category-page-mode')){
-        syncNewViewport();
-        setTimeout(syncNewViewport,300);
       }
       function refreshCurrentView(){if(document.body.classList.contains('category-page-mode'))renderCategory(activeType)}
       window.veronzaRefreshView=refreshCurrentView;
