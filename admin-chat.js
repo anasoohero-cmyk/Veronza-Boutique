@@ -152,13 +152,43 @@ async function logCallToConversation(conversationId, durationSec) {
   loadConversations();
 }
 
+// A call that was answered (signaling went through) but whose audio never
+// actually connected used to leave zero record anywhere - not "missed"
+// (someone did pick up) so it never hit the customer-side missed-call
+// logging, and it never reaches onCallEnded's duration logging either
+// since that requires having actually connected.
+async function logFailedCall(conversationId) {
+  const { data, error } = await sb
+    .from('chat_messages')
+    .insert({
+      conversation_id: conversationId,
+      sender: 'admin',
+      body: '📞 مكالمة لم تكتمل — تعذر إكمال الاتصال',
+    })
+    .select()
+    .single();
+  if (error) return;
+  await sb
+    .from('chat_conversations')
+    .update({ customer_unread: true, last_message_at: new Date().toISOString() })
+    .eq('id', conversationId);
+  if (conversationId === activeId) {
+    activeMessages.push(data);
+    renderMessages();
+  }
+  loadConversations();
+}
+
 function setupCallFor(id, customerName) {
   teardownCall();
   if (!currentPermissions.edit) return;
   activeCall = new window.VeronzaCall(sb, id);
   activeCallId = id;
   window.veronzaActiveCallConversationIds.add(id);
-  activeCallUI = window.VeronzaCall.mountUI(activeCall, { calleeLabel: customerName || 'الزبون' });
+  activeCallUI = window.VeronzaCall.mountUI(activeCall, {
+    calleeLabel: customerName || 'الزبون',
+    onCallFailed: () => logFailedCall(id),
+  });
   activeCall.onCallEnded = (durationSec) => logCallToConversation(id, durationSec);
   $('#callBtn').onclick = () => activeCall.startCall();
 }

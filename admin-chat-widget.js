@@ -266,8 +266,33 @@
         activeCall = new window.VeronzaCall(client, id);
         activeCallId = id;
         window.veronzaActiveCallConversationIds.add(id);
+        // A call that was answered but whose audio never actually connected
+        // (e.g. no working TURN relay) is neither "missed" nor "ended after
+        // connecting" - it used to leave zero record anywhere in the chat.
+        const logFailedCall = async () => {
+          const { data, error } = await client
+            .from('chat_messages')
+            .insert({
+              conversation_id: id,
+              sender: 'admin',
+              body: '📞 مكالمة لم تكتمل — تعذر إكمال الاتصال',
+            })
+            .select()
+            .single();
+          if (error) return;
+          await client
+            .from('chat_conversations')
+            .update({ customer_unread: true, last_message_at: new Date().toISOString() })
+            .eq('id', id);
+          if (id === activeId) {
+            activeMessages.push(data);
+            renderMessages();
+          }
+          loadConversations();
+        };
         activeCallUI = window.VeronzaCall.mountUI(activeCall, {
           calleeLabel: conv?.customer_name || 'الزبون',
+          onCallFailed: logFailedCall,
         });
         callBtn.onclick = () => activeCall.startCall();
         callBtn.setAttribute('aria-label', 'مكالمة داخل الموقع');

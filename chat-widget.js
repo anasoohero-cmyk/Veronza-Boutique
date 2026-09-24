@@ -108,6 +108,13 @@
       body: JSON.stringify({ conversation_id: conversationId }),
     }).catch(() => {});
   }
+  function notifyCallFailed(conversationId) {
+    fetch('/api/calls?type=failed', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ conversation_id: conversationId }),
+    }).catch(() => {});
+  }
   function beginInSiteCall(conversationId) {
     activeCall.startCall();
     notifyCallStarted(conversationId);
@@ -121,6 +128,7 @@
     activeCallUI = window.VeronzaCall.mountUI(activeCall, {
       calleeLabel: 'المتجر',
       onMissedCall: () => notifyCallMissed(conversationId),
+      onCallFailed: () => notifyCallFailed(conversationId),
     });
     callConversationId = conversationId;
   }

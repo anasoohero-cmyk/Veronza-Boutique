@@ -1,4 +1,4 @@
-const CACHE = 'veronza-v114';
+const CACHE = 'veronza-v115';
 // Product photos live on Supabase Storage, a different origin than the
 // site itself - the app-shell cache below only ever handles same-origin
 // requests, so every visit re-downloaded every product image from

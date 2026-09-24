@@ -402,7 +402,10 @@
     };
   }
 
-  function mountCallUI(call, { calleeLabel = 'الطرف الآخر', onMissedCall = null } = {}) {
+  function mountCallUI(
+    call,
+    { calleeLabel = 'الطرف الآخر', onMissedCall = null, onCallFailed = null } = {},
+  ) {
     if (!document.getElementById('vz-call-style')) {
       const style = document.createElement('style');
       style.id = 'vz-call-style';
@@ -616,8 +619,10 @@
       onMissedCall?.();
     };
     call.onBusy = () => showToast('الطرف الآخر مشغول بمكالمة أخرى.');
-    call.onConnectFailed = () =>
+    call.onConnectFailed = () => {
       showToast('تعذر إكمال المكالمة — تأكد من قوة الاتصال بالإنترنت وحاول مرة أخرى.');
+      onCallFailed?.();
+    };
     call.onError = (e) => showToast('تعذر الوصول للمايكروفون: ' + (e?.message || ''));
     // A call the other side ends (or whose own timeout ends it) while still
     // ringing/connecting used to just vanish here with zero feedback - the

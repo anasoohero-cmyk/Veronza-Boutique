@@ -112,38 +112,24 @@ async function handleCallNotify(req, res) {
   return json(req, res, 200, { ok: true });
 }
 
-async function handleCallMissed(req, res) {
-  if (!SUPABASE_URL || !SERVICE_KEY)
-    return json(req, res, 500, { error: 'Server configuration is incomplete' });
-  const body = await readJsonBody(req);
-  if (body === null) return json(req, res, 400, { error: 'Invalid JSON' });
-  const conversationId = String(body.conversation_id || '').trim();
-  if (!conversationId) return json(req, res, 400, { error: 'conversation_id required' });
-
-  const headers = {
-    apikey: SERVICE_KEY,
-    Authorization: `Bearer ${SERVICE_KEY}`,
-    'Content-Type': 'application/json',
-  };
-  // Only log a missed call for a conversation that actually exists — same
-  // guard as call-notify, so a stranger guessing random ids can't spam
-  // fake missed-call entries into the admin's chat log.
+// Shared by handleCallMissed and handleCallFailed - a call that rang out
+// unanswered and one that was answered but never actually connected (e.g.
+// no working TURN relay) both need the same "record this so the admin
+// sees it happened" treatment: a system message in the thread, marking it
+// unread, and bumping the counter the admin's missed-calls badge reads.
+async function logCallEvent(conversationId, messageBody, headers) {
   const convResp = await fetch(
     `${SUPABASE_URL}/rest/v1/chat_conversations?select=id,missed_calls_count&id=eq.${encodeURIComponent(conversationId)}&limit=1`,
     { headers },
   );
-  if (!convResp.ok) return json(req, res, 502, { error: 'Lookup failed' });
+  if (!convResp.ok) return { ok: false, status: 502, error: 'Lookup failed' };
   const conversation = (await convResp.json())[0];
-  if (!conversation) return json(req, res, 404, { error: 'Conversation not found' });
+  if (!conversation) return { ok: false, status: 404, error: 'Conversation not found' };
 
   await fetch(`${SUPABASE_URL}/rest/v1/chat_messages`, {
     method: 'POST',
     headers: { ...headers, Prefer: 'return=minimal' },
-    body: JSON.stringify({
-      conversation_id: conversationId,
-      sender: 'customer',
-      body: '📞 مكالمة فائتة — لم يتم الرد عليها',
-    }),
+    body: JSON.stringify({ conversation_id: conversationId, sender: 'customer', body: messageBody }),
   });
 
   await fetch(
@@ -158,7 +144,55 @@ async function handleCallMissed(req, res) {
       }),
     },
   );
+  return { ok: true };
+}
 
+async function handleCallMissed(req, res) {
+  if (!SUPABASE_URL || !SERVICE_KEY)
+    return json(req, res, 500, { error: 'Server configuration is incomplete' });
+  const body = await readJsonBody(req);
+  if (body === null) return json(req, res, 400, { error: 'Invalid JSON' });
+  const conversationId = String(body.conversation_id || '').trim();
+  if (!conversationId) return json(req, res, 400, { error: 'conversation_id required' });
+
+  const headers = {
+    apikey: SERVICE_KEY,
+    Authorization: `Bearer ${SERVICE_KEY}`,
+    'Content-Type': 'application/json',
+  };
+  // Only log for a conversation that actually exists — a stranger guessing
+  // random ids should not be able to spam fake entries into the admin's chat.
+  const result = await logCallEvent(conversationId, '📞 مكالمة فائتة — لم يتم الرد عليها', headers);
+  if (!result.ok) return json(req, res, result.status, { error: result.error });
+  return json(req, res, 200, { ok: true });
+}
+
+// A call that WAS answered (both sides exchanged signaling) but whose
+// audio connection never actually established - e.g. no working TURN
+// relay for two devices both on cellular data - used to leave zero trace
+// anywhere: it isn't "missed" (someone did answer) so the existing missed-
+// call logging never covered it, and it never reaches the connected state
+// onCallEnded's duration-logging requires either. Reported live: an
+// answered-but-failed call had no record in the chat at all.
+async function handleCallFailed(req, res) {
+  if (!SUPABASE_URL || !SERVICE_KEY)
+    return json(req, res, 500, { error: 'Server configuration is incomplete' });
+  const body = await readJsonBody(req);
+  if (body === null) return json(req, res, 400, { error: 'Invalid JSON' });
+  const conversationId = String(body.conversation_id || '').trim();
+  if (!conversationId) return json(req, res, 400, { error: 'conversation_id required' });
+
+  const headers = {
+    apikey: SERVICE_KEY,
+    Authorization: `Bearer ${SERVICE_KEY}`,
+    'Content-Type': 'application/json',
+  };
+  const result = await logCallEvent(
+    conversationId,
+    '📞 مكالمة لم تكتمل — تعذر إكمال الاتصال',
+    headers,
+  );
+  if (!result.ok) return json(req, res, result.status, { error: result.error });
   return json(req, res, 200, { ok: true });
 }
 
@@ -172,6 +206,7 @@ module.exports = async (req, res) => {
   if (req.method === 'GET') return handleTurnCredentials(req, res);
   if (req.method === 'POST' && type === 'notify') return handleCallNotify(req, res);
   if (req.method === 'POST' && type === 'missed') return handleCallMissed(req, res);
+  if (req.method === 'POST' && type === 'failed') return handleCallFailed(req, res);
   res.setHeader('Allow', 'GET, POST');
   return json(req, res, 405, { error: 'Method not allowed' });
 };

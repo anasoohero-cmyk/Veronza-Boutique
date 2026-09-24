@@ -225,13 +225,35 @@
       globalCall?.destroy();
       globalCallConversationId = id;
       globalCall = new window.VeronzaCall(client, id);
+      // Answering here (via the notification, not a specific open
+      // conversation) never logged the call's outcome to the chat at all -
+      // neither a successful call's duration nor a failed connection - since
+      // onCallEnded below only ever reset local state. This is very likely
+      // the exact path used for calls answered by tapping the notification,
+      // which is why they never showed up in the thread.
+      const logCallMessage = async (text) => {
+        const { error } = await client
+          .from('chat_messages')
+          .insert({ conversation_id: id, sender: 'admin', body: text });
+        if (error) return;
+        await client
+          .from('chat_conversations')
+          .update({ customer_unread: true, last_message_at: new Date().toISOString() })
+          .eq('id', id);
+      };
       globalCallUI = window.VeronzaCall.mountUI(globalCall, {
         calleeLabel: (row.body || '').replace(/ يتصل بك الآن من الشات.*$/, '') || 'الزبون',
+        onCallFailed: () => logCallMessage('📞 مكالمة لم تكتمل — تعذر إكمال الاتصال'),
       });
       const cleanup = () => {
         globalCallConversationId = null;
       };
-      globalCall.onCallEnded = cleanup;
+      globalCall.onCallEnded = (durationSec) => {
+        const mm = String(Math.floor(durationSec / 60)).padStart(2, '0');
+        const ss = String(durationSec % 60).padStart(2, '0');
+        logCallMessage(`📞 مكالمة صوتية — المدة: ${mm}:${ss}`);
+        cleanup();
+      };
       const origDestroy = globalCallUI.destroy.bind(globalCallUI);
       globalCallUI.destroy = () => {
         cleanup();
