@@ -69,16 +69,23 @@
       window.addEventListener('productsLoaded',()=>{const saved=new URLSearchParams(location.search).get('cat');if(saved&&names[saved])choose(saved)},{once:true});
       (()=>{
         if(!section)return;
-        let startX=0,startY=0,dragging=false,moved=false;
+        let startX=0,startY=0,dragging=false,moved=false,watchdog=null;
         const setOffset=dx=>{section.style.transform=`translateX(${dx}px)`};
         const resetOffset=()=>{section.style.transition='transform .22s ease';section.style.transform='';setTimeout(()=>{section.style.transition=''},220)};
+        // Waiting for the *next* touch to self-heal a stuck drag isn't
+        // enough if the interruption keeps recurring (e.g. an ongoing phone
+        // call repeatedly stealing touch focus) - a hard watchdog, re-armed
+        // on every touchmove tick, guarantees it corrects itself within
+        // ~1.5s of the last real movement even with no further touch at all.
+        const armWatchdog=()=>{clearTimeout(watchdog);watchdog=setTimeout(()=>{if(dragging){dragging=false;resetOffset()}},1500)};
+        const clearWatchdog=()=>{clearTimeout(watchdog);watchdog=null};
         section.addEventListener('touchstart',e=>{
           // iOS can abort a touch sequence mid-drag without ever firing
           // touchend or touchcancel (a call banner, Control Center, the
           // app switcher) - that left a previous drag's translateX stuck
           // on the panel indefinitely. Any new touch here is a safe point
           // to notice and clear that leftover offset first.
-          if(dragging||section.style.transform){dragging=false;resetOffset()}
+          if(dragging||section.style.transform){clearWatchdog();dragging=false;resetOffset()}
           if(!document.body.classList.contains('category-page-mode'))return;
           const p=e.touches[0];
           // Starting the back-swipe anywhere on the page meant an
@@ -100,8 +107,10 @@
           moved=true;
           if(e.cancelable)e.preventDefault();
           if(dx>0)setOffset(dx);
+          armWatchdog();
         },{passive:false});
         section.addEventListener('touchend',e=>{
+          clearWatchdog();
           if(!dragging)return;dragging=false;
           section.style.transition='transform .22s ease';
           if(!moved){section.style.transform='';return}
@@ -115,11 +124,12 @@
           }
         });
         section.addEventListener('touchcancel',()=>{
+          clearWatchdog();
           if(!dragging)return;dragging=false;
           resetOffset();
         });
         document.addEventListener('visibilitychange',()=>{
-          if(document.hidden&&(dragging||section.style.transform)){dragging=false;resetOffset()}
+          if(document.hidden&&(dragging||section.style.transform)){clearWatchdog();dragging=false;resetOffset()}
         });
       })();
       document.addEventListener('click',e=>{

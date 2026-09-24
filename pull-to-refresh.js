@@ -125,6 +125,30 @@
     document.querySelector('.whatsapp')?.style.setProperty('opacity', '1');
   };
 
+  // Self-heal is otherwise only checked on the *next* touch or visibility
+  // change - if the interruption that killed touchend/touchcancel keeps
+  // recurring (e.g. an ongoing phone call repeatedly stealing touch focus),
+  // the stuck offset can persist visibly for a while with no further touch
+  // ever landing to trigger the reset above. A hard watchdog re-armed on
+  // every touchmove tick guarantees it corrects itself within ~1.5s of the
+  // last real movement, without needing another touch at all. It's longer
+  // than minHoldMs so it never fires during a legitimate deliberate hold.
+  let dragWatchdog = null;
+  const armDragWatchdog = () => {
+    clearTimeout(dragWatchdog);
+    dragWatchdog = setTimeout(() => {
+      if (dragging) {
+        dragging = false;
+        pulling = false;
+        resetVisual(0.2);
+      }
+    }, 1500);
+  };
+  const clearDragWatchdog = () => {
+    clearTimeout(dragWatchdog);
+    dragWatchdog = null;
+  };
+
   document.addEventListener(
     'touchstart',
     (e) => {
@@ -137,6 +161,7 @@
       // scrolled away from the top of the list. Any new touch anywhere is
       // a safe point to notice and clear that leftover state first.
       if (dragging || (dragTarget && dragTarget.style.transform)) {
+        clearDragWatchdog();
         resetVisual(0);
         dragging = false;
       }
@@ -153,6 +178,7 @@
   );
   document.addEventListener('visibilitychange', () => {
     if (document.hidden && (dragging || (dragTarget && dragTarget.style.transform))) {
+      clearDragWatchdog();
       resetVisual(0);
       dragging = false;
       pulling = false;
@@ -166,6 +192,7 @@
       if (!isAtTop()) {
         pulling = false;
         if (dragging) {
+          clearDragWatchdog();
           resetVisual(0.2);
           dragging = false;
         }
@@ -174,6 +201,7 @@
       const distance = e.touches[0].clientY - startY;
       if (distance <= 0) {
         if (dragging) {
+          clearDragWatchdog();
           resetVisual(0.2);
           dragging = false;
         }
@@ -191,6 +219,7 @@
       const wa = document.querySelector('.whatsapp');
       if (wa) wa.style.opacity = '0';
       setBarState(pulled / threshold, false);
+      armDragWatchdog();
     },
     { passive: true },
   );
@@ -200,6 +229,7 @@
     () => {
       const wasDragging = dragging;
       pulling = false;
+      clearDragWatchdog();
       if (!wasDragging) return;
       const match = /translateY\(([\d.]+)px\)/.exec(dragTarget.style.transform || '');
       const pulled = match ? parseFloat(match[1]) : 0;
@@ -219,6 +249,7 @@
   document.addEventListener(
     'touchcancel',
     () => {
+      clearDragWatchdog();
       if (!dragging) return;
       resetVisual(0.2);
       pulling = false;
