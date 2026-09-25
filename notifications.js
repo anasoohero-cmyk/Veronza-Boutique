@@ -104,9 +104,10 @@
     document.body.appendChild(shade);
     const panel = document.createElement('aside');
     panel.className = 'vz-panel';
-    panel.innerHTML = `<div class="vz-nhead"><h3>الإشعارات</h3><button type="button" data-nclose>×</button></div><div class="vz-list" data-nlist></div>`;
+    panel.innerHTML = `<div class="vz-nhead"><h3>الإشعارات</h3><div style="display:flex;gap:8px;align-items:center"><button type="button" data-nenable title="تفعيل إشعارات الهاتف">🔔</button><button type="button" data-nclose>×</button></div></div><div class="vz-list" data-nlist></div>`;
     document.body.appendChild(panel);
     const list = panel.querySelector('[data-nlist]');
+    panel.querySelector('[data-nenable]').onclick = () => ensurePush(client, session, true);
     const fmt = (d) =>
       new Date(d).toLocaleString('ar-LY', { dateStyle: 'medium', timeStyle: 'short' });
     let currentRows = [];
