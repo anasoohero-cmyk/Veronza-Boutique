@@ -171,6 +171,7 @@ function render() {
     .forEach((x) => x.classList.toggle('active', x.dataset.status === filter));
   let list = filter === 'all' ? orders : orders.filter((o) => o.status === filter);
   const q = searchQuery.trim().toLowerCase();
+  $('#stats').hidden = !!q;
   if (q) {
     list = list.filter(
       (o) =>
