@@ -107,7 +107,17 @@
     panel.innerHTML = `<div class="vz-nhead"><h3>الإشعارات</h3><div style="display:flex;gap:8px;align-items:center"><button type="button" data-nenable title="تفعيل إشعارات الهاتف">🔔</button><button type="button" data-nclose>×</button></div></div><div class="vz-list" data-nlist></div>`;
     document.body.appendChild(panel);
     const list = panel.querySelector('[data-nlist]');
-    panel.querySelector('[data-nenable]').onclick = () => ensurePush(client, session, true);
+    panel.querySelector('[data-nenable]').onclick = () => {
+      // ensurePush only ever shows its "تم تفعيل بنجاح" alert the very first
+      // time it ever succeeds (a localStorage flag suppresses every later
+      // one, including a background refresh's) - so pressing this button a
+      // second time gave zero feedback on success, looking broken. Clearing
+      // the flag first makes this specific, explicit action always confirm.
+      try {
+        localStorage.removeItem('veronza-push-confirmed');
+      } catch (_) {}
+      ensurePush(client, session, true);
+    };
     const fmt = (d) =>
       new Date(d).toLocaleString('ar-LY', { dateStyle: 'medium', timeStyle: 'short' });
     let currentRows = [];
