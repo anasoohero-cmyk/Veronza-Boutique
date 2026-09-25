@@ -586,11 +586,24 @@
     // Tracked separately from call.state because _teardown() (which runs
     // before onRemoteEnd fires below) already resets the call's own
     // internal "was this connected" bookkeeping - this is the only way
-    // onRemoteEnd can still tell the two cases apart by the time it runs.
+    // onRemoteEnd can still tell the cases apart by the time it runs.
+    // everCalling distinguishes "was actually answered/attempted at some
+    // point" from "just rang and rang" - the callee side of a call that
+    // rang out unanswered receives the caller's own timeout-driven 'end'
+    // too (the caller's ring-timeout fires slightly before the callee's
+    // own), and without this it would double-log the same missed call
+    // that onNoAnswer/onMissedCall (the caller's side) already records.
     let wasConnected = false;
+    let everCalling = false;
     call.onStateChange = (state) => {
       if (state === 'connected') wasConnected = true;
-      else if (state === 'calling' || state === 'ringing') wasConnected = false;
+      else if (state === 'calling') {
+        wasConnected = false;
+        everCalling = true;
+      } else if (state === 'ringing') {
+        wasConnected = false;
+        everCalling = false;
+      }
       incoming.classList.toggle('show', state === 'ringing');
       win.classList.toggle('show', state === 'calling' || state === 'connected');
       if (state === 'calling' || state === 'ringing') {
@@ -619,10 +632,8 @@
       onMissedCall?.();
     };
     call.onBusy = () => showToast('الطرف الآخر مشغول بمكالمة أخرى.');
-    call.onConnectFailed = () => {
+    call.onConnectFailed = () =>
       showToast('تعذر إكمال المكالمة — تأكد من قوة الاتصال بالإنترنت وحاول مرة أخرى.');
-      onCallFailed?.();
-    };
     call.onError = (e) => showToast('تعذر الوصول للمايكروفون: ' + (e?.message || ''));
     // A call the other side ends (or whose own timeout ends it) while still
     // ringing/connecting used to just vanish here with zero feedback - the
@@ -630,8 +641,23 @@
     // side only ever finds out via this silent teardown. A call that did
     // connect first is left alone; that gets logged to the chat instead
     // (onCallEnded, wired separately by admin-chat-widget.js).
+    //
+    // onCallFailed is fired from HERE specifically, not from
+    // onConnectFailed above - endCall() (a manual hangup, from either
+    // side, at any point before connecting) never calls onConnectFailed at
+    // all, only sends 'end'; onRemoteEnd is the one path every "never
+    // connected" ending always passes through on the side that didn't
+    // initiate it, timeout or manual hangup alike, so logging only here
+    // covers every case exactly once with no risk of double-logging the
+    // same failed call from both ends. Gated on everCalling so a call that
+    // simply rang out unanswered - already covered by onNoAnswer/
+    // onMissedCall on the caller's side - doesn't get a second, redundant
+    // log entry from the callee's side.
     call.onRemoteEnd = () => {
-      if (!wasConnected) showToast('انتهت المكالمة — الطرف الآخر أنهى الاتصال.');
+      if (!wasConnected) {
+        showToast('انتهت المكالمة — الطرف الآخر أنهى الاتصال.');
+        if (everCalling) onCallFailed?.();
+      }
     };
 
     return {
