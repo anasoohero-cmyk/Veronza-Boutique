@@ -350,6 +350,7 @@ main {
   border-radius: 12px;
   padding: 13px;
   font: inherit;
+  background: #fff;
   outline: 0;
 }
 .orders-search input:focus {
