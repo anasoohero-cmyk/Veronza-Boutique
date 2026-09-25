@@ -41,7 +41,7 @@ function loadSupabaseClient() {
       return;
     }
     const script = document.createElement('script');
-    script.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
+    script.src = 'vendor-supabase.js';
     script.dataset.supabaseJs = 'true';
     script.onload = create;
     script.onerror = () => finish(reject, new Error('تعذر تحميل Supabase'));

@@ -35,7 +35,7 @@
         return;
       }
       const s = document.createElement('script');
-      s.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
+      s.src = 'vendor-supabase.js';
       s.dataset.supabaseJs = 'true';
       s.onload = () =>
         window.supabase?.createClient
