@@ -4,6 +4,7 @@ const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 window.veronzaSupabase = sb;
 let orders = [],
   filter = 'all',
+  searchQuery = '',
   selected = null,
   urlOrderHandled = false;
 const $ = (s) => document.querySelector(s);
@@ -168,7 +169,15 @@ function render() {
   document
     .querySelectorAll('.filters button')
     .forEach((x) => x.classList.toggle('active', x.dataset.status === filter));
-  const list = filter === 'all' ? orders : orders.filter((o) => o.status === filter);
+  let list = filter === 'all' ? orders : orders.filter((o) => o.status === filter);
+  const q = searchQuery.trim().toLowerCase();
+  if (q) {
+    list = list.filter(
+      (o) =>
+        (o.order_number || '').toLowerCase().includes(q) ||
+        (o.customer_phone || '').toLowerCase().includes(q),
+    );
+  }
   const box = $('#orders');
   if (!list.length) {
     box.innerHTML = '<div class="empty">لا توجد طلبات في هذا القسم حالياً.</div>';
@@ -595,6 +604,10 @@ $('#copySiteLinkBtn').onclick = async () => {
     prompt('انسخ رابط الموقع:', link);
   }
 };
+$('#ordersSearch').addEventListener('input', (e) => {
+  searchQuery = e.target.value;
+  render();
+});
 $('.filters').addEventListener('click', (e) => {
   const b = e.target.closest('[data-status]');
   if (!b) return;
