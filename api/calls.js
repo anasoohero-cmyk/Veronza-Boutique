@@ -47,11 +47,19 @@ async function handleTurnCredentials(req, res) {
   if (!SUPABASE_URL || !SERVICE_KEY) return json(req, res, 200, { ok: true, iceServers: [] });
   try {
     const cfgResp = await fetch(
-      `${SUPABASE_URL}/rest/v1/turn_config?select=metered_domain,metered_api_key&id=eq.true&limit=1`,
+      `${SUPABASE_URL}/rest/v1/turn_config?select=metered_domain,metered_api_key,static_ice_servers&id=eq.true&limit=1`,
       { headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` } },
     );
     const cfg = cfgResp.ok ? (await cfgResp.json())[0] : null;
     if (!cfg) return json(req, res, 200, { ok: true, iceServers: [] });
+
+    // Metered's dynamic apiKey-based credential endpoint has been rejecting
+    // this account's key with 401 even though it matches the dashboard
+    // exactly - a static credential generated directly on their dashboard
+    // (no expiry, no per-request API call) sidesteps that entirely.
+    if (Array.isArray(cfg.static_ice_servers) && cfg.static_ice_servers.length) {
+      return json(req, res, 200, { ok: true, iceServers: cfg.static_ice_servers });
+    }
 
     const turnResp = await fetch(
       `https://${cfg.metered_domain}.metered.live/api/v1/turn/credentials?apiKey=${encodeURIComponent(cfg.metered_api_key)}`,
