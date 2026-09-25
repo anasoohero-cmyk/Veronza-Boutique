@@ -70,6 +70,42 @@
     window.location.reload();
   };
 
+  const resetVisual = (duration) => {
+    const el = container();
+    if (el) {
+      el.style.transition = `transform ${duration}s ease`;
+      el.style.transform = '';
+    }
+    setBarState(0, false);
+    bar.style.pointerEvents = 'none';
+  };
+
+  // iOS can abort a touch sequence mid-drag without ever firing touchend or
+  // touchcancel (an incoming call banner, Control Center, the app switcher)
+  // - that left the drag's transform stuck on #appView indefinitely, which
+  // breaks position:fixed for the bottom-nav living inside it (a transform
+  // on an ancestor makes fixed descendants position themselves relative to
+  // that ancestor instead of the real viewport). Mirrors the same
+  // self-healing added to the customer-facing pull-to-refresh.js: a
+  // watchdog re-armed on every touchmove tick, plus a check on the next
+  // touchstart and on backgrounding, so a stuck transform never survives
+  // more than ~1.5s or the next touch, whichever comes first.
+  let dragWatchdog = null;
+  const armDragWatchdog = () => {
+    clearTimeout(dragWatchdog);
+    dragWatchdog = setTimeout(() => {
+      if (dragging) {
+        dragging = false;
+        pulling = false;
+        resetVisual(0.2);
+      }
+    }, 1500);
+  };
+  const clearDragWatchdog = () => {
+    clearTimeout(dragWatchdog);
+    dragWatchdog = null;
+  };
+
   bar.style.pointerEvents = 'none';
   bar.addEventListener('click', () => {
     if (parseFloat(bar.style.opacity) > 0.5) doRefresh();
@@ -79,6 +115,11 @@
     'touchstart',
     (e) => {
       const el = container();
+      if (dragging || (el && el.style.transform)) {
+        clearDragWatchdog();
+        resetVisual(0);
+        dragging = false;
+      }
       if (!el || refreshing || !isAtTop()) return;
       if (isOverlayOpen()) return;
       startY = e.touches[0].clientY;
@@ -89,6 +130,16 @@
     { passive: true },
   );
 
+  document.addEventListener('visibilitychange', () => {
+    const el = container();
+    if (document.hidden && (dragging || (el && el.style.transform))) {
+      clearDragWatchdog();
+      resetVisual(0);
+      dragging = false;
+      pulling = false;
+    }
+  });
+
   document.addEventListener(
     'touchmove',
     (e) => {
@@ -98,10 +149,8 @@
       if (!isAtTop()) {
         pulling = false;
         if (dragging) {
-          el.style.transition = 'transform .2s ease';
-          el.style.transform = '';
-          setBarState(0, false);
-          bar.style.pointerEvents = 'none';
+          clearDragWatchdog();
+          resetVisual(0.2);
           dragging = false;
         }
         return;
@@ -109,19 +158,16 @@
       const distance = e.touches[0].clientY - startY;
       if (distance <= 0) {
         if (dragging) {
-          el.style.transition = 'transform .2s ease';
-          el.style.transform = '';
-          setBarState(0, false);
+          clearDragWatchdog();
+          resetVisual(0.2);
           dragging = false;
         }
         return;
       }
       if (distance < deadzone) {
         if (dragging) {
-          el.style.transition = 'transform .2s ease';
-          el.style.transform = '';
-          setBarState(0, false);
-          bar.style.pointerEvents = 'none';
+          clearDragWatchdog();
+          resetVisual(0.2);
           dragging = false;
         }
         return;
@@ -132,6 +178,7 @@
       el.style.transform = `translateY(${pulled}px)`;
       bar.style.pointerEvents = 'auto';
       setBarState(pulled / threshold, false);
+      armDragWatchdog();
     },
     { passive: true },
   );
@@ -141,6 +188,7 @@
     () => {
       const wasDragging = dragging;
       pulling = false;
+      clearDragWatchdog();
       if (!wasDragging) return;
       const el = container();
       if (!el) {
@@ -156,10 +204,7 @@
         el.style.transform = `translateY(${maxPull}px)`;
         doRefresh();
       } else {
-        el.style.transition = 'transform .25s ease';
-        el.style.transform = '';
-        setBarState(0, false);
-        bar.style.pointerEvents = 'none';
+        resetVisual(0.25);
       }
       dragging = false;
     },
@@ -169,14 +214,9 @@
   document.addEventListener(
     'touchcancel',
     () => {
+      clearDragWatchdog();
       if (!dragging) return;
-      const el = container();
-      if (el) {
-        el.style.transition = 'transform .2s ease';
-        el.style.transform = '';
-      }
-      setBarState(0, false);
-      bar.style.pointerEvents = 'none';
+      resetVisual(0.2);
       pulling = false;
       dragging = false;
     },
