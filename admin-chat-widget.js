@@ -371,7 +371,14 @@
       shade.classList.add('open');
       window.syncBodyScrollLock?.();
       loadConversations();
-      window.veronzaEnsurePush?.();
+      // This called window.veronzaEnsurePush() (verbose - shows an alert on
+      // any failure) every time this widget opened. There never was a
+      // dedicated "enable notifications" button anywhere for that verbose
+      // path to be reserved for - it was just firing automatically here too,
+      // the second of two spots with the exact same blocking-alert bug
+      // already fixed in notifications.js's own panel-open handler. The
+      // background refresh notifications.js already schedules (every 6h and
+      // on tab focus) covers this without re-triggering it on every open.
     };
     const close = () => {
       panel.classList.remove('open');
