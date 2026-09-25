@@ -340,6 +340,21 @@ main {
 .orders-toolbar .primary {
   width: 100%;
 }
+.orders-search {
+  margin-bottom: 12px;
+}
+.orders-search input {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid #ddd5c9;
+  border-radius: 12px;
+  padding: 13px;
+  font: inherit;
+  outline: 0;
+}
+.orders-search input:focus {
+  border-color: #b58a3b;
+}
 .stats {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
