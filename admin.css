@@ -824,6 +824,7 @@ main {
   bottom: calc(96px + env(safe-area-inset-bottom, 0px));
   left: 50%;
   transform: translateX(-50%) translateY(80px);
+  opacity: 0;
   background: #111;
   color: #fff;
   padding: 11px 18px;
@@ -833,6 +834,7 @@ main {
   transition: 0.25s;
 }
 .toast.show {
+  opacity: 1;
   transform: translateX(-50%) translateY(0);
 }
 @media (max-width: 700px) {
