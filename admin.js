@@ -13,6 +13,8 @@ const statusNames = {
   confirmed: 'تم التأكيد',
   preparing: 'قيد التجهيز',
   shipped: 'جاري التوصيل',
+  shipped_tripoli: 'طرابلس توصيل',
+  shipped_outside: 'خارج طرابلس توصيل',
   delivered: 'تم التسليم',
   cancelled: 'ملغي',
   returned: 'مرتجع',
@@ -148,7 +150,8 @@ function renderStats() {
     ['pending', 'جديدة', c('pending')],
     ['preparing', 'قيد التجهيز', c('preparing')],
     ['confirmed', 'تم التأكيد', c('confirmed')],
-    ['shipped', 'جاري التوصيل', c('shipped')],
+    ['shipped_tripoli', 'طرابلس توصيل', c('shipped_tripoli')],
+    ['shipped_outside', 'خارج طرابلس توصيل', c('shipped_outside')],
     ['delivered', 'تم التسليم', c('delivered')],
     ['cancelled', 'ملغي', c('cancelled')],
     ['returned', 'مرتجع', c('returned')],
@@ -299,6 +302,11 @@ function renderOrderDetails() {
     }</h3>${editingOrderItems ? orderItemsEditorHtml() : orderItemsReadOnlyHtml() + `<div style="display:flex;justify-content:space-between;margin-top:12px;font-weight:800"><span>الإجمالي</span><span>${Number(selected.total || 0).toLocaleString('ar-LY')} د.ل</span></div>`}</div><div class="actions-box"><h3>إدارة الطلب</h3><div class="detail-actions"><select id="orderStatus">${Object.entries(
       statusNames,
     )
+      // "shipped" is a retired status kept only so the ~10 orders already
+      // sitting in it still show their real state and can be saved without
+      // an unrelated dropdown edit - it's excluded as a pickable option for
+      // every other order so nothing new can be set to it again.
+      .filter(([k]) => k !== 'shipped' || selected.status === 'shipped')
       .map(
         ([k, v]) => `<option value="${k}" ${selected.status === k ? 'selected' : ''}>${v}</option>`,
       )

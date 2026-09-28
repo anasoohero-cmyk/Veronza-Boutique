@@ -552,7 +552,9 @@ main {
   background: #eee9ff;
   color: #5c42a5;
 }
-.shipped {
+.shipped,
+.shipped_tripoli,
+.shipped_outside {
   background: #e4f6f1;
   color: #19725d;
 }

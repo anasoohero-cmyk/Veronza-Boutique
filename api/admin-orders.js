@@ -9,6 +9,8 @@ const STATUS_LABELS = {
   confirmed: 'تم التأكيد',
   preparing: 'قيد التجهيز',
   shipped: 'جاري التوصيل',
+  shipped_tripoli: 'طرابلس توصيل',
+  shipped_outside: 'خارج طرابلس توصيل',
   delivered: 'تم التسليم',
   cancelled: 'ملغي',
   returned: 'مرتجع',
@@ -275,6 +277,8 @@ module.exports = async (req, res) => {
       'confirmed',
       'preparing',
       'shipped',
+      'shipped_tripoli',
+      'shipped_outside',
       'delivered',
       'cancelled',
       'returned',
@@ -320,10 +324,13 @@ module.exports = async (req, res) => {
       return json(req, res, 200, { order: updatedOrder, notify: null });
     }
 
-    // Stock stays decremented only while an order sits in "shipped"/"delivered".
-    // Moving into either of those (from anywhere) decrements it; moving out of
-    // them to any other status (preparing, cancelled, returned, ...) restores it.
-    const isShippedOrDelivered = ['shipped', 'delivered'].includes(body.status);
+    // Stock stays decremented only while an order sits in "shipped" (or its
+    // shipped_tripoli/shipped_outside replacements) / "delivered". Moving
+    // into any of those (from anywhere) decrements it; moving out of them to
+    // any other status (preparing, cancelled, returned, ...) restores it.
+    const isShippedOrDelivered = ['shipped', 'shipped_tripoli', 'shipped_outside', 'delivered'].includes(
+      body.status,
+    );
 
     if (isShippedOrDelivered && !previousOrder.stock_decremented) {
       const dec = await sbFetch('/rest/v1/rpc/decrement_stock_for_order', {
