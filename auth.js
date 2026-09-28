@@ -113,6 +113,8 @@
         confirmed: 'تم التأكيد',
         preparing: 'قيد التجهيز',
         shipped: 'جاري التوصيل',
+        shipped_tripoli: 'طرابلس توصيل',
+        shipped_outside: 'خارج طرابلس توصيل',
         delivered: 'تم التسليم',
         cancelled: 'ملغي',
         returned: 'مرتجع',
